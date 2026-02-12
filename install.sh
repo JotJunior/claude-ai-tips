@@ -63,15 +63,40 @@ else
   echo -e "${BLUE}Instalando no projeto em ${TARGET_DIR}${NC}"
 fi
 
+# --- GitHub token (required for private repo) ---
+if [ -z "${GITHUB_TOKEN:-}" ]; then
+  echo -e "${YELLOW}GITHUB_TOKEN não encontrado nas variáveis de ambiente.${NC}"
+  echo -n "Cole seu GitHub Token (ou pressione Enter para tentar sem autenticação): "
+  read -r GITHUB_TOKEN
+  echo ""
+fi
+
 # --- check for curl or wget ---
 if command -v curl &>/dev/null; then
-  FETCH="curl -fsSL"
+  HAS_CURL=true
 elif command -v wget &>/dev/null; then
-  FETCH="wget -qO-"
+  HAS_CURL=false
 else
   echo -e "${RED}Erro: curl ou wget é necessário.${NC}"
   exit 1
 fi
+
+fetch() {
+  local url="$1"
+  if [ "$HAS_CURL" = true ]; then
+    if [ -n "${GITHUB_TOKEN:-}" ]; then
+      curl -fsSL -H "Authorization: token ${GITHUB_TOKEN}" "$url"
+    else
+      curl -fsSL "$url"
+    fi
+  else
+    if [ -n "${GITHUB_TOKEN:-}" ]; then
+      wget -qO- --header="Authorization: token ${GITHUB_TOKEN}" "$url"
+    else
+      wget -qO- "$url"
+    fi
+  fi
+}
 
 # --- download files ---
 OK=0
@@ -83,7 +108,7 @@ for file in "${FILES[@]}"; do
 
   mkdir -p "$dir"
 
-  if $FETCH "${BASE_URL}/${file}" > "$dest" 2>/dev/null; then
+  if fetch "${BASE_URL}/${file}" > "$dest" 2>/dev/null; then
     echo -e "  ${GREEN}+${NC} ${file}"
     ((OK++))
   else
