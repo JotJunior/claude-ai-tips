@@ -42,6 +42,9 @@ $ARGUMENTS
 │       │                                                                 │
 │       ▼                                                                 │
 │  9. ATUALIZAÇÃO      Marcar tarefa como [x] no arquivo de tarefas       │
+│       │                                                                 │
+│       ▼                                                                 │
+│  10. GIT COMMIT     Commitar os arquivos modificados                    │
 │                                                                         │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
@@ -400,6 +403,12 @@ Se houver subtarefas, marque TODAS como concluídas:
 | 7 | Lint | Verificar formatação | Se aplicável |
 | 8 | Conclusão | Gerar relatório | ✅ SIM |
 | 9 | Atualização | Marcar [x] | ✅ SIM |
+
+---
+
+## ETAPA 10: GIT COMMIT
+
+**OBRIGATÓRIO**: Use as regras de conventional commits para nomear o commit!
 
 ---
 
