@@ -83,20 +83,40 @@ Especialista em documentação técnica que coordena:
 
 ## Instalação
 
-1. Clone ou copie os arquivos para o seu projeto
-2. Adicione ao `.claude/` do seu repositório ou ao diretório global de configuração do Claude Code
+### Instalação rápida (recomendado)
+
+No diretório do seu projeto, execute:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/JotJunior/claude-ai-tips/main/install.sh | bash
+```
+
+Ou com `wget`:
+
+```bash
+wget -qO- https://raw.githubusercontent.com/JotJunior/claude-ai-tips/main/install.sh | bash
+```
+
+Isso instala os commands, skills e agents em `.claude/` no diretório atual.
+
+### Instalação global
+
+Para disponibilizar em todos os projetos:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/JotJunior/claude-ai-tips/main/install.sh | bash -s -- --global
+```
 
 ### Estrutura de Diretórios Claude Code
 
 ```
-~/.claude/
-├── commands/     # Commands globais
-├── skills/       # Skills globais
-└── agents/       # Agents globais
+~/.claude/                  # Instalação global (--global)
+├── commands/
+├── skills/
+└── agents/
 
-# Ou por projeto:
 seu-projeto/
-├── .claude/
+├── .claude/                # Instalação por projeto (padrão)
 │   ├── commands/
 │   ├── skills/
 │   └── agents/
