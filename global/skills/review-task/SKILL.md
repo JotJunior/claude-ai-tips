@@ -1,0 +1,193 @@
+---
+name: review-task
+description: |
+  Analisa arquivo de tarefas do projeto e gera relatorio de status com progresso,
+  inconsistencias, tarefas bloqueadas e proximas acoes recomendadas.
+  Triggers: "revisar tarefas", "status das tarefas", "review tasks",
+  "progresso do projeto", "verificar tarefas", "relatorio de tarefas".
+allowed-tools:
+  - Read
+  - Edit
+  - Glob
+  - Grep
+---
+
+# Skill: Revisar Status das Tarefas
+
+Analise o arquivo de tarefas do projeto e gere um relatorio de status.
+
+---
+
+## Instrucoes de Revisao
+
+### 1. Deteccao de Contexto do Projeto
+
+Identifique o tipo de projeto para contextualizar a analise:
+
+| Tipo | Indicadores |
+|------|-------------|
+| **Documentacao** | `docs/` com `.md`, ausencia de `src/`, casos de uso (UC-*) |
+| **Codigo** | `src/`, `app/`, `lib/`, `package.json`, `composer.json` |
+| **Misto** | Contem tanto `docs/` quanto codigo-fonte |
+
+### 2. Localizacao do Arquivo de Tarefas
+
+Procure na seguinte ordem:
+1. `docs/tasks.md`
+2. `tasks.md`
+3. `TODO.md`
+4. `docs/TODO.md`
+5. `.github/TODO.md`
+6. Issues do repositorio (se aplicavel)
+
+### 3. Analise das Tarefas
+
+Para cada tarefa identificada, verifique:
+
+#### Status Possiveis
+- **Pendente**: Nao iniciada (`[ ]`)
+- **Em Andamento**: Parcialmente concluida (`[~]`)
+- **Concluida**: Finalizada (`[x]`)
+- **Bloqueada**: Aguardando dependencia (`[!]`)
+
+#### Checklist de Analise
+- [ ] Identificar todas as tarefas e subtarefas
+- [ ] Verificar status marcado vs status real
+- [ ] Detectar inconsistencias (feito mas nao marcado)
+- [ ] Identificar dependencias entre tarefas
+- [ ] Calcular progresso por categoria/prioridade
+
+### 4. Deteccao de Inconsistencias
+
+**CRITICO**: Procure por tarefas que foram executadas mas nao marcadas:
+
+#### Para Projetos de Documentacao:
+```
+SE tarefa pede "Criar UC-XXX-NNN"
+E arquivo UC-XXX-NNN.md existe
+E arquivo esta completo (nao tem TODOs)
+ENTAO tarefa deve ser marcada como concluida
+```
+
+#### Para Projetos de Codigo:
+```
+SE tarefa pede "Implementar feature X"
+E codigo da feature existe
+E testes passam (se existirem)
+ENTAO tarefa deve ser marcada como concluida
+```
+
+### 5. Acoes Automaticas
+
+Ao identificar inconsistencias:
+
+1. **Liste as evidencias** de que a tarefa foi concluida
+2. **Atualize o arquivo de tarefas** marcando como [x]
+3. **Documente no relatorio** as tarefas finalizadas nesta sessao
+
+### 6. Priorizacao de Proximas Tarefas
+
+Ordene tarefas pendentes por:
+1. **Prioridade** (C > A > M)
+2. **Dependencias** (sem bloqueios primeiro)
+3. **Impacto** (maior valor de negocio)
+
+---
+
+## Formato do Relatorio
+
+```markdown
+# Relatorio de Status das Tarefas
+
+**Data:** [YYYY-MM-DD]
+**Projeto:** [nome do projeto]
+**Tipo:** [Documentacao/Codigo/Misto]
+**Arquivo de Tarefas:** [caminho]
+
+---
+
+## Resumo Executivo
+
+| Metrica | Valor |
+|---------|-------|
+| Total de Tarefas | X |
+| Concluidas | X (X%) |
+| Finalizadas Nesta Sessao | X |
+| Em Progresso | X (X%) |
+| Pendentes | X (X%) |
+| Bloqueadas | X (X%) |
+
+---
+
+## Tarefas Finalizadas Nesta Sessao
+
+> Tarefas identificadas como completas e marcadas automaticamente
+
+### [TASK-ID]: [Nome]
+- **Evidencias:**
+  - Arquivo criado: `path/to/file`
+  - Conteudo completo
+- **Acao:** Status atualizado
+
+---
+
+## Tarefas Pendentes - Prontas para Iniciar
+
+### Top 3 Recomendadas
+
+#### 1. [TASK-ID]: [Nome]
+- **Prioridade:** [C|A|M]
+- **Dependencias:** Nenhuma
+- **Justificativa:** [por que comecar agora]
+- **Comando:** `/execute-task [TASK-ID]`
+
+---
+
+## Tarefas Bloqueadas
+
+### [TASK-ID]: [Nome]
+- **Bloqueada por:** [TASK-ID da dependencia]
+- **Para desbloquear:** Concluir [descricao]
+
+---
+
+## Progresso por Fase
+
+| Fase | Total | Concluidas | % |
+|------|-------|------------|---|
+| 1 - Fundacao | X | X | X% |
+
+---
+
+## Recomendacoes
+
+### Acoes Imediatas
+1. **[Acao]** - `/execute-task [ID]`
+2. **[Acao]** - `/execute-task [ID]`
+```
+
+---
+
+## Checklist de Revisao
+
+Antes de finalizar o relatorio:
+
+- [ ] Li completamente o arquivo de tarefas
+- [ ] Identifiquei TODAS as tarefas e status
+- [ ] Verifiquei evidencias de trabalho concluido
+- [ ] Marquei tarefas finalizadas mas nao registradas
+- [ ] Analisei dependencias entre tarefas
+- [ ] Priorizei tarefas pendentes
+- [ ] Forneci top 3 recomendacoes acionaveis
+- [ ] Relatorio esta claro e objetivo
+
+---
+
+**EXECUTE AGORA A REVISAO**
+
+1. Detecte o contexto do projeto
+2. Localize o arquivo de tarefas
+3. Analise todas as tarefas
+4. Identifique e corrija inconsistencias
+5. Gere relatorio completo
+6. Sugira proximos passos

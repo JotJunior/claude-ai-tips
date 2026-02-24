@@ -1,0 +1,58 @@
+{
+  "hooks": {
+    "PreToolCall": [
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/check-route-order.sh",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/check-schema-prefix.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolCall": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/go-build-gate.sh",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "agent",
+            "prompt": "Check if Go test files exist for recently modified Go source files.\n\nSteps:\n1. Run: git diff --name-only HEAD\n2. Filter to .go files only, EXCLUDING: _test.go files, files in migrations/ dirs, cmd/**/main.go, mock files, generated files, wire files\n3. For each remaining .go file, check if a corresponding _test.go exists in the same directory\n4. If ANY implementation file is missing its _test.go counterpart, respond: {\"ok\": false, \"reason\": \"Missing test files for: <list>. Use the /go-add-test skill to create them.\"}\n5. If all ok or no Go files changed, respond: {\"ok\": true}\n\n$ARGUMENTS",
+            "timeout": 60
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/check-uncommitted.sh",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}
