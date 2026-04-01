@@ -1,65 +1,131 @@
 # Claude Code Toolkit
 
-Conjunto de ferramentas para aumentar a produtividade no desenvolvimento do dia a dia com o [Claude Code](https://claude.ai/code).
+Conjunto de ferramentas para aumentar a produtividade no desenvolvimento do dia a dia com
+o [Claude Code](https://claude.ai/code).
 
-Este repositório contém **commands**, **skills** e **agents** que estendem as capacidades do Claude Code para tarefas comuns de documentação e desenvolvimento.
+Este repositorio contém **skills** e **hooks** que estendem as capacidades do Claude Code para tarefas
+comuns de documentação, desenvolvimento e qualidade de código.
 
 ## Estrutura
 
 ```
-├── commands/     # Workflows de alto nível (slash commands)
-├── skills/       # Capacidades especializadas invocadas por contexto
-└── agents/       # Agentes autônomos para tarefas complexas
+├── global/                     # Skills globais (independentes de linguagem)
+│   └── skills/
+│       ├── advisor/            # Conselheiro estratégico
+│       ├── commit/             # Padronização de commits
+│       ├── create-tasks/       # Criação de backlog de tarefas
+│       ├── create-use-case/    # Documentação de casos de uso
+│       ├── execute-task/       # Execução de tarefas com workflow de 9 etapas
+│       ├── initialize-docs/    # Inicialização de estrutura de documentação
+│       ├── review-task/        # Revisão de status de tarefas
+│       └── validate-documentation/ # Validação de documentação
+├── language-related/           # Skills e hooks específicos por linguagem
+│   ├── go/                     # Go
+│   │   ├── skills/             # Skills para projetos Go
+│   │   ├── hooks/              # Hooks de validação para Go
+│   │   └── settings.json       # Configuração de hooks
+│   └── dotnet/                 # .NET
+│       └── skills/             # Skills para projetos .NET
 ```
 
-## Commands
+## Skills Globais
 
-Workflows invocados via slash commands para tarefas estruturadas:
-
-| Comando | Descrição |
-|---------|-----------|
-| `/initialize-docs` | Cria hierarquia padrão de documentação com 9 níveis |
-| `/execute-task <id>` | Executa tarefa seguindo workflow obrigatório de 9 etapas |
-| `/review-task` | Gera relatório de status com métricas e recomendações |
-| `/create-use-case` | Cria documentação de caso de uso usando template de 15 seções |
-
-### Exemplo de Uso
-
-```
-/execute-task TASK-CAD-001
-```
-
-O comando guia o Claude através de: Análise → Localização → Planejamento → Implementação → Testes → Validação → Lint → Conclusão → Atualização.
-
-## Skills
-
-Capacidades auto-invocadas baseadas no contexto da conversa:
+Skills disponíveis em `global/skills/`, independentes de linguagem ou framework:
 
 | Skill | Trigger | Descrição |
 |-------|---------|-----------|
-| **advisor** | Análises estratégicas | Conselheiro brutalmente honesto que disseca raciocínio e gera planos de ação |
-| **doc-generate-use-case** | "criar caso de uso", "gerar UC" | Gera documentação estruturada com diagramas Mermaid |
-| **doc-validate** | "validar documentação", "verificar UC" | Valida documentos contra padrões de qualidade |
+| **advisor** | "me aconselhe", "analise estratégica" | Conselheiro brutalmente honesto que disseca raciocínio e gera planos de ação |
+| **commit** | Ao commitar | Padronização de mensagens de commit |
+| **create-tasks** | "criar tarefas", "criar backlog" | Cria backlog de tarefas técnicas estruturado por fases |
+| **create-use-case** | "criar caso de uso", "gerar UC" | Gera documentação de caso de uso com template de 15 seções e diagramas Mermaid |
+| **execute-task** | "executar tarefa", "execute task" | Executa tarefa seguindo workflow obrigatório de 9 etapas |
+| **initialize-docs** | "inicializar docs", "setup documentação" | Cria hierarquia padrão de documentação com 9 níveis |
+| **review-task** | "revisar tarefas", "status das tarefas" | Gera relatório de status com progresso e recomendações |
+| **validate-documentation** | "validar documentação", "verificar UC" | Valida documentos contra padrões de qualidade |
 
-### Skill: Advisor
+### Workflow: execute-task
 
-A skill `advisor` é ativada automaticamente quando você apresenta ideias, planos ou estratégias para análise. Ela força respostas em duas partes:
+O skill `execute-task` impõe um workflow completo de 9 etapas:
 
-1. **Crítica** - Análise forense do raciocínio
-2. **Plano de Ação** - Prescrição tática com ações imediatas
+1. **Análise** - Detectar contexto e ler documentação
+2. **Localização** - Encontrar tarefa no arquivo de tarefas
+3. **Planejamento** - Definir escopo e identificar padrões
+4. **Implementação** - Executar a tarefa
+5. **Testes** - Rodar testes se aplicável
+6. **Validação** - Verificar qualidade e consistência
+7. **Lint** - Checar formatação e padrões
+8. **Conclusão** - Gerar relatório de execução
+9. **Atualização** - Marcar tarefa como concluída
 
-## Agents
+## Skills para Go
 
-Agentes especializados para tarefas complexas que requerem autonomia:
+Skills em `language-related/go/skills/` para projetos Go:
 
-### Documentation Agent
+| Skill | Descrição |
+|-------|-----------|
+| **go-add-entity** | Adiciona uma nova entidade ao serviço |
+| **go-add-migration** | Cria nova migration SQL |
+| **go-add-test** | Gera testes para código Go |
+| **go-add-consumer** | Adiciona consumer de mensagens (RabbitMQ) |
+| **go-review-service** | Revisa qualidade de um serviço Go |
 
-Especialista em documentação técnica que coordena:
+### Hooks para Go
 
-- Criação de casos de uso (UC-*.md)
-- Documentação de integrações
-- Modelagem de dados e diagramas ER
-- Documentação de APIs
+Hooks em `language-related/go/hooks/` para validações automáticas:
+
+| Hook | Descrição |
+|------|-----------|
+| **go-build-gate.sh** | Valida build antes de operações |
+| **check-uncommitted.sh** | Verifica alterações não commitadas |
+| **check-schema-prefix.sh** | Valida prefixo de schema nas migrations |
+| **check-route-order.sh** | Verifica ordenação de rotas no router |
+
+## Skills para .NET
+
+Skills em `language-related/dotnet/skills/` para projetos .NET:
+
+| Skill | Descrição |
+|-------|-----------|
+| **dotnet-create-entity** | Cria entidade com mapeamento EF Core |
+| **dotnet-create-feature** | Gera feature completa (handler, validator, etc.) |
+| **dotnet-create-project** | Scaffolding de novo projeto .NET |
+| **dotnet-create-test** | Gera testes unitários e de integração |
+| **dotnet-hexagonal-architecture** | Aplica arquitetura hexagonal |
+| **dotnet-infrastructure** | Configura infraestrutura (DB, cache, messaging) |
+| **dotnet-review-code** | Revisa qualidade de código .NET |
+| **dotnet-testing** | Estratégias e padrões de teste |
+
+## Instalação
+
+Copie os diretórios desejados para o seu projeto ou instalação global do Claude Code:
+
+```bash
+# Skills globais — copiar para o projeto
+cp -r global/skills/ seu-projeto/.claude/skills/
+
+# Skills globais — instalação global
+cp -r global/skills/ ~/.claude/skills/
+
+# Skills de Go — copiar para projeto Go
+cp -r language-related/go/skills/ seu-projeto/.claude/skills/
+cp -r language-related/go/hooks/ seu-projeto/.claude/hooks/
+cp language-related/go/settings.json seu-projeto/.claude/settings.json
+
+# Skills de .NET — copiar para projeto .NET
+cp -r language-related/dotnet/skills/ seu-projeto/.claude/skills/
+```
+
+### Estrutura de Destino
+
+```
+~/.claude/                  # Instalação global
+└── skills/
+
+seu-projeto/
+└── .claude/                # Instalação por projeto
+    ├── skills/
+    └── hooks/              # (opcional, para hooks de linguagem)
+```
 
 ## Convenções de Nomenclatura
 
@@ -81,51 +147,9 @@ Especialista em documentação técnica que coordena:
 - `LOG` - Logística
 - `MON` - Monitoramento
 
-## Instalação
-
-### Instalação rápida (recomendado)
-
-No diretório do seu projeto, execute:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/JotJunior/claude-ai-tips/main/install.sh | bash
-```
-
-Ou com `wget`:
-
-```bash
-wget -qO- https://raw.githubusercontent.com/JotJunior/claude-ai-tips/main/install.sh | bash
-```
-
-Isso instala os commands, skills e agents em `.claude/` no diretório atual.
-
-### Instalação global
-
-Para disponibilizar em todos os projetos:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/JotJunior/claude-ai-tips/main/install.sh | bash -s -- --global
-```
-
-### Estrutura de Diretórios Claude Code
-
-```
-~/.claude/                  # Instalação global (--global)
-├── commands/
-├── skills/
-└── agents/
-
-seu-projeto/
-├── .claude/                # Instalação por projeto (padrão)
-│   ├── commands/
-│   ├── skills/
-│   └── agents/
-└── ...
-```
-
 ## Hierarquia de Documentação
 
-O comando `/initialize-docs` cria a seguinte estrutura:
+O skill `/initialize-docs` cria a seguinte estrutura:
 
 ```
 docs/
@@ -142,10 +166,10 @@ docs/
 
 ## Contribuindo
 
-Contribuições são bem-vindas. Para adicionar novos commands, skills ou agents:
+Contribuições são bem-vindas. Para adicionar novos skills ou hooks:
 
-1. Siga a estrutura de arquivos existente
-2. Documente o uso no arquivo markdown correspondente
+1. Siga a estrutura de diretórios existente
+2. Crie um `SKILL.md` dentro do diretório do skill
 3. Teste com o Claude Code antes de submeter
 
 ## Licença
