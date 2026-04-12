@@ -10,6 +10,8 @@ allowed-tools:
   - Edit
   - Glob
   - Grep
+  - Bash
+  - Agent
 ---
 
 # Skill: Revisar Status das Tarefas
@@ -76,6 +78,22 @@ E codigo da feature existe
 E testes passam (se existirem)
 ENTAO tarefa deve ser marcada como concluida
 ```
+
+#### Verificacao via Git (para projetos com historico):
+```bash
+# Ver commits recentes para identificar trabalho ja feito
+git log --oneline -20
+
+# Buscar commits relacionados a uma tarefa especifica
+git log --oneline --grep="task-keyword"
+
+# Verificar se servico compila (Go)
+cd services/{service} && go build ./... 2>&1 | head -5
+```
+
+#### Para Monorepos Multi-Servico:
+Use Agent para verificar tarefas em paralelo quando o arquivo de tarefas
+cobre multiplos servicos — cada agente pode auditar um servico independentemente.
 
 ### 5. Acoes Automaticas
 

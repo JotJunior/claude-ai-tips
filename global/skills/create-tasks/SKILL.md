@@ -12,6 +12,7 @@ allowed-tools:
   - Glob
   - Grep
   - Edit
+  - Agent
 ---
 
 # Skill: Criar Backlog de Tarefas
@@ -164,13 +165,25 @@ Ref: {Referencia a UC, ADR ou documento, se aplicavel}
 Fases devem seguir ordem logica de construcao:
 
 ```
-Tipica para projetos backend:
+Tipica para projetos backend (Go microservicos):
+
+FASE 1 - Fundacao (migrations, domain, DTOs, factory wiring)
+FASE 2 - Backend Core (repository, service, handler, routes)
+FASE 3 - Integracao (RabbitMQ events, inter-service clients, S3 storage)
+FASE 4 - Frontend (types, API service, hooks, components, pages)
+FASE 5 - Testes e Qualidade (unit tests, lint, review)
+
+Tipica para projetos genericos:
 
 FASE 1 - Fundacao (infra, setup, CI/CD)
 FASE 2 - Dominio (entidades, regras, SDK/clients)
 FASE 3..N - Features por dominio (ordenadas por dependencia)
 FASE N+1 - Observabilidade (metricas, dashboards, alertas)
 ```
+
+**Para monorepos multi-servico**: Use Agent para ler documentacao de multiplos
+servicos em paralelo ao analisar o escopo. Isso economiza tempo ao gerar tarefas
+que cruzam fronteiras de servico.
 
 ### Matriz de Dependencias
 

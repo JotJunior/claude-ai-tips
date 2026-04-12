@@ -10,7 +10,7 @@ allowed-tools:
 
 # Go Review Service
 
-Perform a comprehensive read-only audit of a GOB Go microservice, checking 14 conventions. Outputs a structured PASS/FAIL/WARNING report with line references.
+Perform a comprehensive read-only audit of a GOB Go microservice, checking 17 conventions. Outputs a structured PASS/FAIL/WARNING report with line references.
 
 ## Trigger Phrases
 
@@ -37,7 +37,7 @@ Read these files first (in parallel where possible):
 5. `go.mod` — module path, dependencies
 6. `migrations/` — list files for schema reference
 
-## Checks (14 total)
+## Checks (17 total)
 
 For each check, output one of:
 - **PASS** — convention followed correctly
@@ -185,6 +185,66 @@ All three must be present:
 
 **Search**: First line of `go.mod`.
 
+### Check 15: Storage Integration (if S3/file uploads used)
+
+- Uses `storage.Storage` interface from `gob-go-commons/pkg/storage/`
+- Factory creates storage via `storage.NewFromConfig(cfg)` (auto-selects S3 or local)
+- Upload method: `Upload(ctx, key, reader, size, contentType)` — NOT `Put`
+- Presigned URL: `PresignedGetURL(ctx, key, expiry)` — NOT `GetPresignedURL`
+- Key pattern: `{service}/{category}/{entityID}/{uuid}-{filename}.ext`
+- File validation: uses `storage.ValidateFileType()` and `storage.ValidateFileSize()`
+- Handler constructor accepts `storage.Storage` parameter
+
+**Search**: `storage.Storage` in handler/service files.
+**N/A** if service doesn't handle file uploads.
+
+### Check 16: Publisher Pattern (if RabbitMQ publishing)
+
+- Uses `AMQPPublisher` + `NoopPublisher` (graceful degradation when RabbitMQ unavailable)
+- Service has `SetPublisher()` method or accepts publisher in constructor
+- Publisher interface defined in service layer (not importing messaging package directly)
+- Best-effort publish: errors logged as Warning, not returned to caller
+- Exchange declared as `topic` and `durable`
+
+**Search**: `Publisher`, `AMQPPublisher`, `NoopPublisher` in service and messaging files.
+**N/A** if service doesn't publish events.
+
+### Check 17: Structured Logging
+
+Verify logging follows the project standards (see CLAUDE.md "Structured Logging Standards"):
+
+**15a. Repository layer has logger injected**:
+- Every repository struct must have a `log *logger.Logger` field
+- Constructor must accept `*logger.Logger` parameter
+- **FAIL** if any repository struct has no logger field
+
+**15b. Repository methods have entry/exit/duration logging**:
+- Every public method must log on entry (Debug) with `entity`, `operation`
+- Every public method must log on exit (Debug) with `duration_ms`
+- Error paths must log with `WithError(err)` before returning
+- `FindByID` not-found path must log Debug (not Error)
+- **FAIL** if any public method has no logging at all
+- **WARNING** if logging exists but is missing `duration_ms`
+
+**15c. Service layer has logging**:
+- Every service struct must have a `log *logger.Logger` field
+- Create/Update/Delete methods must log Info on success with `entity_id`
+- Error paths must log with `WithError(err)`
+- **FAIL** if service has no logger, **WARNING** if methods are partially logged
+
+**15d. Handler layer has logging**:
+- Error paths must log with `WithRequestID(requestID)`, `WithError(err)`
+- Must use `entity`, `operation` fields
+- **WARNING** if handlers don't log errors (they may rely on middleware, which is acceptable)
+
+**15e. No anti-patterns**:
+- No `fmt.Println` or `log.Println` (standard library) — must use `logger.Logger`
+- No `logger.Default()` in production code (inject via constructor)
+- No sensitive data in logs (CPF, password, token, email)
+- **FAIL** if `fmt.Println` or `log.Println` found in non-test code
+
+**Search**: All `.go` files in `internal/`, look for `log.`, `logger.`, `fmt.Print`, `log.Print`.
+
 ---
 
 ## Output Format
@@ -194,7 +254,7 @@ All three must be present:
 Date: {current date}
 
 ## Summary
-PASS: X/14 | FAIL: Y/14 | WARNING: Z/14 | N/A: W/14
+PASS: X/17 | FAIL: Y/17 | WARNING: Z/17 | N/A: W/17
 
 ## Results
 
@@ -210,7 +270,7 @@ PASS: X/14 | FAIL: Y/14 | WARNING: Z/14 | N/A: W/14
 **WARNING** — nrfiber middleware not conditional on nrApp != nil
 (main.go:52)
 
-... (continue for all 14 checks)
+... (continue for all 17 checks)
 
 ## Recommendations
 1. [Highest priority fixes]

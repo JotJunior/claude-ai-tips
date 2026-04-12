@@ -223,7 +223,7 @@ Content-Type: application/json
 | {operacao}_errors_total      | Erros durante operação                   |
 | {operacao}_success_rate      | Taxa de sucesso (%)                      |
 
----
+--- 
 
 ## 13. Dependências
 

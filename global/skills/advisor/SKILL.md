@@ -11,6 +11,8 @@ allowed-tools:
   - Read
   - Glob
   - Grep
+  - Bash
+  - Agent
   - WebSearch
   - WebFetch
 ---

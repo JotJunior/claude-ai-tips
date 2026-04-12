@@ -13,6 +13,9 @@ allowed-tools:
   - Glob
   - Grep
   - Bash
+  - Agent
+  - TaskCreate
+  - TaskUpdate
 ---
 
 # Skill: Executar Tarefa
@@ -72,12 +75,16 @@ SEMPRE LER (se existirem):
 -- README.md
 -- CLAUDE.md
 -- docs/
-   -- tasks.md ou TODO.md
+   -- tasks.md, tasks-{service}.md ou TODO.md
    -- 01-briefing-discovery/
    -- 02-requisitos-casos-uso/
    -- 03-modelagem-dados/
    -- arquitetura/
 ```
+
+Para projetos com multiplos servicos, tambem verificar:
+- `docs/tasks-{service-name}.md` (arquivo de tarefas especifico do servico)
+- Padroes existentes em servicos similares (ler codigo de referencia)
 
 ### 1.3 Checklist da Analise
 
@@ -182,11 +189,10 @@ Antes de implementar, verifique:
 
 ```
 1. Leia codigo relacionado existente
-2. Siga padroes e arquitetura do projeto
-3. Aplique principios SOLID
+2. Leia CLAUDE.md para convencoes do projeto
+3. Siga padroes e arquitetura do projeto
 4. Implemente com tratamento de erros
-5. Adicione comentarios onde necessario
-6. Mantenha arquivos em UTF-8
+5. Mantenha arquivos em UTF-8
 ```
 
 **Principios obrigatorios:**
@@ -194,6 +200,24 @@ Antes de implementar, verifique:
 - Use interfaces ao inves de implementacoes concretas
 - Dependency Injection para dependencias
 - Tratamento de erros com mensagens claras
+
+**Para projetos Go (microservicos):**
+- Toda query SQL DEVE incluir schema prefix (`schema.table`)
+- Enum values DEVEM coincidir com CHECK constraints do PostgreSQL
+- DTO field names DEVEM coincidir entre frontend e backend
+- Rotas estaticas ANTES de rotas com `/:id` (Fiber trie)
+- Codigo em ingles, UI text em portugues com acentos corretos
+
+**Para projetos Frontend (React/TypeScript):**
+- Usar componentes shared existentes (PageHeader, ServerPagination, etc.)
+- CRUD forms em paginas dedicadas, NAO modais
+- Hooks obrigatorios: useConfirmDialog para acoes destrutivas
+- Path alias: `@/*` para `./src/*`
+
+**Para tarefas multi-servico:**
+- Use Agent para paralelizar trabalho em servicos independentes
+- Trace DTOs e enums em TODOS os servicos afetados antes de implementar
+- Grep por referencias residuais apos qualquer rename/refactor
 
 ### 4.3 Checklist da Implementacao
 
@@ -266,19 +290,33 @@ npm test / composer test / pytest / dotnet test
 
 ## ETAPA 7: LINT
 
-### 7.1 Para Codigo
+### 7.1 Para Codigo Go
 
 ```bash
-# Executar linters do projeto
-npm run lint / composer lint / dotnet format
+# Build (obrigatorio — hooks validam isso automaticamente)
+cd services/{service} && go build ./...
+
+# Lint
+cd services/{service} && golangci-lint run ./...
+
+# Vet
+cd services/{service} && go vet ./...
 ```
 
-### 7.2 Para Documentacao
+### 7.2 Para Codigo Frontend (TypeScript/React)
+
+```bash
+cd services/{frontend} && npx tsc --noEmit
+cd services/{frontend} && npm run lint
+```
+
+### 7.3 Para Documentacao
 
 ```
 # Verificar formatacao Markdown
 # Verificar sintaxe de tabelas
 # Verificar code blocks
+# Verificar diagramas Mermaid (sintaxe)
 ```
 
 ---

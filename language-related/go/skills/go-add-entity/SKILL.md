@@ -153,16 +153,19 @@ import (
     "github.com/google/uuid"
     "github.com/jmoiron/sqlx"
 
+    "github.com/gob/gob-go-commons/pkg/logger"
+
     "github.com/gob/gob-{service}/internal/domain"
     "github.com/gob/gob-{service}/internal/repository"
 )
 
 type {Entity}Repository struct {
-    db *sqlx.DB
+    db  *sqlx.DB
+    log *logger.Logger
 }
 
-func New{Entity}Repository(db *sqlx.DB) *{Entity}Repository {
-    return &{Entity}Repository{db: db}
+func New{Entity}Repository(db *sqlx.DB, log *logger.Logger) *{Entity}Repository {
+    return &{Entity}Repository{db: db, log: log}
 }
 
 // Internal row struct for DB scanning
@@ -185,18 +188,43 @@ func (r *{entity}Row) toDomain() *domain.{Entity} {
 }
 
 func (r *{Entity}Repository) FindByID(ctx context.Context, id uuid.UUID) (*domain.{Entity}, error) {
+    start := time.Now()
+    r.log.WithField("entity", "{entity}").
+        WithField("operation", "find_by_id").
+        WithField("entity_id", id.String()).
+        Debug("Querying database")
+
     var row {entity}Row
     query := `SELECT * FROM {schema}.{table} WHERE id = $1`
     if err := r.db.GetContext(ctx, &row, query, id); err != nil {
         if err == sql.ErrNoRows {
+            r.log.WithField("entity", "{entity}").
+                WithField("operation", "find_by_id").
+                WithField("duration_ms", time.Since(start).Milliseconds()).
+                Debug("Entity not found")
             return nil, nil
         }
+        r.log.WithError(err).
+            WithField("entity", "{entity}").
+            WithField("operation", "find_by_id").
+            WithField("duration_ms", time.Since(start).Milliseconds()).
+            Error("Database query failed")
         return nil, err
     }
+
+    r.log.WithField("entity", "{entity}").
+        WithField("operation", "find_by_id").
+        WithField("duration_ms", time.Since(start).Milliseconds()).
+        Debug("Query completed")
     return row.toDomain(), nil
 }
 
 func (r *{Entity}Repository) List(ctx context.Context, filter *repository.{Entity}Filter) ([]*domain.{Entity}, error) {
+    start := time.Now()
+    r.log.WithField("entity", "{entity}").
+        WithField("operation", "list").
+        Debug("Querying database")
+
     var rows []*{entity}Row
     query := `SELECT * FROM {schema}.{table} WHERE 1=1`
     args := []any{}
@@ -238,6 +266,11 @@ func (r *{Entity}Repository) List(ctx context.Context, filter *repository.{Entit
     }
 
     if err := r.db.SelectContext(ctx, &rows, query, args...); err != nil {
+        r.log.WithError(err).
+            WithField("entity", "{entity}").
+            WithField("operation", "list").
+            WithField("duration_ms", time.Since(start).Milliseconds()).
+            Error("Database query failed")
         return nil, err
     }
 
@@ -245,10 +278,17 @@ func (r *{Entity}Repository) List(ctx context.Context, filter *repository.{Entit
     for i, row := range rows {
         result[i] = row.toDomain()
     }
+
+    r.log.WithField("entity", "{entity}").
+        WithField("operation", "list").
+        WithField("result_count", len(result)).
+        WithField("duration_ms", time.Since(start).Milliseconds()).
+        Debug("Query completed")
     return result, nil
 }
 
 func (r *{Entity}Repository) Count(ctx context.Context, filter *repository.{Entity}Filter) (int64, error) {
+    start := time.Now()
     query := `SELECT COUNT(*) FROM {schema}.{table} WHERE 1=1`
     args := []any{}
     argIdx := 1
@@ -267,21 +307,53 @@ func (r *{Entity}Repository) Count(ctx context.Context, filter *repository.{Enti
 
     var count int64
     if err := r.db.GetContext(ctx, &count, query, args...); err != nil {
+        r.log.WithError(err).
+            WithField("entity", "{entity}").
+            WithField("operation", "count").
+            WithField("duration_ms", time.Since(start).Milliseconds()).
+            Error("Database count query failed")
         return 0, err
     }
+
+    r.log.WithField("entity", "{entity}").
+        WithField("operation", "count").
+        WithField("result_count", count).
+        WithField("duration_ms", time.Since(start).Milliseconds()).
+        Debug("Count query completed")
     return count, nil
 }
 
 func (r *{Entity}Repository) Create(ctx context.Context, entity *domain.{Entity}) error {
+    start := time.Now()
+    r.log.WithField("entity", "{entity}").
+        WithField("operation", "create").
+        WithField("entity_id", entity.ID.String()).
+        Debug("Inserting into database")
+
     query := `
         INSERT INTO {schema}.{table} (id, name, description, created_at)
         VALUES ($1, $2, $3, $4)`
     _, err := r.db.ExecContext(ctx, query,
         entity.ID, entity.Name, entity.Description, entity.CreatedAt)
-    return err
+    if err != nil {
+        r.log.WithError(err).
+            WithField("entity", "{entity}").
+            WithField("operation", "create").
+            WithField("duration_ms", time.Since(start).Milliseconds()).
+            Error("Database insert failed")
+        return err
+    }
+
+    r.log.WithField("entity", "{entity}").
+        WithField("operation", "create").
+        WithField("entity_id", entity.ID.String()).
+        WithField("duration_ms", time.Since(start).Milliseconds()).
+        Debug("Insert completed")
+    return nil
 }
 
 func (r *{Entity}Repository) Update(ctx context.Context, entity *domain.{Entity}) error {
+    start := time.Now()
     now := time.Now()
     entity.UpdatedAt = &now
     query := `
@@ -290,13 +362,44 @@ func (r *{Entity}Repository) Update(ctx context.Context, entity *domain.{Entity}
         WHERE id = $1`
     _, err := r.db.ExecContext(ctx, query,
         entity.ID, entity.Name, entity.Description, entity.UpdatedAt)
-    return err
+    if err != nil {
+        r.log.WithError(err).
+            WithField("entity", "{entity}").
+            WithField("operation", "update").
+            WithField("entity_id", entity.ID.String()).
+            WithField("duration_ms", time.Since(start).Milliseconds()).
+            Error("Database update failed")
+        return err
+    }
+
+    r.log.WithField("entity", "{entity}").
+        WithField("operation", "update").
+        WithField("entity_id", entity.ID.String()).
+        WithField("duration_ms", time.Since(start).Milliseconds()).
+        Debug("Update completed")
+    return nil
 }
 
 func (r *{Entity}Repository) Delete(ctx context.Context, id uuid.UUID) error {
+    start := time.Now()
     query := `DELETE FROM {schema}.{table} WHERE id = $1`
     _, err := r.db.ExecContext(ctx, query, id)
-    return err
+    if err != nil {
+        r.log.WithError(err).
+            WithField("entity", "{entity}").
+            WithField("operation", "delete").
+            WithField("entity_id", id.String()).
+            WithField("duration_ms", time.Since(start).Milliseconds()).
+            Error("Database delete failed")
+        return err
+    }
+
+    r.log.WithField("entity", "{entity}").
+        WithField("operation", "delete").
+        WithField("entity_id", id.String()).
+        WithField("duration_ms", time.Since(start).Milliseconds()).
+        Debug("Delete completed")
+    return nil
 }
 ```
 
@@ -635,12 +738,12 @@ Add to the `Repositories` struct:
 
 Add to `NewRepositories()`:
 ```go
-{Entity}: postgres.New{Entity}Repository(db),
+{Entity}: postgres.New{Entity}Repository(db, log),
 ```
 
 Add to `NewDryRunRepositories()` if it exists:
 ```go
-{Entity}: postgres.New{Entity}Repository(db), // read-only uses real repo
+{Entity}: postgres.New{Entity}Repository(db, log), // read-only uses real repo
 ```
 
 Add getter method:
