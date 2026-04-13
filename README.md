@@ -14,7 +14,12 @@ para tarefas de documentação, desenvolvimento, segurança e qualidade de códi
 │   │   └── usage-insights.md   # Padrões de fricção e estratégias comprovadas
 │   └── skills/
 │       ├── advisor/            # Conselheiro estratégico
+│       ├── analyze/            # Análise de consistência cross-artifact (read-only)
+│       ├── briefing/           # Entrevista estruturada de discovery do projeto
 │       ├── bugfix/             # Protocolo estruturado de correção de bugs
+│       ├── checklist/          # Quality gate — "Unit Tests for English"
+│       ├── clarify/            # Resolução de ambiguidades em specs
+│       ├── constitution/       # Princípios imutáveis de governança do projeto
 │       ├── create-tasks/       # Criação de backlog de tarefas
 │       ├── create-use-case/    # Documentação de casos de uso
 │       ├── execute-task/       # Execução de tarefas com workflow de 9 etapas
@@ -22,7 +27,9 @@ para tarefas de documentação, desenvolvimento, segurança e qualidade de códi
 │       ├── initialize-docs/    # Inicialização de estrutura de documentação
 │       ├── insights/           # Aplicação de insights de uso ao projeto
 │       ├── owasp-security/     # Revisão de segurança (OWASP Top 10:2025)
+│       ├── plan/               # Plano de implementação técnico
 │       ├── review-task/        # Revisão de status de tarefas
+│       ├── specify/            # Feature spec no formato SDD
 │       └── validate-documentation/ # Validação de documentação
 ├── language-related/           # Skills e hooks específicos por linguagem
 │   ├── go/                     # Go
@@ -37,19 +44,126 @@ para tarefas de documentação, desenvolvimento, segurança e qualidade de códi
 
 Skills disponíveis em `global/skills/`, independentes de linguagem ou framework:
 
+### Pipeline SDD (Spec-Driven Development)
+
+Skills que formam o pipeline completo de desenvolvimento orientado por especificação:
+
+| Skill | Trigger | Descrição |
+|-------|---------|-----------|
+| **briefing** | "briefing", "discovery", "novo projeto" | Entrevista estruturada de discovery coletando visão, usuários, restrições e contexto técnico |
+| **constitution** | "constitution", "princípios do projeto" | Cria princípios imutáveis de governança que guiam decisões de arquitetura e qualidade |
+| **specify** | "specify", "criar spec", "nova feature" | Transforma descrição natural em feature spec SDD com user stories, requisitos e critérios de aceite |
+| **clarify** | "clarify", "resolver ambiguidades" | Identifica áreas sub-especificadas e resolve ambiguidades via perguntas estruturadas (max 5) |
+| **plan** | "plan", "plano técnico" | Gera plano de implementação com pesquisa de tecnologias, modelo de dados e contratos de API |
+| **checklist** | "checklist", "quality gate" | Gera checklists de validação de qualidade de requisitos — "Unit Tests for English" |
+| **create-tasks** | "criar tarefas", "criar backlog" | Cria backlog de tarefas técnicas estruturado por fases com dependências |
+| **analyze** | "analyze", "analisar consistência" | Análise read-only de consistência cross-artifact entre spec, plan, tasks e constitution |
+| **execute-task** | "executar tarefa", "execute task" | Executa tarefa seguindo workflow obrigatório de 9 etapas |
+| **review-task** | "revisar tarefas", "status das tarefas" | Gera relatório de status com progresso e recomendações |
+
+### Skills Complementares
+
+Skills independentes que podem ser usados em qualquer momento:
+
 | Skill | Trigger | Descrição |
 |-------|---------|-----------|
 | **advisor** | "me aconselhe", "analise estratégica" | Conselheiro brutalmente honesto que disseca raciocínio e gera planos de ação |
-| **bugfix** | "bugfix", "fix bug", "debug" | Protocolo estruturado de correção de bugs que rastreia issues em todas as camadas antes de implementar fixes. Previne bugs em cascata em arquiteturas multi-serviço |
-| **create-tasks** | "criar tarefas", "criar backlog" | Cria backlog de tarefas técnicas estruturado por fases |
+| **bugfix** | "bugfix", "fix bug", "debug" | Protocolo estruturado de correção de bugs multi-camada |
 | **create-use-case** | "criar caso de uso", "gerar UC" | Gera documentação de caso de uso com template de 15 seções e diagramas Mermaid |
-| **execute-task** | "executar tarefa", "execute task" | Executa tarefa seguindo workflow obrigatório de 9 etapas |
 | **image-generation** | Ao gerar imagens | Aprimora prompts de geração de imagens usando estrutura Subject-Context-Style |
 | **initialize-docs** | "inicializar docs", "setup documentação" | Cria hierarquia padrão de documentação com 9 níveis |
 | **insights** | "aplicar insights", "melhorar claude.md" | Analisa o projeto e aplica insights de uso comprovados ao CLAUDE.md, hooks e workflows |
 | **owasp-security** | Ao revisar segurança | Revisão de segurança cobrindo OWASP Top 10:2025, ASVS 5.0 e segurança de IA Agêntica (2026) |
-| **review-task** | "revisar tarefas", "status das tarefas" | Gera relatório de status com progresso e recomendações |
 | **validate-documentation** | "validar documentação", "verificar UC" | Valida documentos contra padrões de qualidade |
+
+---
+
+### Pipeline SDD — Sequência de Uso
+
+O pipeline SDD é a sequência recomendada para levar uma ideia desde o discovery até a implementação.
+Cada skill consome os artefatos do anterior e alimenta o próximo.
+
+```
+ ┌─────────────┐
+ │  DISCOVERY   │
+ └──────┬──────┘
+        │
+   ① briefing          Entrevista de discovery → docs/01-briefing-discovery/briefing.md
+        │                Coleta visão, usuários, escopo, restrições e stack.
+        │                Pergunta UMA pergunta por vez (max 10).
+        ▼
+   ② constitution      Briefing → docs/constitution.md
+        │                Define princípios MUST/SHOULD que governam todas as decisões.
+        │                Validado contra artefatos existentes (propagação).
+        ▼
+ ┌─────────────┐
+ │ ESPECIFICAÇÃO│
+ └──────┬──────┘
+        │
+   ③ specify            Descrição natural → docs/specs/{feature}/spec.md
+        │                Gera user stories priorizadas, requisitos funcionais,
+        │                critérios de aceite e success criteria mensuráveis.
+        │                Foco no QUE e POR QUÊ — nunca no COMO.
+        ▼
+   ④ clarify            Spec → Spec refinada (in-place)
+        │                Escaneia ambiguidades por taxonomia (10 categorias).
+        │                Faz max 5 perguntas com opções e recomendação.
+        │                Integra respostas diretamente na spec.
+        ▼
+ ┌─────────────┐
+ │ PLANEJAMENTO │
+ └──────┬──────┘
+        │
+   ⑤ plan              Spec → docs/specs/{feature}/plan.md + research.md + data-model.md
+        │                Pesquisa tecnologias, define modelo de dados,
+        │                contratos de API e cenários de teste.
+        │                Valida contra constitution (gate obrigatório).
+        ▼
+   ⑥ checklist          Plan + Spec → docs/specs/{feature}/checklists/{domain}.md
+        │                "Unit Tests for English" — valida QUALIDADE dos requisitos,
+        │                não da implementação. Domínios: ux, api, security, performance.
+        ▼
+ ┌─────────────┐
+ │ IMPLEMENTAÇÃO│
+ └──────┬──────┘
+        │
+   ⑦ create-tasks      Plan → Backlog de tarefas estruturado por fases
+        │                Tarefas com IDs, criticidade e matriz de dependências.
+        ▼
+   ⑧ analyze           Spec + Plan + Tasks + Constitution → Relatório de consistência
+        │                Detecta duplicações, ambiguidades, gaps de cobertura
+        │                e violações de princípios. Estritamente READ-ONLY.
+        ▼
+   ⑨ execute-task      Task → Código implementado (workflow de 9 etapas)
+        │                Análise → Localização → Planejamento → Implementação →
+        │                Testes → Validação → Lint → Conclusão → Atualização.
+        ▼
+   ⑩ review-task       Tasks → Relatório de status com métricas e próximas ações
+```
+
+#### Quando usar cada skill
+
+| Momento | Skill | Entrada | Saída |
+|---------|-------|---------|-------|
+| Projeto novo ou feature grande | `briefing` | Conversa interativa | `briefing.md` |
+| Após briefing | `constitution` | Briefing + contexto | `constitution.md` |
+| Nova feature | `specify` | Descrição em linguagem natural | `spec.md` |
+| Spec com dúvidas | `clarify` | `spec.md` existente | `spec.md` atualizada |
+| Spec pronta | `plan` | `spec.md` | `plan.md`, `data-model.md`, `contracts/` |
+| Antes de implementar | `checklist` | Spec + Plan | `checklists/{domain}.md` |
+| Plan pronto | `create-tasks` | `plan.md` | Backlog estruturado |
+| Tasks criadas | `analyze` | Todos os artefatos | Relatório de consistência |
+| Task específica | `execute-task` | ID da tarefa | Código + relatório |
+| Acompanhamento | `review-task` | Arquivo de tasks | Relatório de progresso |
+
+#### Atalhos — Nem sempre é preciso percorrer todo o pipeline
+
+- **Feature simples**: `specify` → `plan` → `create-tasks` → `execute-task`
+- **Bug fix**: `bugfix` (skill independente, não requer pipeline)
+- **Projeto existente sem docs**: `initialize-docs` → `briefing` → `constitution`
+- **Só precisa de tasks**: `create-tasks` direto (se já tem contexto suficiente)
+
+---
 
 ### Workflow: execute-task
 
