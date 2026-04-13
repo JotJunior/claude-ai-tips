@@ -3,20 +3,25 @@
 Conjunto de ferramentas para aumentar a produtividade no desenvolvimento do dia a dia com
 o [Claude Code](https://claude.ai/code).
 
-Este repositorio contém **skills** e **hooks** que estendem as capacidades do Claude Code para tarefas
-comuns de documentação, desenvolvimento e qualidade de código.
+Este repositorio contém **skills**, **hooks** e **insights** que estendem as capacidades do Claude Code
+para tarefas de documentação, desenvolvimento, segurança e qualidade de código.
 
 ## Estrutura
 
 ```
-├── global/                     # Skills globais (independentes de linguagem)
+├── global/                     # Skills e insights globais (independentes de linguagem)
+│   ├── insights/               # Insights de uso extraídos de sessões reais
+│   │   └── usage-insights.md   # Padrões de fricção e estratégias comprovadas
 │   └── skills/
 │       ├── advisor/            # Conselheiro estratégico
-│       ├── commit/             # Padronização de commits
+│       ├── bugfix/             # Protocolo estruturado de correção de bugs
 │       ├── create-tasks/       # Criação de backlog de tarefas
 │       ├── create-use-case/    # Documentação de casos de uso
 │       ├── execute-task/       # Execução de tarefas com workflow de 9 etapas
+│       ├── image-generation/   # Aprimoramento de prompts para geração de imagens
 │       ├── initialize-docs/    # Inicialização de estrutura de documentação
+│       ├── insights/           # Aplicação de insights de uso ao projeto
+│       ├── owasp-security/     # Revisão de segurança (OWASP Top 10:2025)
 │       ├── review-task/        # Revisão de status de tarefas
 │       └── validate-documentation/ # Validação de documentação
 ├── language-related/           # Skills e hooks específicos por linguagem
@@ -35,11 +40,14 @@ Skills disponíveis em `global/skills/`, independentes de linguagem ou framework
 | Skill | Trigger | Descrição |
 |-------|---------|-----------|
 | **advisor** | "me aconselhe", "analise estratégica" | Conselheiro brutalmente honesto que disseca raciocínio e gera planos de ação |
-| **commit** | Ao commitar | Padronização de mensagens de commit |
+| **bugfix** | "bugfix", "fix bug", "debug" | Protocolo estruturado de correção de bugs que rastreia issues em todas as camadas antes de implementar fixes. Previne bugs em cascata em arquiteturas multi-serviço |
 | **create-tasks** | "criar tarefas", "criar backlog" | Cria backlog de tarefas técnicas estruturado por fases |
 | **create-use-case** | "criar caso de uso", "gerar UC" | Gera documentação de caso de uso com template de 15 seções e diagramas Mermaid |
 | **execute-task** | "executar tarefa", "execute task" | Executa tarefa seguindo workflow obrigatório de 9 etapas |
+| **image-generation** | Ao gerar imagens | Aprimora prompts de geração de imagens usando estrutura Subject-Context-Style |
 | **initialize-docs** | "inicializar docs", "setup documentação" | Cria hierarquia padrão de documentação com 9 níveis |
+| **insights** | "aplicar insights", "melhorar claude.md" | Analisa o projeto e aplica insights de uso comprovados ao CLAUDE.md, hooks e workflows |
+| **owasp-security** | Ao revisar segurança | Revisão de segurança cobrindo OWASP Top 10:2025, ASVS 5.0 e segurança de IA Agêntica (2026) |
 | **review-task** | "revisar tarefas", "status das tarefas" | Gera relatório de status com progresso e recomendações |
 | **validate-documentation** | "validar documentação", "verificar UC" | Valida documentos contra padrões de qualidade |
 
@@ -57,17 +65,41 @@ O skill `execute-task` impõe um workflow completo de 9 etapas:
 8. **Conclusão** - Gerar relatório de execução
 9. **Atualização** - Marcar tarefa como concluída
 
+### Protocolo: bugfix
+
+O skill `bugfix` implementa um protocolo de 8 etapas derivado da análise de 71 correções de bugs
+em 134 sessões. Projetado para eliminar ciclos de "corrige-revela-corrige" em arquiteturas multi-serviço:
+
+- Classifica complexidade (simples vs. multi-camada)
+- Rastreia o fluxo de dados completo antes de qualquer alteração
+- Mapeia DTOs, enums e nomes de campo em todas as fronteiras
+- Implementa correções em todas as camadas afetadas de uma vez
+
+## Insights de Uso
+
+O diretório `global/insights/` contém padrões extraídos de sessões reais de uso (1.490 mensagens,
+134 sessões). Esses insights alimentam skills como `bugfix` e `insights`, e documentam:
+
+- **Padrões de fricção recorrentes** - Bugs em cascata multi-serviço, abordagens iniciais erradas, artefatos obsoletos
+- **Estratégias comprovadas** - Protocolo de bug fix, segurança em migrations, convenções de código
+- **Recomendações para CLAUDE.md** - Regras e hooks que melhoram a efetividade do Claude Code
+
+Use o skill `insights` para analisar seu projeto e aplicar automaticamente as recomendações relevantes.
+
 ## Skills para Go
 
 Skills em `language-related/go/skills/` para projetos Go:
 
-| Skill | Descrição |
-|-------|-----------|
-| **go-add-entity** | Adiciona uma nova entidade ao serviço |
-| **go-add-migration** | Cria nova migration SQL |
-| **go-add-test** | Gera testes para código Go |
-| **go-add-consumer** | Adiciona consumer de mensagens (RabbitMQ) |
-| **go-review-service** | Revisa qualidade de um serviço Go |
+| Skill | Trigger | Descrição |
+|-------|---------|-----------|
+| **commit** | "commit", "commitar" | Commits com conventional commits, suporte a submodules e mudanças multi-serviço |
+| **create-report** | "criar relatório", "novo relatório" | Implementa novo tipo de relatório end-to-end em 4 serviços |
+| **go-add-entity** | — | Adiciona uma nova entidade ao serviço |
+| **go-add-migration** | — | Cria nova migration SQL |
+| **go-add-test** | — | Gera testes para código Go |
+| **go-add-consumer** | — | Adiciona consumer de mensagens (RabbitMQ) |
+| **go-review-pr** | "review pr", "quality gate" | Quality gate pré-PR, diff-aware, com revisão em 8 etapas |
+| **go-review-service** | — | Revisa qualidade de um serviço Go |
 
 ### Hooks para Go
 
@@ -106,6 +138,9 @@ cp -r global/skills/ seu-projeto/.claude/skills/
 # Skills globais — instalação global
 cp -r global/skills/ ~/.claude/skills/
 
+# Insights — copiar para o projeto (usado pelo skill insights)
+cp -r global/insights/ seu-projeto/.claude/insights/
+
 # Skills de Go — copiar para projeto Go
 cp -r language-related/go/skills/ seu-projeto/.claude/skills/
 cp -r language-related/go/hooks/ seu-projeto/.claude/hooks/
@@ -119,12 +154,14 @@ cp -r language-related/dotnet/skills/ seu-projeto/.claude/skills/
 
 ```
 ~/.claude/                  # Instalação global
-└── skills/
+├── skills/
+└── insights/               # (opcional, para insights de uso)
 
 seu-projeto/
 └── .claude/                # Instalação por projeto
     ├── skills/
-    └── hooks/              # (opcional, para hooks de linguagem)
+    ├── hooks/              # (opcional, para hooks de linguagem)
+    └── insights/           # (opcional, para insights de uso)
 ```
 
 ## Convenções de Nomenclatura
