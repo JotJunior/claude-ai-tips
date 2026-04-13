@@ -84,9 +84,9 @@ O pipeline SDD é a sequência recomendada para levar uma ideia desde o discover
 Cada skill consome os artefatos do anterior e alimenta o próximo.
 
 ```
- ┌─────────────┐
+ ┌──────────────┐
  │  DISCOVERY   │
- └──────┬──────┘
+ └──────┬───────┘
         │
    ① briefing          Entrevista de discovery → docs/01-briefing-discovery/briefing.md
         │                Coleta visão, usuários, escopo, restrições e stack.
@@ -96,9 +96,9 @@ Cada skill consome os artefatos do anterior e alimenta o próximo.
         │                Define princípios MUST/SHOULD que governam todas as decisões.
         │                Validado contra artefatos existentes (propagação).
         ▼
- ┌─────────────┐
+ ┌──────────────┐
  │ ESPECIFICAÇÃO│
- └──────┬──────┘
+ └──────┬───────┘
         │
    ③ specify            Descrição natural → docs/specs/{feature}/spec.md
         │                Gera user stories priorizadas, requisitos funcionais,
@@ -110,9 +110,9 @@ Cada skill consome os artefatos do anterior e alimenta o próximo.
         │                Faz max 5 perguntas com opções e recomendação.
         │                Integra respostas diretamente na spec.
         ▼
- ┌─────────────┐
+ ┌──────────────┐
  │ PLANEJAMENTO │
- └──────┬──────┘
+ └──────┬───────┘
         │
    ⑤ plan              Spec → docs/specs/{feature}/plan.md + research.md + data-model.md
         │                Pesquisa tecnologias, define modelo de dados,
@@ -123,9 +123,9 @@ Cada skill consome os artefatos do anterior e alimenta o próximo.
         │                "Unit Tests for English" — valida QUALIDADE dos requisitos,
         │                não da implementação. Domínios: ux, api, security, performance.
         ▼
- ┌─────────────┐
+ ┌──────────────┐
  │ IMPLEMENTAÇÃO│
- └──────┬──────┘
+ └──────┬───────┘
         │
    ⑦ create-tasks      Plan → Backlog de tarefas estruturado por fases
         │                Tarefas com IDs, criticidade e matriz de dependências.
