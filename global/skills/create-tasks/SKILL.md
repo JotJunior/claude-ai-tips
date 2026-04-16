@@ -30,6 +30,21 @@ Analise o argumento fornecido. Ele pode ser:
 2. **Documento de referencia**: Um arquivo existente com requisitos, casos de uso ou especificacoes
 3. **Lista de funcionalidades**: Lista de features/modulos a serem organizados em tarefas
 
+### Deteccao de Origem (Spec vs Standalone)
+
+**ANTES de iniciar**, determine se o argumento se origina de uma especificacao:
+
+1. **Verifique se o argumento referencia um arquivo em `docs/specs/`** (ex: `docs/specs/foo/spec.md`)
+2. **Verifique se o argumento menciona o nome de uma spec existente** — liste `docs/specs/*/spec.md` com Glob
+3. **Se o contexto da conversa indica que uma spec foi criada/usada recentemente**, considere-a como origem
+
+**Se originado de uma spec** (`docs/specs/{spec-name}/spec.md`):
+- Salvar em: `docs/specs/{spec-name}/tasks.md`
+- Usar o conteudo da spec como documento de referencia principal
+
+**Se chamado de forma isolada** (sem spec associada):
+- Manter o comportamento padrao: `docs/tasks-{nome-escopo}.md`
+
 ### Fluxo de Criacao
 
 ```
@@ -224,15 +239,18 @@ Antes de finalizar o documento, verifique:
 
 ## Saida Esperada
 
-1. **Analise o escopo** fornecido nos argumentos
-2. **Leia documentacao existente** no projeto (UCs, ADRs, specs, DER) para extrair requisitos
-3. **Proponha a estrutura de fases** ao usuario antes de detalhar
-4. **Gere o documento completo** no formato padrao
-5. **Salve o arquivo** como `docs/tasks-{nome-escopo}.md` (ou caminho sugerido pelo usuario)
+1. **Detecte a origem** — verifique se o argumento vem de uma spec em `docs/specs/`
+2. **Analise o escopo** fornecido nos argumentos
+3. **Leia documentacao existente** no projeto (UCs, ADRs, specs, DER) para extrair requisitos
+4. **Proponha a estrutura de fases** ao usuario antes de detalhar
+5. **Gere o documento completo** no formato padrao
+6. **Salve o arquivo** no caminho correto:
+   - Se originado de spec: `docs/specs/{spec-name}/tasks.md`
+   - Se standalone: `docs/tasks-{nome-escopo}.md`
+   - Ou caminho sugerido pelo usuario (override manual sempre prevalece)
 
 ### Pergunte ao usuario se necessario:
 
-- Diretorio onde salvar o arquivo
 - Se ha documentacao de referencia para consultar
 - Escopo que deve ser incluido/excluido
 - Preferencia de granularidade (mais ou menos subtarefas)
