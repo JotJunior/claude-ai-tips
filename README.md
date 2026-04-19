@@ -15,6 +15,7 @@ para tarefas de documentação, desenvolvimento, segurança e qualidade de códi
 │   └── skills/                 # 19 skills globais (cada skill é uma pasta)
 │       ├── advisor/
 │       ├── analyze/
+│       ├── apply-insights/
 │       ├── briefing/
 │       ├── bugfix/
 │       ├── checklist/
@@ -25,7 +26,6 @@ para tarefas de documentação, desenvolvimento, segurança e qualidade de códi
 │       ├── execute-task/
 │       ├── image-generation/
 │       ├── initialize-docs/
-│       ├── insights/
 │       ├── owasp-security/
 │       ├── plan/
 │       ├── review-task/
@@ -93,7 +93,7 @@ Skills independentes que podem ser usados em qualquer momento:
 | **create-use-case** | "criar caso de uso", "gerar UC" | Gera documentação de caso de uso com template de 15 seções e diagramas Mermaid |
 | **image-generation** | Ao gerar imagens | Aprimora prompts de geração de imagens usando estrutura Subject-Context-Style |
 | **initialize-docs** | "inicializar docs", "setup documentação" | Cria hierarquia padrão de documentação com 9 níveis |
-| **insights** | "aplicar insights", "melhorar claude.md" | Analisa o projeto e aplica insights de uso comprovados ao CLAUDE.md, hooks e workflows |
+| **apply-insights** | "aplicar insights", "aplicar playbook", "melhorar claude.md" | Analisa o projeto e aplica insights de uso comprovados ao CLAUDE.md, hooks e workflows. Renomeada de `insights` na 2.0.0 para evitar colisão com o `/insights` nativo do Claude Code (que tem função diferente — analisa suas sessões) |
 | **owasp-security** | Ao revisar segurança | Revisão de segurança cobrindo OWASP Top 10:2025, ASVS 5.0 e segurança de IA Agêntica (2026) |
 | **validate-documentation** | "validar documentação", "verificar UC" | Valida documentos individuais contra padrões de qualidade estrutural |
 | **validate-docs-rendered** | "validar renderização", "verificar diagramas" | Valida que a documentação Markdown renderiza corretamente (Mermaid, links internos, frontmatter, tabelas) |
@@ -214,13 +214,17 @@ em 134 sessões. Projetado para eliminar ciclos de "corrige-revela-corrige" em a
 ## Insights de Uso
 
 O diretório `global/insights/` contém padrões extraídos de sessões reais de uso (1.490 mensagens,
-134 sessões). Esses insights alimentam skills como `bugfix` e `insights`, e documentam:
+134 sessões). Esses insights alimentam skills como `bugfix` e `apply-insights`, e documentam:
 
 - **Padrões de fricção recorrentes** - Bugs em cascata multi-serviço, abordagens iniciais erradas, artefatos obsoletos
 - **Estratégias comprovadas** - Protocolo de bug fix, segurança em migrations, convenções de código
 - **Recomendações para CLAUDE.md** - Regras e hooks que melhoram a efetividade do Claude Code
 
-Use o skill `insights` para analisar seu projeto e aplicar automaticamente as recomendações relevantes.
+Use o skill `apply-insights` para analisar seu projeto e aplicar automaticamente as recomendações relevantes.
+
+> **Nota:** o Claude Code também tem uma slash command nativa `/insights` que analisa suas
+> sessões (função introspectiva). A skill `apply-insights` é prescritiva — aplica um playbook
+> curado ao projeto. Por isso o rename na versão 2.0.0: evitar colisão de nome.
 
 ## Skills para Go
 
@@ -274,7 +278,7 @@ cp -r global/skills/ seu-projeto/.claude/skills/
 # Skills globais — instalação global
 cp -r global/skills/ ~/.claude/skills/
 
-# Insights — copiar para o projeto (usado pelo skill insights)
+# Insights — copiar para o projeto (usado pelo skill apply-insights)
 cp -r global/insights/ seu-projeto/.claude/insights/
 
 # Skills de Go — copiar para projeto Go

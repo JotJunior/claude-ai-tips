@@ -5,6 +5,40 @@ Todas as mudanças relevantes deste projeto são documentadas aqui.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 este projeto adere a [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [2.0.0] - 2026-04-19
+
+Versão MAJOR devido a rename de skill user-visível (identificador de invocação
+é contrato público).
+
+### Changed (BREAKING)
+
+- **Skill `insights` renomeada para `apply-insights`** — o Claude Code tem uma
+  slash command nativa `/insights` (analisa suas sessões de uso) que colidia
+  no namespace de autocomplete com a nossa skill homônima. As duas
+  coexistiam sem uma sobrescrever a outra, mas a ambiguidade gerava atrito:
+  - usuários precisavam selecionar a correta a cada invocação
+  - documentação que referenciasse `/insights` ficava ambígua
+  - hooks que tentassem invocar por string tinham comportamento indefinido
+
+  Rename para `apply-insights` deixa claro que a função é **prescritiva**
+  (aplicar um playbook ao projeto) — distinta da nativa, que é
+  **introspectiva** (analisar sessões). A description da skill agora explicita
+  essa diferença para o modelo.
+
+  **Impacto para consumidores**:
+  - Invocações via `/insights` agora rodam a skill nativa do Claude Code
+  - Para a função antiga, usar `/apply-insights`
+  - Arquivos CLAUDE.md / documentação que referenciavam `/insights` precisam
+    ser atualizados
+
+### Migration
+
+1. Se o seu projeto tem instalação local: `.claude/skills/insights/` →
+   `.claude/skills/apply-insights/`
+2. Atualizar triggers em CLAUDE.md, memórias, hooks, scripts
+3. Nova invocação: `/apply-insights` (ou qualquer dos triggers em português
+   como "aplicar insights", "aplicar playbook", "melhorar claude.md")
+
 ## [1.1.0] - 2026-04-19
 
 Refatoração ampla das 18 skills globais aplicando os princípios do artigo
@@ -149,5 +183,6 @@ Primeira versão publicada do toolkit.
 - README documentando estrutura, pipeline SDD sugerido e convenções de
   nomenclatura
 
+[2.0.0]: https://github.com/JotJunior/claude-ai-tips/releases/tag/v2.0.0
 [1.1.0]: https://github.com/JotJunior/claude-ai-tips/releases/tag/v1.1.0
 [1.0.0]: https://github.com/JotJunior/claude-ai-tips/releases/tag/v1.0.0
