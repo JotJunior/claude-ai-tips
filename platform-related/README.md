@@ -36,14 +36,27 @@ em categorias diferentes:
 | Postgres (Neon) | API Neon: criar project/branch/compute, pooler config | queries SQL, indexing, JSONB, EXPLAIN ANALYZE |
 | Elasticsearch | ILM, snapshots, shard allocation, API keys | DSL queries, mapping design, aggregations |
 
-## Subpastas planejadas
+## Subpastas
 
 | Subpasta | Plataforma | Status | Cobertura |
 |---|---|---|---|
-| [`cloudflare-shared/`](./cloudflare-shared/) | Fundação Cloudflare | planejada | wrapper API REST, check de versão Wrangler |
+| [`cloudflare-shared/`](./cloudflare-shared/) | Fundação Cloudflare | **parcial (2.1.0)** | hook wrangler-version, cf-api-call, cf-credentials-setup, cf-wrangler-update, references |
 | [`cloudflare-workers/`](./cloudflare-workers/) | Cloudflare Workers + Hono | planejada | deploy via Git Integration, bindings, ops D1/KV/R2/Queue |
 | [`cloudflare-dns/`](./cloudflare-dns/) | Cloudflare DNS API | planejada | CRUD records, zone migrate, DNSSEC, audit SPF/DKIM/DMARC |
 | [`neon/`](./neon/) | Neon (Postgres serverless) | planejada | API: projects, branches, compute, pooler, anonymize |
+
+### Status detalhado de `cloudflare-shared/` (entregue em 2.1.0)
+
+| Componente | Tipo | Status |
+|---|---|---|
+| `settings.json` | config | ✅ |
+| `hooks/check-wrangler-version.sh` | hook PreToolCall | ✅ |
+| `skills/cf-api-call/` | skill | ✅ wrapper REST completo |
+| `skills/cf-credentials-setup/` | skill | ✅ onboarding interativo |
+| `skills/cf-wrangler-update/` | skill | ✅ update explícito no PM detectado |
+| `references/api-vs-wrangler.md` | ref | ✅ catálogo de cobertura |
+| `references/api-endpoint-catalog.md` | ref | ✅ endpoints curados |
+| `references/credential-storage.md` | ref | ✅ convenções de armazenamento |
 
 ## Anatomia de uma subpasta
 
