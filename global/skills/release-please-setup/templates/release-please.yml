@@ -1,0 +1,42 @@
+name: Release Please
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  auto-merge:
+    needs: release-please
+    runs-on: ubuntu-latest
+    if: ${{ always() }}
+    steps:
+      - name: Auto-merge pending release PR
+        run: |
+          PR=$(gh pr list \
+            --repo "${{ github.repository }}" \
+            --label "autorelease: pending" \
+            --state open \
+            --json number \
+            --jq '.[0].number // empty')
+          if [ -n "$PR" ]; then
+            gh pr merge "$PR" --merge --auto --repo "${{ github.repository }}"
+            echo "Queued auto-merge for release PR #$PR"
+          else
+            echo "No pending release PR — skipping"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
