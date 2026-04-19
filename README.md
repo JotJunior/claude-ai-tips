@@ -12,26 +12,26 @@ para tarefas de documentação, desenvolvimento, segurança e qualidade de códi
 ├── global/                     # Skills e insights globais (independentes de linguagem)
 │   ├── insights/               # Insights de uso extraídos de sessões reais
 │   │   └── usage-insights.md   # Padrões de fricção e estratégias comprovadas
-│   └── skills/
-│       ├── advisor/            # Conselheiro estratégico
-│       ├── analyze/            # Análise de consistência cross-artifact (read-only)
-│       ├── briefing/           # Entrevista estruturada de discovery do projeto
-│       ├── bugfix/             # Protocolo estruturado de correção de bugs
-│       ├── checklist/          # Quality gate — "Unit Tests for English"
-│       ├── clarify/            # Resolução de ambiguidades em specs
-│       ├── constitution/       # Princípios imutáveis de governança do projeto
-│       ├── create-tasks/       # Criação de backlog de tarefas
-│       ├── create-use-case/    # Documentação de casos de uso
-│       ├── execute-task/       # Execução de tarefas com workflow de 9 etapas
-│       ├── image-generation/   # Aprimoramento de prompts para geração de imagens
-│       ├── initialize-docs/    # Inicialização de estrutura de documentação
-│       ├── insights/           # Aplicação de insights de uso ao projeto
-│       ├── owasp-security/     # Revisão de segurança (OWASP Top 10:2025)
-│       ├── plan/               # Plano de implementação técnico
-│       ├── review-task/        # Revisão de status de tarefas
-│       ├── specify/            # Feature spec no formato SDD
-│       ├── validate-docs-rendered/ # Validação de renderização (Mermaid, links, tabelas)
-│       └── validate-documentation/ # Validação de documentação
+│   └── skills/                 # 19 skills globais (cada skill é uma pasta)
+│       ├── advisor/
+│       ├── analyze/
+│       ├── briefing/
+│       ├── bugfix/
+│       ├── checklist/
+│       ├── clarify/
+│       ├── constitution/
+│       ├── create-tasks/
+│       ├── create-use-case/
+│       ├── execute-task/
+│       ├── image-generation/
+│       ├── initialize-docs/
+│       ├── insights/
+│       ├── owasp-security/
+│       ├── plan/
+│       ├── review-task/
+│       ├── specify/
+│       ├── validate-docs-rendered/
+│       └── validate-documentation/
 ├── language-related/           # Skills e hooks específicos por linguagem
 │   ├── go/                     # Go
 │   │   ├── skills/             # Skills para projetos Go
@@ -40,6 +40,26 @@ para tarefas de documentação, desenvolvimento, segurança e qualidade de códi
 │   └── dotnet/                 # .NET
 │       └── skills/             # Skills para projetos .NET
 ```
+
+### Anatomia de uma skill
+
+Cada skill é uma pasta contendo um `SKILL.md` (ponto de entrada) e, conforme
+o caso, subpastas que o Claude consulta sob demanda. Isso aplica o princípio
+de *progressive disclosure* — o modelo paga só o contexto necessário no
+momento de invocação, e carrega detalhes sob demanda:
+
+```
+skills/<nome>/
+├── SKILL.md             # Ponto de entrada: quando invocar, regras de alto
+│                        # nível, gotchas, ponteiros para subpastas
+├── templates/           # Templates preenchíveis (feature-spec, plan, tasks...)
+├── examples/            # Casos concretos (good.md vs bad.md)
+├── references/          # Documentação de apoio (guias, catálogos, tabelas)
+├── scripts/             # Scripts POSIX executáveis (next-id, scaffold, metrics...)
+└── config.json          # Configuração por projeto (opcional)
+```
+
+Nem toda skill usa todas as subpastas — skills simples são só um `SKILL.md`.
 
 ## Skills Globais
 
@@ -292,13 +312,16 @@ seu-projeto/
 
 ### Códigos de Domínio
 
-- `AUTH` - Autenticação
-- `CAD` - Cadastros
-- `PED` - Pedidos
-- `FIN` - Financeiro
-- `FAT` - Faturamento
-- `LOG` - Logística
-- `MON` - Monitoramento
+Os códigos de domínio são **definidos por projeto**, não universais. A partir
+de 1.1.0, as skills consultam os domínios reais via:
+
+1. Campo `domains` em `config.json` (quando o projeto define explicitamente)
+2. Glob de UCs existentes (quando o projeto já tem documentação)
+3. Pergunta ao usuário via AskUserQuestion (quando ambos ausentes)
+
+Exemplos comuns em projetos de negócio: `AUTH` (autenticação), `CAD`
+(cadastros), `PED` (pedidos), `FIN` (financeiro). Use o que faz sentido no
+seu domínio — a skill `create-use-case` não assume mais uma lista fixa.
 
 ## Hierarquia de Documentação
 
@@ -321,9 +344,19 @@ docs/
 
 Contribuições são bem-vindas. Para adicionar novos skills ou hooks:
 
-1. Siga a estrutura de diretórios existente
-2. Crie um `SKILL.md` dentro do diretório do skill
-3. Teste com o Claude Code antes de submeter
+1. Siga a estrutura de pasta de uma skill existente (ver [Anatomia de uma skill](#anatomia-de-uma-skill))
+2. Crie um `SKILL.md` como ponto de entrada — mantenha enxuto e use subpastas para conteúdo pesado
+3. **description**: escreva como trigger condition, não resumo — "Use quando X, Y ou Z. Também quando mencionar A, B, C. NÃO use quando W."
+4. **Gotchas**: documente armadilhas conhecidas — o conteúdo mais valioso de uma skill
+5. **Templates/examples/references**: extraia conteúdo que o modelo consulta sob demanda
+6. **Scripts**: prefira POSIX sh para operações determinísticas (next-id, validação, scaffold)
+7. **config.json**: use para parâmetros que variam entre projetos
+8. Teste com o Claude Code antes de submeter
+
+## Versionamento
+
+Este projeto segue [Semantic Versioning](https://semver.org/) e mantém um
+[CHANGELOG.md](./CHANGELOG.md) com o histórico de mudanças.
 
 ## Licença
 
