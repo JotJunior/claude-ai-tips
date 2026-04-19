@@ -357,6 +357,45 @@ Contribuições são bem-vindas. Para adicionar novos skills ou hooks:
 7. **config.json**: use para parâmetros que variam entre projetos
 8. Teste com o Claude Code antes de submeter
 
+## Categorias de Skills
+
+A partir da versão 2.1.0, o toolkit é organizado em **3 namespaces por propósito**. Cada namespace tem README próprio com critérios de inclusão.
+
+| Namespace | Propósito | Critério de inclusão | README |
+|-----------|-----------|----------------------|--------|
+| [`language-related/`](./language-related/) | **Como o código é escrito** | Específico de linguagem/ecossistema (Go, .NET, TS, Python) | [ver](./language-related/README.md) |
+| [`platform-related/`](./platform-related/) | **Onde o código é executado / como recursos são provisionados** | Específico de runtime, CLI proprietária, API de provisionamento | [ver](./platform-related/README.md) |
+| [`data-related/`](./data-related/) | **Como dados são consumidos** | Queries, DSL, mapping de serviços externos (DB, search, cache) | [ver](./data-related/README.md) |
+
+### Princípio de partição
+
+A regra para decidir onde uma skill entra:
+
+- Se responde **"como escrevo código em X?"** → `language-related/`
+- Se responde **"como provisiono/deployo/opero o recurso?"** → `platform-related/`
+- Se responde **"como meu código fala com o recurso já provisionado?"** → `data-related/`
+
+**Exemplo concreto com D1 (Cloudflare)**: criar banco via `wrangler d1 create` e aplicar migration via `wrangler d1 migrations apply` vai para `platform-related/cloudflare-workers/`. Escrever queries SQL otimizadas, padrões de `prepare().bind().batch()`, setup de FTS5, modelagem de schema vai para `data-related/d1/`. Mesmo serviço, facetas separadas.
+
+### Matriz atual
+
+| Namespace | Subpastas | Status |
+|-----------|-----------|--------|
+| `language-related/` | `go/` ✓ estável, `dotnet/` ✓ estável, `typescript/` planejada, `python/` planejada | parcial |
+| `platform-related/` | `cloudflare-shared/`, `cloudflare-workers/`, `cloudflare-dns/`, `neon/` planejadas | scaffold |
+| `data-related/` | `postgres/`, `d1/`, `elasticsearch/` planejadas | scaffold |
+
+### Skills globais agnósticas
+
+Skills que não são específicas de linguagem, plataforma ou serviço continuam em [`global/skills/`](./global/skills/) — inclui o pipeline SDD (`briefing`, `constitution`, `specify`, `clarify`, `plan`, `checklist`, `create-tasks`, `analyze`, `execute-task`, `review-task`) e skills complementares (`advisor`, `bugfix`, `create-use-case`, `image-generation`, `initialize-docs`, `owasp-security`, `apply-insights`, `validate-documentation`, `validate-docs-rendered`).
+
+Nova skill agnóstica a partir de 2.1.0:
+
+- [`cred-store`](./global/skills/cred-store/) — leitura de credenciais via cascata (env → 1Password → Keychain → arquivo)
+- [`cred-store-setup`](./global/skills/cred-store-setup/) — registro interativo de credenciais
+
+Usada por consumidores em `platform-related/` e `data-related/` para evitar duplicação de lógica de secrets por integração.
+
 ## Versionamento
 
 Este projeto segue [Semantic Versioning](https://semver.org/) e mantém um
