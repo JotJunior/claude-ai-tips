@@ -1,0 +1,55 @@
+#!/bin/sh
+# commit-msg — validates commit message format and language.
+# Configured via: git config core.hooksPath .githooks
+
+MSG_FILE="$1"
+MSG=$(cat "$MSG_FILE")
+
+if echo "$MSG" | grep -qE "^Merge |^Revert "; then
+    exit 0
+fi
+
+FIRST_LINE=$(echo "$MSG" | head -1)
+SUBJECT=$(echo "$FIRST_LINE" | sed 's/^[a-z]*([^)]*): //' | sed 's/^[a-z]*!: //' | sed 's/^[a-z]*: //')
+
+CONVENTIONAL_PATTERN="^(feat|fix|docs|style|refactor|perf|test|chore|build|ci|revert)(\\([^)]+\\))?!?: .+$"
+if ! echo "$FIRST_LINE" | grep -qE "$CONVENTIONAL_PATTERN"; then
+    echo ""
+    echo "ERROR: Commit message doesn't follow Conventional Commits format."
+    echo ""
+    echo "Got:      '$FIRST_LINE'"
+    echo "Expected: '<type>(<scope>): <description>'"
+    echo ""
+    echo "Valid types: feat, fix, docs, style, refactor, perf, test, chore,"
+    echo "             build, ci, revert"
+    echo ""
+    echo "Examples:"
+    echo "  feat(auth): add OAuth PKCE flow"
+    echo "  fix: correct null deref in handler"
+    echo "  refactor!: remove deprecated API"
+    echo ""
+    exit 1
+fi
+
+PTBR_PATTERN="(adicionar|adicionando|adicionado|remover|removendo|removido|corrigir|corrigindo|corrigido|corrige|corrigiu|atualizar|atualizando|atualizado|criar|criando|criado|criou|extrair|extraindo|extraido|implementar|implementando|implementado|refatorar|refatorando|refatorado|substituir|substituindo|substituido|substitui|melhorar|melhorando|melhorado|resolver|resolvendo|resolvido|configurar|configurando|configurado|ajustar|ajustando|ajustado|desativar|desativando|desativado|ativar|ativando|ativado|evitar|evitando|evitado|permitir|permitindo|permitido|forcar|forcando|forcado|fixar|fixando|fixado)"
+
+if echo "$SUBJECT" | grep -qiE "\\b$PTBR_PATTERN\\b"; then
+    echo ""
+    echo "ERROR: Commit message appears to be in Portuguese (PT-BR)."
+    echo "This repository requires commit messages in English (EN-US)."
+    echo ""
+    echo "Subject: '$SUBJECT'"
+    echo ""
+    echo "  WRONG: fix: corrigir erro no parser"
+    echo "  RIGHT: fix: fix parser error"
+    echo ""
+    echo "Common translations:"
+    echo "  adicionar -> add       remover    -> remove"
+    echo "  corrigir  -> fix       atualizar  -> update"
+    echo "  criar     -> create    implementar-> implement"
+    echo "  refatorar -> refactor  melhorar   -> improve"
+    echo ""
+    exit 1
+fi
+
+exit 0

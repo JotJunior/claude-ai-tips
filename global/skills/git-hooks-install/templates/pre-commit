@@ -1,0 +1,26 @@
+#!/bin/sh
+# pre-commit — enforces author identity.
+# Configured via: git config core.hooksPath .githooks
+
+REQUIRED_NAME="REPLACE_WITH_AUTHOR_NAME"
+REQUIRED_EMAIL="REPLACE_WITH_AUTHOR_EMAIL"
+
+AUTHOR_NAME=$(git config user.name)
+AUTHOR_EMAIL=$(git config user.email)
+
+if [ "$AUTHOR_NAME" != "$REQUIRED_NAME" ] || [ "$AUTHOR_EMAIL" != "$REQUIRED_EMAIL" ]; then
+    echo ""
+    echo "ERROR: Commits to this repository must be authored by $REQUIRED_NAME <$REQUIRED_EMAIL>"
+    echo "Current identity: $AUTHOR_NAME <$AUTHOR_EMAIL>"
+    echo ""
+    echo "Fix with:"
+    echo "  git config user.name '$REQUIRED_NAME'"
+    echo "  git config user.email '$REQUIRED_EMAIL'"
+    echo ""
+    echo "Or remove this hook if identity enforcement is not desired:"
+    echo "  rm .githooks/pre-commit"
+    echo ""
+    exit 1
+fi
+
+exit 0
