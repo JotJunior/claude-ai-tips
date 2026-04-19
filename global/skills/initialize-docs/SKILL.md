@@ -56,19 +56,32 @@ docs/
 
 ### 3. Criar Diretorios
 
+Preferir o script `scripts/scaffold.sh` (mesmo diretorio desta skill), que
+cria todos os diretorios, gera READMEs template e e idempotente:
+
 ```bash
-mkdir -p docs/01-briefing-discovery
-mkdir -p docs/02-requisitos-casos-uso
-mkdir -p docs/03-modelagem-dados
-mkdir -p docs/04-arquitetura-sistema
-mkdir -p docs/05-definicao-apis/REST
-mkdir -p docs/05-definicao-apis/gRPC
-mkdir -p docs/05-definicao-apis/WEBHOOKS
-mkdir -p docs/05-definicao-apis/MESSAGING
-mkdir -p docs/06-ui-ux-design
-mkdir -p docs/07-plano-testes
-mkdir -p docs/08-operacoes
-mkdir -p docs/09-entregaveis
+# Dry-run para ver o que seria feito
+bash skills/initialize-docs/scripts/scaffold.sh --dry-run
+
+# Criar estrutura
+bash skills/initialize-docs/scripts/scaffold.sh
+
+# Forcar reescrita de READMEs
+bash skills/initialize-docs/scripts/scaffold.sh --force
+
+# Usar diretorio customizado
+bash skills/initialize-docs/scripts/scaffold.sh --dir=documentation
+```
+
+Alternativa manual (sem script), se o script nao estiver disponivel:
+
+```bash
+mkdir -p docs/01-briefing-discovery docs/02-requisitos-casos-uso \
+         docs/03-modelagem-dados docs/04-arquitetura-sistema \
+         docs/05-definicao-apis/REST docs/05-definicao-apis/gRPC \
+         docs/05-definicao-apis/WEBHOOKS docs/05-definicao-apis/MESSAGING \
+         docs/06-ui-ux-design docs/07-plano-testes \
+         docs/08-operacoes docs/09-entregaveis
 ```
 
 ### 4. Criar READMEs Template

@@ -212,6 +212,15 @@ Antes de finalizar o documento, verifique:
 - Escopo que deve ser incluido/excluido
 - Preferencia de granularidade (mais ou menos subtarefas)
 
+### Scripts auxiliares
+
+- `scripts/next-task-id.sh` — calcula proximo ID hierarquico dentro de uma
+  fase ou tarefa em um tasks.md existente (util para append deterministico):
+  ```bash
+  bash skills/create-tasks/scripts/next-task-id.sh 1 tasks.md     # → 1.3
+  bash skills/create-tasks/scripts/next-task-id.sh 1.2 tasks.md   # → 1.2.4
+  ```
+
 ---
 
 ## Gotchas

@@ -50,7 +50,15 @@ Analise o argumento fornecido. Ele pode ser:
 
 2. **Determine o proximo ID** disponivel:
    - Padrao: `UC-{DOMINIO}-{NUMERO}` (ex: UC-CAD-001)
-   - Verifique IDs existentes no projeto com Glob `UC-*.md`
+   - Preferir o script `scripts/next-uc-id.sh` (mesmo diretorio desta skill):
+     ```bash
+     bash skills/create-use-case/scripts/next-uc-id.sh AUTH
+     # → UC-AUTH-003 (ou UC-AUTH-001 se for o primeiro)
+
+     # Listar dominios e contagem de UCs existentes:
+     bash skills/create-use-case/scripts/next-uc-id.sh --list
+     ```
+   - Alternativa manual: Glob `UC-*.md` e incrementar o maior numero do dominio
 
 3. **Leia o template** em `templates/use-case.md` (diretorio desta skill)
 

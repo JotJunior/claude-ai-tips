@@ -81,6 +81,19 @@ E testes passam (se existirem)
 ENTAO tarefa deve ser marcada como concluida
 ```
 
+#### Extracao de Metricas
+
+Preferir o script `scripts/metrics.sh` (mesmo diretorio desta skill) para
+extrair contagens de forma deterministica:
+
+```bash
+bash skills/review-task/scripts/metrics.sh docs/tasks.md
+# → tabela de metricas + linha JSON para consumo programatico
+```
+
+O script conta: fases, tarefas, subtarefas, concluidas/em andamento/pendentes/
+bloqueadas, e criticidade por nivel [C]/[A]/[M].
+
 #### Verificacao via Git (para projetos com historico):
 ```bash
 # Ver commits recentes para identificar trabalho ja feito
