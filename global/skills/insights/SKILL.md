@@ -1,11 +1,13 @@
 ---
 name: insights
 description: |
-  Aplica insights de uso do Claude Code ao projeto atual. Analisa o projeto,
-  identifica quais insights sao relevantes e sugere melhorias no CLAUDE.md,
-  hooks e workflows baseados em padroes de uso comprovados.
-  Triggers: "aplicar insights", "apply insights", "usage insights",
-  "melhorar claude.md", "improve workflow", "otimizar fluxo".
+  Use quando o usuario pedir para aplicar insights de uso do Claude Code ao
+  projeto atual, melhorar o CLAUDE.md, sugerir hooks ou otimizar workflows
+  baseados em padroes de uso comprovados. Tambem quando mencionar "aplicar
+  insights", "apply insights", "usage insights", "melhorar claude.md",
+  "improve workflow", "otimizar fluxo". NAO use sem que exista um arquivo
+  de insights (default: ~/.claude/insights/usage-insights.md) — a skill
+  precisa de dados empiricos para aplicar.
 argument-hint: "[area especifica: bugfix | migrations | conventions | hooks | all]"
 allowed-tools:
   - Read
@@ -46,11 +48,15 @@ If not found, inform user and proceed with built-in best practices.
 1. Read the project's `CLAUDE.md` (if exists) to understand current state
 2. Check `.claude/settings.json` or `.claude/settings.local.json` for existing hooks
 3. Check for project-level skills in `.claude/skills/`
-4. Identify project type:
-   - **Go microservice**: check for `go.mod`, `internal/`, `migrations/`
-   - **React/TypeScript frontend**: check for `package.json`, `src/`, `vite.config`
-   - **Monorepo**: check for multiple services, submodules, `.gitmodules`
-   - **Python**: check for `requirements.txt`, `pyproject.toml`
+4. Identify project type by looking for signal files:
+   - Go: `go.mod`, `internal/`, `cmd/`
+   - Node/TypeScript: `package.json`, `tsconfig.json`, build config (vite/webpack/next)
+   - Python: `requirements.txt`, `pyproject.toml`, `setup.py`
+   - Rust: `Cargo.toml`, `src/main.rs`
+   - Java/Kotlin: `pom.xml`, `build.gradle`, `build.gradle.kts`
+   - .NET: `*.csproj`, `*.sln`
+   - Monorepo: `.gitmodules`, `pnpm-workspace.yaml`, `lerna.json`, or multiple service dirs
+5. Map the project's build/test/lint commands (from `Makefile`, `package.json` scripts, `README`, or CI config)
 
 ## Step 3: Gap Analysis
 
@@ -65,23 +71,24 @@ Check if the project's CLAUDE.md includes:
 - [ ] Code conventions (enum/DTO matching)
 
 ### 3.2 Hook Gaps
-Check if `.claude/settings.json` or `.claude/settings.local.json` has hooks for:
-- [ ] PostToolUse: build verification after editing Go/TS files (`go build ./...`)
-- [ ] PreToolUse: route order check (Fiber/Express — `/:id` before static routes)
-- [ ] PreToolUse: schema prefix check (SQL queries missing `schema.table`)
-- [ ] Stop: uncommitted changes warning (with snooze pattern via /tmp file)
-- [ ] Stop: missing test file warning (check for _test.go files)
+Check if `.claude/settings.json` or `.claude/settings.local.json` has hooks for
+the project's stack. Common patterns (suggest only ones relevant to the detected stack):
+- [ ] PostToolUse: build/typecheck verification after editing source files
+- [ ] PreToolUse: guards against destructive operations (rm -rf, DROP TABLE, force-push)
+- [ ] PreToolUse: stack-specific safety checks (route ordering, schema prefixes, migration safety)
+- [ ] Stop: uncommitted changes warning (with snooze pattern)
+- [ ] Stop: missing test file warning for new source files
 
 ### 3.3 Skill Gaps
-Check if the project has relevant skills in `.claude/skills/`:
-- [ ] /bugfix — structured bug fix protocol with parallel agent investigation
-- [ ] /commit — conventional commits with submodule handling
-- [ ] /review-pr — pre-PR quality gate (diff-aware)
-- [ ] /review-service — service convention audit (read-only)
-- [ ] /add-entity — CRUD vertical slice generator
-- [ ] /add-migration — migration file generator
-- [ ] /add-consumer — RabbitMQ consumer generator
-- [ ] /add-test — test file generator with MockFunc pattern
+Check if the project has relevant skills in `.claude/skills/` or referenced via
+global skills. Suggest gaps based on the project's workflow — not a fixed list:
+- [ ] `/bugfix` — structured multi-layer bug fix protocol
+- [ ] Task/backlog workflow skills (create-tasks, execute-task, review-task)
+- [ ] SDD pipeline skills if the project uses spec-driven development
+- [ ] Project-specific generators (migration scaffolds, component scaffolds, test scaffolds)
+
+**Do not recommend skills by fixed name.** Look at the project's actual workflow
+and propose skills that would remove friction the insights file documents.
 
 ### 3.4 Memory Gaps
 Check if `~/.claude/projects/*/memory/` has relevant memories:
@@ -102,10 +109,10 @@ project's specific stack and structure. Do NOT add generic text — tailor it:
 
 ### Priority 2: Hook Suggestions
 For each missing hook, propose the exact JSON to add to settings.json.
-Only suggest hooks relevant to the project's stack:
-- Go projects: `go build ./...` after .go edits
-- TypeScript: `tsc --noEmit` after .ts/.tsx edits
-- SQL: schema prefix check for repository files
+Only suggest hooks relevant to the project's actual stack. Examples:
+- Source-file edits trigger the project's build/typecheck command
+- Destructive-command guards (requires confirmation for rm -rf, DROP TABLE, force-push, etc.)
+- Stack-specific safety hooks derived from the project's CI rules
 
 ### Priority 3: Workflow Improvements
 Based on the project's characteristics, suggest:
@@ -156,3 +163,31 @@ Reply with the numbers you want to apply, or "all" to apply everything.
 - Skip recommendations the project already implements
 - Focus on highest-impact items first (based on friction frequency in insights)
 - If the project already has comprehensive CLAUDE.md and hooks, say so
+
+---
+
+## Gotchas
+
+### Never propose GENERIC recommendations
+
+Every suggestion must be tailored to the current project: real service names, real build commands, real language conventions. Generic boilerplate ("Add a bug fix section to CLAUDE.md") produces noise, not value.
+
+### Interactive: propose and wait for confirmation
+
+Don't apply changes directly. Show the proposed diff, wait for "apply 1,2,4" or "all", and only then edit files. Auto-applying destroys trust in the skill.
+
+### Skip recommendations the project already implements
+
+Duplicating existing CLAUDE.md sections or re-adding hooks the project has is ruido. Read the current state first, diff against insights, propose only the delta.
+
+### If the project is already in good shape, say so
+
+Not every project needs recommendations. A project with comprehensive CLAUDE.md, relevant hooks, and appropriate skills should hear "your setup looks solid — nothing to add" instead of forced suggestions. Honesty > output volume.
+
+### Insights file is required — without it, fall back to best practices explicitly
+
+If `~/.claude/insights/usage-insights.md` (or the path in args) is missing, inform the user and use general best practices — but label clearly that recommendations are generic, not data-driven. Don't pretend insights exist when they don't.
+
+### Skill gaps must be derived from actual friction, not a fixed list
+
+Do not assume every project needs `/bugfix`, `/review-pr`, etc. Look at the insights file: which tasks keep getting re-explained? Which workflows have friction logged? THOSE are the skill candidates — not a checklist copied from another project.

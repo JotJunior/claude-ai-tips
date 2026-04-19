@@ -1,11 +1,13 @@
 ---
 name: validate-documentation
 description: |
-  Valida documentação existente contra padrões de qualidade estabelecidos.
-  Use para verificar completude, consistência e qualidade de documentos UC,
-  diagramas, mapeamentos de dados e casos de teste.
-  Triggers: "validar documentação", "verificar UC", "checar qualidade docs",
-  "review documentation", "audit docs".
+  Use quando o usuario pedir para validar documentacao existente, verificar
+  qualidade/completude de um UC, auditar um documento individual ou revisar
+  conformidade com padroes estruturais. Tambem quando mencionar "validar
+  documentacao", "verificar UC", "checar qualidade docs", "review
+  documentation", "audit docs". NAO use para validar consistencia
+  CROSS-artifact entre spec/plan/tasks (use analyze) — esta skill valida
+  UM documento por vez.
 allowed-tools:
   - Read
   - Glob
@@ -179,3 +181,27 @@ Valide toda a documentação de casos de uso
 ```
 Valide e corrija os problemas encontrados em UC-CAD-001.md
 ```
+
+---
+
+## Gotchas
+
+### Valida DOCUMENTO INDIVIDUAL, nao relacionamento entre artefatos
+
+Para verificar se o `tasks.md` cobre os requisitos do `spec.md`, ou se `plan.md` viola `constitution.md`, use a skill `analyze`. Esta skill valida UM documento contra padroes estruturais — UC tem todas as secoes, diagramas parseaveis, IDs nao-duplicados, etc.
+
+### Diagrama Mermaid com erro de sintaxe nao e cosmetico
+
+Um `sequenceDiagram` sem `participant` declarado, ou setas fora do padrao (`-->` ao inves de `->>`), quebra o render em GitHub/viewers. Sempre validar que o diagrama parseia — idealmente via script.
+
+### IDs duplicados dentro do mesmo documento sao erro, nao aviso
+
+RN01 aparecendo duas vezes, ou CT03 com dois cenarios distintos, quebra rastreabilidade. Detectar e reportar como Erro, nao Aviso.
+
+### Minimo 5 casos de teste (sucesso + erro + edge) — abaixo disso reprova
+
+UC com 2 CTs e incompleto. A cobertura minima e: 1-2 cenarios de sucesso + 1-2 de erro + 1 edge case. Menos que isso, o UC nao esta pronto para implementacao.
+
+### Auto-correcao pede confirmacao — nao aplicar direto
+
+Mesmo quando o usuario pediu "valide e corrija", apresentar o que sera mudado antes de escrever. Correcao automatica em documento humano sem review gera desconfianca do sistema.

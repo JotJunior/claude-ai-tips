@@ -1,11 +1,12 @@
 ---
 name: specify
 description: |
-  Transforma uma descricao em linguagem natural em uma feature spec completa
-  no formato SDD (Spec-Driven Development) com user stories priorizadas,
-  requisitos funcionais, criterios de aceite e success criteria.
-  Triggers: "especificar feature", "specify", "criar spec", "nova feature",
-  "especificacao", "feature spec".
+  Use quando o usuario descrever uma nova feature em linguagem natural e pedir
+  para transformar em spec SDD estruturada (user stories, requisitos
+  funcionais, success criteria). Tambem quando mencionar "specify", "criar
+  spec", "nova feature", "especificacao", "feature spec". NAO use para
+  documentacao classica de UC (use create-use-case) ou para refinar spec
+  existente (use clarify).
 argument-hint: "[descricao da feature em linguagem natural]"
 allowed-tools:
   - Read
@@ -308,3 +309,32 @@ Salvar em `docs/specs/{short-name}/spec.md`.
 - `create-use-case`: Formato UC classico (fluxos, atores, RNs, CTs) para documentacao formal
 - `specify`: Feature spec SDD (user stories, acceptance criteria, success criteria) para workflow de desenvolvimento
 - Ambos coexistem — UC para documentacao, specify para SDD
+
+---
+
+## Gotchas
+
+### ZERO detalhes de implementacao na spec
+
+Sem linguagens, frameworks, APIs, estrutura de codigo, nomes de bibliotecas, classes. A spec responde QUE e POR QUE — o COMO vai para `/plan`. Se aparece "em React" ou "com PostgreSQL" na spec, esta errado.
+
+### Success Criteria devem ser technology-agnostic E mensuraveis
+
+Correto: "Usuario completa checkout em <3 minutos", "95% das buscas retornam <1s", "Sistema suporta 10k usuarios concorrentes".
+Errado: "API responde <200ms" (tecnico), "Database aguenta 1000 TPS" (implementacao), "Componentes React renderizam rapido" (framework).
+
+### Maximo 3 `[NEEDS CLARIFICATION]` — priorizar escopo > seguranca > UX > tech
+
+Mais de 3 marcadores indica que a spec deveria voltar ao usuario antes de escrever. Priorize o que impacta corretude e use defaults informados para o resto.
+
+### Cada user story deve ser INDEPENDENTEMENTE TESTAVEL
+
+Se implementar apenas P1 nao ha MVP viavel, as stories estao acopladas demais. Cada story precisa ter valor isolado para o usuario.
+
+### Nao deixar secoes vazias com "N/A"
+
+Se a feature nao envolve entidades de dados, remover a secao "Key Entities" inteira — nao deixar header com "N/A" abaixo. Secoes vazias sao ruido para o `/plan` e `/create-tasks` downstream.
+
+### Defaults razoaveis ao inves de [NEEDS CLARIFICATION] para tudo
+
+Retencao de dados, tratamento de erros padrao, autenticacao web-padrao — se nao critico, use o default da industria e documente a suposicao. Marcar tudo como pendente trava o fluxo.

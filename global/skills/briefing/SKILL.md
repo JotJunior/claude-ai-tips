@@ -1,11 +1,13 @@
 ---
 name: briefing
 description: |
-  Conduz entrevista estruturada de discovery do projeto, coletando visao,
-  usuarios, restricoes, prioridades e contexto tecnico. Gera documento de
-  briefing que alimenta constitution, specs e demais artefatos SDD.
-  Triggers: "briefing", "discovery", "iniciar projeto", "novo projeto",
-  "entrevista do projeto", "project intake", "kickoff".
+  Use quando o usuario iniciar um novo projeto, pedir discovery/kickoff, ou
+  quiser levantar contexto estruturado via entrevista (visao, usuarios,
+  restricoes, prioridades, stack, qualidade, futuro). Tambem quando mencionar
+  "briefing", "discovery", "iniciar projeto", "novo projeto", "entrevista do
+  projeto", "project intake", "kickoff". NAO use se ja existe briefing
+  completo e o usuario nao pediu atualizacao — o documento alimenta
+  constitution, specs e demais artefatos SDD.
 argument-hint: "[descricao inicial do projeto ou vazio para entrevista completa]"
 allowed-tools:
   - Read
@@ -132,9 +134,9 @@ que nunca ouviu falar dele.
 - Qual PROBLEMA resolve
 - Para QUEM
 
-**Exemplo**: "Um app de fidelidade para bares que permite clientes acumularem
-pontos por consumo e trocarem por recompensas. Resolve o problema de retencao
-de clientes para estabelecimentos de bebidas."
+**Exemplo**: "Um sistema de gestao de pedidos que permite lojistas acompanharem
+vendas em tempo real e emitirem notas automaticamente. Resolve o problema de
+visibilidade operacional para pequenos comercios."
 
 Responda com sua descricao livre.
 ```
@@ -310,7 +312,7 @@ Descreva livremente o que imagina para o futuro do projeto.
 6. **Maximo 10 perguntas** — se usuario disser "chega", "pronto" ou "prossiga", encerrar
 7. **Nao julgar respostas** — registrar fielmente; criticas sao trabalho do `/advisor`
 8. **Confirmar inferencias** — quando preencher algo inferido, confirmar brevemente:
-   "Detectei que o projeto usa Go + PostgreSQL. Correto?"
+   "Detectei que o projeto usa [linguagem + banco identificados do package.json/go.mod/etc]. Correto?"
 
 ### 3.3 Transicao entre Perguntas
 
@@ -517,3 +519,35 @@ Se ja existe um briefing:
 | `advisor` | Pode criticar decisoes registradas no briefing |
 | `plan` | Usa briefing como contexto tecnico de alto nivel |
 | `initialize-docs` | Cria o diretorio onde o briefing e salvo |
+
+---
+
+## Gotchas
+
+### Uma pergunta por vez — aguardar resposta antes de avancar
+
+Despejar 7 perguntas de uma vez quebra a entrevista. O valor esta no ciclo pergunta-resposta-reflexao-proxima. Enviar bloco significa que o usuario responde em batch, sem reflexao.
+
+### Maximo 10 perguntas TOTAL
+
+Nao exceda por "mais uma coisa importante". Se 10 nao resolveram, registre o que tem e marque o resto como "A Definir" — o briefing e draft, pode ser atualizado depois.
+
+### Inferencias devem ser marcadas `[inferido]` e confirmadas
+
+Quando preencher algo derivado do codigo (ex: stack detectada de `go.mod`), marque `[inferido]` e confirme com uma linha: "Detectei X, correto?". Assumir sem confirmar e arriscar registrar premissa errada como fato.
+
+### Se o usuario responder varias dimensoes de uma vez, registre TODAS
+
+Usuario pragmatico frequentemente responde em texto corrido cobrindo 3 dimensoes. Capture tudo e pule as perguntas equivalentes — nao repita o que ja foi dito so para seguir o roteiro.
+
+### NAO julgar respostas — briefing registra, advisor critica
+
+Se o usuario diz "vou lancar sem testes para ganhar velocidade", registre fielmente. Criticar aqui quebra a confianca da entrevista. A critica e papel do `/advisor`, se o usuario pedir.
+
+### Remover secoes inteiras quando a dimensao nao se aplica
+
+Se o projeto e uma biblioteca interna sem usuarios finais, remover a secao "Usuarios e Stakeholders" em vez de deixar "N/A". Secoes vazias sao ruido para `/constitution` e `/specify` downstream.
+
+### Nunca reescrever em jargao tecnico
+
+Usar as palavras do usuario. Se ele disse "app de caixa", nao trocar por "sistema de ponto-de-venda transacional". O briefing preserva linguagem; o `/plan` traduz em tecnico.

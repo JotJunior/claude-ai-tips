@@ -1,6 +1,11 @@
 ---
 name: image-generation
-description: Enhances image generation prompts using Subject-Context-Style structure and best practices. Use this skill when generating images, creating illustrations, photos, visual assets, editing images, or crafting prompts for image generation.
+description: |
+  Use when the user asks to generate images, create illustrations, photos,
+  visual assets, edit existing images, or craft prompts for image generation
+  models. Also when they mention "image prompt", "illustration", "mockup image",
+  "visual asset", "generate a picture". Do NOT use for technical diagrams
+  (Mermaid, PlantUML, drawio) — those are generated as code, not images.
 ---
 
 # Image Generation Prompt Best Practices
@@ -128,4 +133,32 @@ When modifying an existing image:
 **Input:** "A happy dog in a park"
 
 **Enhanced:** "Golden retriever mid-leap catching a red frisbee, ears flying, tongue out in joy, in a sunlit urban park. Soft morning light filtering through oak trees creates dappled shadows on emerald grass. Background shows families on picnic blankets, slightly out of focus. Shot from low angle emphasizing the dog's athletic movement, with motion blur on the paws suggesting speed."
+
+---
+
+## Gotchas
+
+### Positive descriptions only — exclusions become inclusions
+
+"No clouds" becomes "clear blue sky". "Not blurry" becomes "sharp focus, crisp detail". Image models attend to what is written, not what is excluded. Every negative phrasing is a prompt bug.
+
+### Specific beats vague, always
+
+"Nice lighting" gives the model nothing to anchor on. "Golden hour sunlight at 15° angle, long soft shadows, warm amber color temperature" produces consistent output. Vague prompts produce generic results.
+
+### Preserve user intent — enrich, don't override
+
+If the user says "cozy coffee shop", don't swap it for "modern minimalist cafe" because that's trendier. Enhance the original vision with concrete details that serve THEIR concept.
+
+### Character consistency needs 3+ recognizable markers
+
+A single "tall woman with brown hair" won't survive across images. You need "distinctive scar above left eyebrow, signature red scarf, always wears round tortoiseshell glasses" — three anchors minimum.
+
+### Image editing: anchor what stays before describing what changes
+
+"Change the sky to sunset" risks the model regenerating the whole image. "Maintain the original composition, color palette of the foreground, and architectural details — only change the sky to a vivid sunset" preserves what matters.
+
+### Text in images needs quoted content, font, placement
+
+Image models hallucinate text by default. If the image should contain readable text, specify: `"OPEN 24 HOURS" in bold sans-serif, centered on the storefront awning`. Without those anchors, expect garbled text.
 

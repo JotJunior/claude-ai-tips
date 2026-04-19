@@ -1,6 +1,13 @@
 ---
 name: owasp-security
-description: Use when reviewing code for security vulnerabilities, implementing authentication/authorization, handling user input, or discussing web application security. Covers OWASP Top 10:2025, ASVS 5.0, and Agentic AI security (2026).
+description: |
+  Use when reviewing code for security vulnerabilities, implementing
+  authentication/authorization, handling user input, building cryptography,
+  designing API endpoints, or working on AI agent systems. Also when the user
+  mentions "security review", "OWASP", "vulnerability check", "auth code",
+  "input validation", "threat model". Covers OWASP Top 10:2025, ASVS 5.0, and
+  Agentic AI security (2026). Do NOT use for general code review without a
+  security focus — use a general review flow for those.
 ---
 
 # OWASP Security Best Practices Skill
@@ -520,6 +527,34 @@ When reviewing any language, think like a senior security researcher:
 10. **Error Handling:** How does the language fail? Silently? With stack traces? Fail-open?
 
 **For any language not listed:** Research its specific CWE patterns, CVE history, and known footguns. The examples above are entry points, not complete coverage.
+
+---
+
+## Gotchas
+
+### Always check for framework-level auth BEFORE flagging missing per-route auth
+
+The most common false positive: flagging a route handler as "no auth check" when auth is enforced globally in middleware (Next.js `middleware.ts`, Express `app.use`, Chi middleware stack, FastAPI dependencies). Read the middleware config before reporting.
+
+### Fail-closed is MANDATORY in permission checks
+
+`return True` in the `except` branch of a permission check is the most critical vulnerability pattern you will see. Auth failure must deny, not grant. This is not a style preference.
+
+### The language examples are starting points, not a complete checklist
+
+Every language has deeper quirks than what is listed (memory model, type system, serialization traps, FFI boundaries, historic CVEs in std lib). For any language you review, apply the deep analysis mindset — do not stop at the top-line examples.
+
+### OWASP Top 10 has versions — use 2025/2026, not 2021
+
+Top 10:2025 reordered and added categories (Supply Chain moved up; Exception Handling is now A10). Citing 2021 rankings gives stale advice. Same applies to ASVS (5.0 is current).
+
+### Input validation is server-side, period
+
+Client-side validation is UX, not security. Every reference to "validated input" in the checklist assumes server-side enforcement. If code only validates in the browser, it is unvalidated.
+
+### Agentic AI threats are not hypothetical
+
+Prompt injection (ASI01), tool misuse (ASI02), memory poisoning (ASI06) are actively exploited in 2026. When reviewing agent code, apply the ASI checklist — do not treat it as forward-looking only.
 
 ## When to Apply This Skill
 

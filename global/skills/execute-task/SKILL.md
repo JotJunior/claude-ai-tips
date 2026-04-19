@@ -1,10 +1,13 @@
 ---
 name: execute-task
 description: |
-  Executa uma tarefa especifica do projeto seguindo fluxo obrigatorio de 9 etapas:
-  analise, localizacao, planejamento, implementacao, testes, validacao, lint, conclusao e atualizacao.
-  Triggers: "executar tarefa", "execute task", "fazer tarefa", "implementar tarefa",
-  "rodar tarefa", "executar subtarefa".
+  Use quando o usuario pedir para executar, fazer ou implementar uma tarefa
+  especifica do backlog, seguindo fluxo obrigatorio de 9 etapas (analise,
+  localizacao, planejamento, implementacao, testes, validacao, lint, conclusao
+  e atualizacao). Tambem quando mencionar "executar tarefa", "execute task",
+  "fazer tarefa", "implementar tarefa", "rodar tarefa", "executar subtarefa".
+  NAO use para criar tarefas (use create-tasks), gerar plano tecnico
+  (use plan) ou corrigir bug (use bugfix).
 argument-hint: "[ID ou descricao da tarefa a executar]"
 allowed-tools:
   - Read
@@ -101,23 +104,27 @@ Para projetos com multiplos servicos, tambem verificar:
 ### 2.1 Encontrar Arquivo de Tarefas
 
 Procure na seguinte ordem:
-1. `docs/tasks.md`
-2. `tasks.md`
-3. `TODO.md`
-4. `docs/TODO.md`
-5. `.github/TODO.md`
+1. `docs/specs/*/tasks.md` — backlog ligado a uma spec SDD (prioritario se a tarefa vem de uma spec)
+2. `docs/tasks.md`
+3. `docs/tasks-*.md` — backlog por modulo/servico
+4. `tasks.md`
+5. `TODO.md`, `docs/TODO.md`, `.github/TODO.md`
+
+**IMPORTANTE**: se a tarefa se origina de uma spec em `docs/specs/{name}/`, o
+`tasks.md` a atualizar ao final esta em `docs/specs/{name}/tasks.md` — NAO em
+`docs/tasks-*.md`. Criar ou atualizar arquivo errado quebra a composicao SDD.
 
 ### 2.2 Identificar a Tarefa
 
 Encontre a tarefa especifica: **$ARGUMENTS**
 
 Extraia:
-- **ID da tarefa** (ex: TASK-CAD-001)
+- **ID da tarefa** (ex: 1.2.3 ou TASK-XYZ-001, no formato usado pelo projeto)
 - **Descricao completa**
 - **Subtarefas** (se houver)
-- **Prioridade** (P0, P1, P2, P3)
+- **Criticidade/prioridade** ([C]/[A]/[M] ou P0/P1/P2)
 - **Dependencias** (outras tarefas que precisam estar prontas)
-- **Dominio** (CAD, PED, FIN, etc.)
+- **Dominio/contexto** (conforme convencao do projeto)
 
 ### 2.3 Checklist da Localizacao
 
@@ -188,35 +195,27 @@ Antes de implementar, verifique:
 ### 4.2 Para Tarefas de CODIGO
 
 ```
-1. Leia codigo relacionado existente
+1. Leia codigo relacionado existente (grep por simbolos similares)
 2. Leia CLAUDE.md para convencoes do projeto
 3. Siga padroes e arquitetura do projeto
-4. Implemente com tratamento de erros
+4. Implemente com tratamento de erros adequado
 5. Mantenha arquivos em UTF-8
 ```
 
-**Principios obrigatorios:**
-- Verifique assinaturas de metodos antes de implementar
-- Use interfaces ao inves de implementacoes concretas
-- Dependency Injection para dependencias
-- Tratamento de erros com mensagens claras
+**Principios obrigatorios (independente de stack):**
+- Verifique assinaturas/interfaces existentes antes de implementar
+- Prefira interfaces/abstracoes a implementacoes concretas quando convencao do projeto permitir
+- Tratamento de erros com mensagens claras e acionaveis
+- Siga convencoes de nomenclatura, layout de arquivos e estilo ja presentes no repositorio
 
-**Para projetos Go (microservicos):**
-- Toda query SQL DEVE incluir schema prefix (`schema.table`)
-- Enum values DEVEM coincidir com CHECK constraints do PostgreSQL
-- DTO field names DEVEM coincidir entre frontend e backend
-- Rotas estaticas ANTES de rotas com `/:id` (Fiber trie)
-- Codigo em ingles, UI text em portugues com acentos corretos
+**Ponto de atencao por camada (adaptar ao stack):**
+- **Persistencia**: queries devem usar schema/namespace correto; valores enum devem bater com constraints do banco; scan/bind fields devem cobrir todas as colunas lidas
+- **API/transporte**: nomes de campo devem bater entre cliente e servidor; ordem de rotas estaticas antes de dinamicas na maioria dos routers; versao do contrato preservada
+- **Domain/Types**: tipos compartilhados (enums, DTOs) devem estar sincronizados em todas as camadas que os referenciam
 
-**Para projetos Frontend (React/TypeScript):**
-- Usar componentes shared existentes (PageHeader, ServerPagination, etc.)
-- CRUD forms em paginas dedicadas, NAO modais
-- Hooks obrigatorios: useConfirmDialog para acoes destrutivas
-- Path alias: `@/*` para `./src/*`
-
-**Para tarefas multi-servico:**
-- Use Agent para paralelizar trabalho em servicos independentes
-- Trace DTOs e enums em TODOS os servicos afetados antes de implementar
+**Para tarefas multi-modulo/servico:**
+- Use Agent para paralelizar trabalho em modulos independentes
+- Trace tipos, enums e contratos em TODOS os modulos afetados antes de implementar
 - Grep por referencias residuais apos qualquer rename/refactor
 
 ### 4.3 Checklist da Implementacao
@@ -290,34 +289,20 @@ npm test / composer test / pytest / dotnet test
 
 ## ETAPA 7: LINT
 
-### 7.1 Para Codigo Go
+Use o(s) comando(s) de lint/build padrao do stack em uso. Exemplos comuns:
 
-```bash
-# Build (obrigatorio — hooks validam isso automaticamente)
-cd services/{service} && go build ./...
+| Stack | Comandos tipicos |
+|-------|------------------|
+| Go | `go build ./...`, `golangci-lint run ./...`, `go vet ./...` |
+| Node / TypeScript | `npm run build`, `npx tsc --noEmit`, `npm run lint` |
+| Rust | `cargo build`, `cargo clippy -- -D warnings`, `cargo fmt --check` |
+| Python | `ruff check .`, `mypy .`, `python -m compileall .` |
+| Java/Kotlin | `mvn compile`, `mvn verify`, `./gradlew build` |
+| .NET | `dotnet build`, `dotnet format --verify-no-changes` |
+| Documentacao | validar Markdown, tabelas, code blocks e diagramas Mermaid |
 
-# Lint
-cd services/{service} && golangci-lint run ./...
-
-# Vet
-cd services/{service} && go vet ./...
-```
-
-### 7.2 Para Codigo Frontend (TypeScript/React)
-
-```bash
-cd services/{frontend} && npx tsc --noEmit
-cd services/{frontend} && npm run lint
-```
-
-### 7.3 Para Documentacao
-
-```
-# Verificar formatacao Markdown
-# Verificar sintaxe de tabelas
-# Verificar code blocks
-# Verificar diagramas Mermaid (sintaxe)
-```
+Se o projeto tem Makefile, README ou CI pipeline com comandos definidos, usar
+esses — nao inventar comandos fora da convencao do projeto.
 
 ---
 
@@ -372,20 +357,21 @@ Se houver subtarefas, marque TODAS como concluidas.
 
 ## NOMENCLATURAS COMUNS
 
+Estas sao convencoes ilustrativas — a lista exata de dominios e prefixos e
+definida pelo projeto. Se o projeto ja tem UCs/ADRs, derivar os codigos usados
+via Glob em vez de assumir esta lista.
+
 ### Documentacao
-- `UC-AUTH-NNN`: Autenticacao
-- `UC-CAD-NNN`: Cadastros
-- `UC-PED-NNN`: Pedidos
-- `UC-FAT-NNN`: Faturamento
-- `UC-FIN-NNN`: Financeiro
-- `UC-LOG-NNN`: Logistica
-- `UC-MON-NNN`: Monitoramento
+- `UC-{DOMINIO}-NNN`: Caso de Uso (ex: UC-AUTH-001, UC-CAD-012)
+- `ADR-NNN`: Architectural Decision Record
+- `DER-{system}`: Diagrama Entidade-Relacionamento
 
 ### Regras e Testes
 - `RN-NNN`: Regra de Negocio
 - `CT-NNN`: Caso de Teste
 - `E-NNN`: Codigo de Excecao
 - `RNF-NNN`: Requisito Nao-Funcional
+- `FA{N}`: Fluxo Alternativo
 
 ---
 
@@ -396,3 +382,35 @@ Se houver subtarefas, marque TODAS como concluidas.
 2. SIGA TODAS AS ETAPAS na ordem
 3. NAO PULE etapas
 4. MARQUE A TAREFA como [x] ao final
+
+---
+
+## Gotchas
+
+### Ler documentacao ANTES de executar e OBRIGATORIO
+
+Pular a etapa de analise leva a implementacao fora dos padroes do projeto. README, CLAUDE.md e docs/ contem as convencoes que o codigo nao revela sozinho. Rodar sem ler equivale a chutar estilo.
+
+### Atualizar tasks.md no final e OBRIGATORIO
+
+Tarefa concluida mas nao marcada `[x]` e tecnicamente nao-feita — o `/review-task` vai re-processar. Esta e a causa #1 de retrabalho. Marque como ultima acao da Etapa 9, sempre.
+
+### Se a tarefa veio de uma spec, o tasks.md a atualizar esta na spec
+
+Tarefa originada em `docs/specs/{name}/` atualiza `docs/specs/{name}/tasks.md`, NAO `docs/tasks-*.md` na raiz. Atualizar arquivo errado quebra a composicao SDD.
+
+### Nao pular etapa de testes/lint por "tarefa pequena"
+
+A etapa de lint/test e o gate que impede regressao. "Tarefa pequena" e o disfarce favorito do bug que vai aparecer em producao duas semanas depois. Se o projeto tem Makefile/CI com comandos definidos, use-os — nao invente shortcuts.
+
+### STOP-AND-REMAP durante implementacao
+
+Se durante a implementacao surge um issue em outra camada, pare, revise o plano (Etapa 3) e so entao continue. Perseguir issues emergentes sem remapear e a causa #1 de ciclos fix-reveal-fix.
+
+### Detectar tipo de projeto antes de escolher comando
+
+Rodar `go build` num projeto Python, ou `npm run lint` num projeto Rust, e ruido. A Etapa 1 (Analise) existe para identificar o stack — use-a antes de escolher comandos de lint.
+
+### Cada etapa tem mini-resumo
+
+O fluxo obrigatorio pede revisao ao final de cada etapa. Skip desse review fragiliza a cadeia — um erro na Etapa 2 so aparece na Etapa 6 e obriga refazer tudo. Mini-resumos sao barreiras contra isso.

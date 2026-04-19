@@ -1,10 +1,12 @@
 ---
 name: review-task
 description: |
-  Analisa arquivo de tarefas do projeto e gera relatorio de status com progresso,
-  inconsistencias, tarefas bloqueadas e proximas acoes recomendadas.
-  Triggers: "revisar tarefas", "status das tarefas", "review tasks",
-  "progresso do projeto", "verificar tarefas", "relatorio de tarefas".
+  Use quando o usuario pedir status das tarefas, progresso do projeto,
+  relatorio do backlog, ou quiser identificar tarefas prontas para comecar.
+  Tambem quando mencionar "revisar tarefas", "status das tarefas", "review
+  tasks", "progresso do projeto", "verificar tarefas", "relatorio de tarefas".
+  NAO use para executar tarefas (use execute-task) ou criar novas
+  (use create-tasks).
 allowed-tools:
   - Read
   - Edit
@@ -87,8 +89,8 @@ git log --oneline -20
 # Buscar commits relacionados a uma tarefa especifica
 git log --oneline --grep="task-keyword"
 
-# Verificar se servico compila (Go)
-cd services/{service} && go build ./... 2>&1 | head -5
+# Verificar se o codigo compila/build passa (comando depende do stack)
+# Exemplos: `go build ./...`, `npm run build`, `cargo build`, `mvn compile`
 ```
 
 #### Para Monorepos Multi-Servico:
@@ -209,3 +211,31 @@ Antes de finalizar o relatorio:
 4. Identifique e corrija inconsistencias
 5. Gere relatorio completo
 6. Sugira proximos passos
+
+---
+
+## Gotchas
+
+### Detectar inconsistencias e a razao de ser da skill
+
+Tarefa feita mas nao marcada `[x]` e o erro mais frequente do fluxo. Se a skill so relata status sem cruzar com evidencias (arquivo existe, commit recente, build passa), nao agrega valor — vira `grep "[ ]"`.
+
+### Procurar tasks em multiplas localizacoes, nao um path unico
+
+Verificar nesta ordem: `docs/specs/*/tasks.md` (SDD), `docs/tasks.md`, `docs/tasks-*.md` (por servico/modulo), `tasks.md` raiz, `TODO.md`. Assumir apenas um path deixa fora projetos com SDD ou multi-servico.
+
+### Marcar tarefas como [x] requer evidencia explicita no relatorio
+
+Nunca marque silenciosamente. Cada auto-completion deve aparecer na secao "Tarefas Finalizadas Nesta Sessao" com bullet de evidencias (arquivo criado, commit X, build passa). Auditoria depende disso.
+
+### Recomendacoes (top 3) devem respeitar criticidade e dependencias
+
+A ordem e: `[C]` antes de `[A]` antes de `[M]`, e dentro do mesmo nivel, tarefas sem bloqueios primeiro. Recomendar uma `[M]` quando existem `[C]` pendentes desbloqueadas e erro de priorizacao.
+
+### Monorepos multi-servico: paralelizar com Agent
+
+Quando tasks.md cobre 5+ modulos/servicos, auditar sequencialmente multiplica o tempo. Lance agentes paralelos — cada um audita um servico, depois consolide.
+
+### Nao confundir com execute-task
+
+Esta skill LE e RELATA; nao executa trabalho pendente. Se o usuario pergunta "status" e recomenda uma tarefa, nao emenda `/execute-task` no mesmo turno — pergunte se quer prosseguir.

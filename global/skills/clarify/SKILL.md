@@ -1,10 +1,11 @@
 ---
 name: clarify
 description: |
-  Identifica areas sub-especificadas em uma feature spec e resolve ambiguidades
-  via perguntas estruturadas (max 5), integrando respostas diretamente na spec.
-  Triggers: "clarificar spec", "clarify", "resolver ambiguidades", "refinar spec",
-  "clarificar requisitos".
+  Use quando o usuario pedir para refinar uma spec existente, resolver
+  ambiguidades ou clarificar requisitos via perguntas estruturadas. Tambem
+  quando mencionar "clarify", "clarificar spec", "resolver ambiguidades",
+  "refinar spec", "clarificar requisitos". NAO use para criar spec do zero
+  (use specify) — a skill opera sobre spec.md ja existente.
 argument-hint: "[caminho para spec ou feature name]"
 allowed-tools:
   - Read
@@ -294,3 +295,31 @@ Atualizar a spec imediatamente:
 - Evitar perguntas especulativas sobre tech stack (a menos que bloqueiem clareza funcional)
 - Respeitar sinais de encerramento do usuario ("stop", "done", "prosseguir")
 - Se cota esgotada com categorias Outstanding de alto impacto: flaggear explicitamente como Deferred com rationale
+
+---
+
+## Gotchas
+
+### Maximo 5 perguntas TOTAL — nao "so mais uma"
+
+Retries de desambiguacao (quando a resposta do usuario foi ambigua) nao contam, mas perguntas novas contam. Exceder o limite corroi o valor da skill — se 5 nao resolveu tudo, documente as ambiguidades restantes como Deferred e passe para o `/plan`.
+
+### Uma pergunta por vez — esperar resposta antes de avancar
+
+Despejar 5 perguntas de uma vez parece eficiente mas quebra a integracao incremental. Cada resposta aceita dispara um write na spec; perguntas em lote perdem esse ciclo.
+
+### Atomic write apos cada resposta
+
+Integre a resposta na spec IMEDIATAMENTE (atomic overwrite), nao acumule respostas para integrar no final. Se o usuario interromper na pergunta 3, as 2 respostas anteriores ja estao persistidas.
+
+### Respostas devem mapear para opcoes ou <= 5 palavras
+
+Respostas livres longas violam o contrato do formato. Se o usuario responder em texto longo, sintetize em resposta curta e confirme — nao integre o texto cru na spec.
+
+### Se a spec nao existe, abortar e instruir /specify
+
+Nao tente "clarificar do nada" inferindo o que a spec poderia ser. A skill opera sobre texto existente — sem texto, use `/specify` primeiro.
+
+### Nao reordenar secoes nem reescrever heading hierarchy
+
+As unicas adicoes permitidas sao `## Clarifications` e `### Session YYYY-MM-DD`. Alterar outros headings contamina o diff e quebra ferramentas downstream.

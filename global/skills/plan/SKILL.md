@@ -1,10 +1,11 @@
 ---
 name: plan
 description: |
-  Gera plano de implementacao tecnico a partir de uma feature spec, incluindo
-  pesquisa de tecnologias, modelo de dados, contratos de API e cenarios de teste.
-  Triggers: "criar plano", "plan", "planejar implementacao", "plano tecnico",
-  "implementation plan".
+  Use quando o usuario pedir para gerar plano tecnico de implementacao a partir
+  de uma spec existente — arquitetura, data model, contratos de API, research
+  de tecnologias, cenarios de teste. Tambem quando mencionar "plan", "criar
+  plano", "planejar implementacao", "plano tecnico", "implementation plan".
+  NAO use para criar spec (use specify) ou decompor em tarefas (use create-tasks).
 argument-hint: "[caminho para spec ou descricao da feature]"
 allowed-tools:
   - Read
@@ -382,3 +383,31 @@ Listar todos os arquivos criados:
 - **Usar Agent para pesquisa paralela** em projetos complexos com multiplas unknowns
 - **Paths devem ser reais** — verificar existencia de diretorios antes de referenciar
 - **Phase 0 vem antes de Phase 1** — nao projetar modelo de dados com unknowns pendentes
+
+---
+
+## Gotchas
+
+### NUNCA gerar codigo nesta fase
+
+Plano e documentacao tecnica, nao implementacao. Se o impulso e escrever uma funcao ou SQL concreto, pare — vai para `/execute-task`. O plano descreve contratos, schemas e estrutura, nao implementa.
+
+### NEEDS CLARIFICATION devem morrer no Phase 0, nao em Phase 1
+
+Projetar modelo de dados ou contratos com unknowns pendentes e retrabalho garantido. Se Phase 0 nao resolveu, interromper e voltar ao usuario — nao prosseguir para design com lacunas tecnicas.
+
+### Violacao de constitution em principio MUST e bloqueante
+
+Nao tente "documentar a violacao em Complexity Tracking e seguir". MUST nao negocia. Se o plano precisa violar um MUST, revisar escopo ou emendar constituicao primeiro.
+
+### Paths no Project Structure devem ser REAIS
+
+Listar diretorios inventados ("/src/features/x") que nao existem no projeto cria plano desalinhado com o codebase. Sempre verificar estrutura existente antes de desenhar a arvore no plano.
+
+### Re-check de constitution apos Phase 1 nao e formalidade
+
+Design pode introduzir complexidade nao justificada (4o servico, camada adicional) que viola principios. O re-check e o gate final — rode serio, nao marque "PASS" por inercia.
+
+### Technical Context com "NEEDS CLARIFICATION" em campo inferivel e desleixo
+
+Antes de marcar unknown, tentar inferir de `go.mod`, `package.json`, `Dockerfile`, `CLAUDE.md`. Marcar "NEEDS CLARIFICATION: linguagem" num repo com `pyproject.toml` e sinal de que o Phase 0 nao leu o projeto.

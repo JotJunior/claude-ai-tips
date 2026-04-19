@@ -1,9 +1,12 @@
 ---
 name: bugfix
 description: |
-  Structured bug fix protocol that traces issues across all affected layers
-  before implementing fixes. Prevents cascading bugs in multi-service architectures.
-  Triggers: "bugfix", "fix bug", "corrigir bug", "debug", "investigar bug".
+  Use when the user reports a bug, error, unexpected behavior, or asks to
+  investigate/fix a problem in running code. Also when they mention "bugfix",
+  "fix bug", "corrigir bug", "debug", "investigar bug", "why doesn't X work".
+  Traces issues across all affected layers BEFORE implementing fixes, to
+  prevent cascading fix-reveal-fix cycles in multi-service architectures.
+  Do NOT use for new feature work — use execute-task or specify for that.
 argument-hint: "[description of the bug, error message, or screenshot path]"
 allowed-tools:
   - Read
@@ -19,8 +22,9 @@ allowed-tools:
 
 # Bug Fix Skill
 
-Structured bug fix protocol derived from usage insights (134 sessions, 71 bug
-fixes analyzed). Designed to eliminate cascading fix-reveal-fix cycles.
+Structured bug fix protocol designed to eliminate cascading fix-reveal-fix cycles
+by mapping the full data flow before touching any layer. Stack-agnostic — adapt
+the commands and layer names to the project you are working in.
 
 ## Arguments
 
@@ -49,23 +53,26 @@ For multi-service bugs, create tasks to track progress across services.
 
 ## Step 2: Check for Stale Artifacts
 
-Before any debugging, eliminate ghost bugs:
+Before any debugging, eliminate ghost bugs. Use the commands appropriate to the
+project stack — the pattern is "force rebuild + verify source matches running":
 
 ```bash
-# Go: verify binary is current (rebuild to be sure)
-cd services/{service} && go build ./...
+# Force rebuild (stack-specific)
+# Examples:
+#   Go:         go build ./...
+#   Node:       rm -rf node_modules/.cache && npm run build
+#   Rust:       cargo clean && cargo build
+#   Java/JVM:   mvn clean compile
+#   Python:     rm -rf __pycache__ dist build *.egg-info
 
-# Go: check for replaced modules that might be stale
-go mod verify
+# Verify dependencies haven't drifted
+# Examples: go mod verify, npm ls, pip freeze, cargo tree
 
-# Node: check for stale builds
-ls -la node_modules/.cache/ 2>/dev/null
-
-# Check git status for uncommitted changes
+# Always check git state regardless of stack
 git status --short
-
-# Check if deployed version matches source (production bugs)
 git log --oneline -3
+
+# For production bugs, confirm deployed commit matches source
 ```
 
 If stale artifacts found, warn the user before proceeding.
@@ -74,27 +81,28 @@ If stale artifacts found, warn the user before proceeding.
 
 **CRITICAL**: Do NOT fix any single layer yet. Map the complete path first.
 
-For each affected entity/endpoint, trace through ALL layers:
+For each affected entity/endpoint, trace through ALL layers. Adapt the layer
+names to the stack in use — the principle is "follow the data end-to-end":
 
-### Backend (Go)
-1. **Handler** — read the HTTP handler, check request parsing and response shape
-2. **DTO** — check request/response structs, JSON tags, field names
-3. **Service** — check business logic, enum values, validation
-4. **Repository** — check SQL queries, schema prefix, column names
-5. **Migration** — check table definition, CHECK constraints, enum types
-6. **Events** — check RabbitMQ publisher payload matches consumer expectations
+### Server / backend layers (typical)
+1. **Entry point / handler** — request parsing, routing, response shape
+2. **DTO / request-response model** — field names, types, serialization tags
+3. **Service / business logic** — validation, state transitions, enum values
+4. **Repository / data access** — queries, column names, schema/namespace prefixes
+5. **Schema / migration** — table definition, constraints, enum types
+6. **Events / messaging** — publisher payload matches consumer expectations
 
-### Frontend (TypeScript)
-1. **API service** — check endpoint URL, request body shape, field names
-2. **Types** — check TypeScript types match backend DTOs (snake_case in requests)
-3. **Hooks** — check TanStack Query key, request/response handling, transformResponse effects
-4. **Component** — check data binding, error handling
+### Client / frontend layers (typical)
+1. **API client** — endpoint URL, request body shape, field names
+2. **Type definitions** — types match server DTOs, case convention (camelCase vs snake_case)
+3. **State layer** — query keys, cache invalidation, response transformations
+4. **View / component** — data binding, error states, loading states
 
-### Cross-Service
-1. **Inter-service clients** — check if other services call the affected endpoint
-2. **RabbitMQ events** — check if the entity publishes/consumes events
-3. **Shared enums** — check enum values match across Go, PostgreSQL, and TypeScript
-4. **API Gateway / nginx** — check routing rules if 404/502 errors
+### Cross-boundary checks
+1. **Inter-service clients** — other services calling the affected endpoint
+2. **Event/message payloads** — publish/consume schemas align
+3. **Shared enum values** — match across all layers (server code, database constraints, client code)
+4. **Gateway / proxy** — routing rules, auth interception, CORS
 
 ### Step 3b: Parallel Agent Investigation (for multi-service bugs)
 
@@ -118,16 +126,17 @@ Synthesize findings from all agents BEFORE making any edits.
 
 ## Step 4: Identify ALL Mismatches
 
-Create a list of every discrepancy found:
-- Field name mismatches (e.g., `full_name` vs `fullName` vs `FullName`)
-- Enum value mismatches (e.g., Go `ACTIVE` vs DB `active`)
-- Missing fields in DTOs
-- Wrong types (e.g., `string` vs `uuid.UUID`)
-- Missing schema prefix in SQL queries
-- Route ordering issues (static routes MUST come before `/:id`)
-- JSON tag mismatches between Go structs and frontend expectations
-- `transformResponse` camelCase conversion not accounted for
-- Missing `omitempty` on optional pointer fields
+Create a list of every discrepancy found. Common categories (adapt to stack):
+
+- **Field name mismatches** across case conventions (e.g., `full_name` vs `fullName` vs `FullName`)
+- **Enum value mismatches** between code, database constraints, and API contract
+- **Missing fields** in request/response models
+- **Wrong types** at boundaries (string vs UUID, number vs string, nullable vs required)
+- **Missing namespace/schema prefix** in database queries
+- **Route ordering issues** (static routes must come before dynamic params in most routers)
+- **Serialization tag mismatches** between server structs and client expectations
+- **Case conversion** in middleware (client sends snake_case, server expects camelCase, or vice versa)
+- **Optional field handling** (null vs omitted vs empty string)
 
 ## Step 5: Plan the Fix
 
@@ -155,23 +164,29 @@ cascading fix-reveal-fix cycle that wastes the most time.
 
 ## Step 7: Verify
 
-After implementing:
+After implementing, run the stack-appropriate verification chain:
 
 ```bash
-# Go: build all affected services
-cd services/{service} && go build ./...
+# Build (stack-specific)
+#   Go:      go build ./...
+#   Node:    npm run build   (or tsc --noEmit for TS)
+#   Rust:    cargo build
+#   Python:  python -m compileall .
 
-# Go: run tests
-cd services/{service} && go test ./... -count=1 -timeout 60s
+# Tests (stack-specific)
+#   Go:      go test ./... -count=1
+#   Node:    npm test
+#   Rust:    cargo test
+#   Python:  pytest
 
-# Go: lint
-cd services/{service} && golangci-lint run ./...
+# Lint / static analysis (stack-specific)
+#   Go:      golangci-lint run ./... && go vet ./...
+#   Node:    npm run lint && tsc --noEmit
+#   Rust:    cargo clippy -- -D warnings
+#   Python:  ruff check . && mypy .
 
-# Grep for residual references to old code
-rg "oldPattern" --type go --type ts --type tsx
-
-# Check for any leftover imports after refactor
-cd services/{service} && go vet ./...
+# Grep for residual references to old code (any stack)
+# Use Grep tool with the old identifier and appropriate file filter
 ```
 
 ### Test-Driven Verification (for recurring or complex bugs)
@@ -205,10 +220,50 @@ When the bug is subtle or has regressed before:
 ## Important Rules
 
 - **NEVER fix just one layer and declare done** — always trace the full path
-- **NEVER run migrations** without showing SQL and getting user approval
+- **NEVER run migrations or destructive DB operations** without showing the SQL/commands and getting user approval
 - **When a fix reveals another issue, STOP and re-map** before continuing (Step 6 rule)
 - **Always grep for residual references** after any rename/refactor
-- **For frontend issues, check if the fix should be backend-side first** — this is the #1 wrong initial approach
+- **For client-reported issues, check if the fix should be server-side first** — this is the #1 wrong initial approach
 - **Don't overwrite complete files with minimal stubs** — preserve existing code
-- **Check struct fields match DB columns** — missing fields in scan targets cause silent bugs
-- **Verify enum values match across Go, PostgreSQL CHECK constraints, and TypeScript** — mismatches are the most frequent multi-service bug
+- **Check persistence-layer fields match code models** — missing fields in scan/bind targets cause silent bugs
+- **Verify enum values match across all layers** (code, database constraints, client types) — mismatches are the most frequent multi-service bug
+
+---
+
+## Gotchas
+
+### STOP-AND-REMAP when a fix reveals a new issue
+
+If implementing a fix surfaces a problem in another layer, STOP. Do not chase the new issue. Go back to Step 3, re-map remaining layers, update the plan, then continue. Chasing emergent issues without remapping is the #1 cause of fix-reveal-fix cycles that burn hours.
+
+### Don't fix one layer and declare done
+
+The temptation is strong: one edit in the handler, tests green, ship. But the bug almost always crosses layers. Always trace the full path (request → persistence → response) before declaring the fix complete.
+
+### For client-reported bugs, investigate server-side FIRST
+
+The most common wrong approach: user reports "form shows wrong value", dev fixes client. Actual root cause: server response has wrong field name. Always ask "which layer owns this responsibility?" before editing.
+
+### Always grep for residual references after rename/refactor
+
+The old name lives in a config file, a comment, a test fixture, a generated type you forgot. Run a grep with the old identifier across the entire repo — not just the language you edited.
+
+### NEVER run destructive DB operations without approval
+
+Showing the SQL and waiting for explicit "go" is non-negotiable. Even in dev environments. A forgotten `WHERE` clause or a wrong schema name wipes data. The skill shows, approves, then runs — never the reverse.
+
+### Enum drift across layers is silent and deadly
+
+Server defines `status = "ACTIVE"`, database CHECK constraint allows `"active"`, client type uses `"Active"`. None throws a compile error, all three mismatch at runtime. When reviewing a bug that involves a state field, check all three spellings explicitly.
+
+### Route order matters in most routers
+
+In many routers (Chi, Fiber, Express), static routes must be registered before dynamic-param routes — otherwise `/users/me` gets captured by `/users/:id`. If debugging a 404 on what should be a static route, check the registration order.
+
+### Don't overwrite files with minimal stubs
+
+When editing, preserve existing code. Rewriting a 500-line handler with a 20-line stub "to simplify" destroys context the bug fix depends on. Use Edit for surgical changes; reserve Write for truly new files.
+
+### Check DB binding fields match the code model
+
+A struct with 8 fields scanning a 10-column row will bind only 8 and silently drop the other 2. The bug is invisible until a user notices missing data. Verify field-to-column alignment in scan/bind sites.

@@ -1,10 +1,12 @@
 ---
 name: create-use-case
 description: |
-  Cria documento de caso de uso completo (UC-*.md) com fluxos, atores, regras de negocio,
-  dados tecnicos e casos de teste seguindo template padronizado.
-  Triggers: "criar caso de uso", "gerar UC", "documentar funcionalidade",
-  "use case", "criar documentacao de requisitos", "novo UC".
+  Use quando o usuario pedir para documentar um caso de uso funcional com
+  fluxos, atores, regras de negocio, dados tecnicos e casos de teste. Tambem
+  quando mencionar "criar caso de uso", "gerar UC", "documentar funcionalidade",
+  "use case", "criar documentacao de requisitos", "novo UC". NAO use para
+  feature spec SDD (use specify) — UC e formato classico; specify e formato
+  SDD com user stories e success criteria.
 argument-hint: "[descricao da funcionalidade ou caminho para documento base]"
 allowed-tools:
   - Read
@@ -29,20 +31,22 @@ Analise o argumento fornecido. Ele pode ser:
 
 ### Passos para criacao
 
-1. **Identifique o dominio** do caso de uso com base no contexto:
-   - AUTH: Autenticacao e autorizacao
-   - CAD: Cadastros e dados mestres
-   - PED: Pedidos e vendas
-   - FIN: Financeiro e pagamentos
-   - FAT: Faturamento e notas fiscais
-   - LOG: Logistica e entregas
-   - MON: Monitoramento e alertas
-   - INAD: Inadimplencia
-   - REC: Recebimentos/Pagamentos
-   - PROP: Propostas
-   - CONT: Contratos
-   - DOM: Dominio/Dados mestres
-   - Outro dominio conforme o contexto do projeto
+1. **Identifique o dominio** do caso de uso com base no contexto do projeto.
+
+   O dominio e um codigo curto (2-4 letras) que agrupa UCs relacionados. NAO
+   existe uma lista fixa — derive do dominio do projeto atual. Se existir
+   `config.json` nesta skill com dominios customizados, usar essa lista. Caso
+   contrario, pergunte ao usuario ou infira da documentacao existente.
+
+   Exemplos comuns (ilustrativos — nao usar sem verificar o contexto):
+   - **AUTH**: Autenticacao e autorizacao
+   - **CAD**: Cadastros e dados mestres
+   - **PED**: Pedidos e vendas
+   - **FIN**: Financeiro e pagamentos
+
+   Se o projeto ja tem UCs existentes, derivar os codigos usados via
+   Glob `UC-*.md` e usar os mesmos padroes. Inventar codigos novos sem
+   consultar convencoes existentes fragmenta a documentacao.
 
 2. **Determine o proximo ID** disponivel:
    - Padrao: `UC-{DOMINIO}-{NUMERO}` (ex: UC-CAD-001)
@@ -124,3 +128,35 @@ Antes de finalizar, verificar:
 1. Gere o documento completo em Markdown
 2. Pergunte ao usuario o diretorio onde salvar (ou sugira baseado no projeto)
 3. Salve com Write no padrao `UC-{DOMINIO}-{NUMERO}-{nome-descritivo}.md`
+
+---
+
+## Gotchas
+
+### Dominio nao e enum fixo — e convencao do projeto
+
+A lista de dominios (AUTH, CAD, PED...) sao exemplos. Use o dominio que faz sentido no projeto atual. Se ja existem UCs, siga os codigos usados. Se o projeto e novo, pergunte ao usuario via AskUserQuestion ou configure em `config.json` — nao invente codigos novos silenciosamente.
+
+### Glob `UC-*.md` antes de atribuir numero — senao colisao silenciosa
+
+Dois UCs com mesmo ID (UC-CAD-001) quebram rastreabilidade e podem ser sobrescritos. Sempre listar existentes e pegar o proximo sequencial DENTRO do dominio (UC-CAD-005 nao bloqueia UC-PED-001).
+
+### Diagrama Mermaid com ator nao declarado quebra o render
+
+No `sequenceDiagram`, todo participante deve estar declarado no topo com `participant Nome`. Usar um ator diretamente na primeira seta sem declarar pode passar local mas falha em GitHub/viewers. Sempre declarar antes de usar.
+
+### Minimo 5 casos de teste (sucesso + erro + edge case)
+
+UC com 2 CTs e incompleto. A cobertura minima e: 1-2 sucessos (happy paths diferentes), 1-2 erros (validacao, permissao), 1 edge case (limite, concorrencia, timeout). Menos que isso nao esta pronto para implementacao.
+
+### Regras de negocio RN01..RNxx precisam ser ACIONAVEIS
+
+"Sistema deve ser robusto" e "Dados devem ser validados" nao sao regras, sao desejos. Regra acionavel: "RN01 - CNPJ deve ser unico no sistema" ou "RN02 - Limite de credito nao pode ultrapassar 3x o faturamento mensal".
+
+### Descricao < 100 caracteres reprova
+
+Minimo dois paragrafos explicando O QUE a funcionalidade faz e POR QUE existe. Descricao curta (uma frase) e sinal de que o UC nao foi pensado — reprova no `validate-documentation`.
+
+### Mapeamento de campos e obrigatorio para integracoes
+
+Se o UC envolve integracao com API externa ou entre servicos, secao "Dados Tecnicos" precisa de tabela de campos (nome externo → nome interno, tipo, transformacao). Sem isso, o plano tecnico vai chutar.

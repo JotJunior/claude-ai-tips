@@ -1,10 +1,12 @@
 ---
 name: initialize-docs
 description: |
-  Inicializa estrutura padrao de documentacao do projeto com diretorios numerados,
-  READMEs template e organizacao por tipo (briefing, UCs, DER, ADRs, APIs, testes, operacoes).
-  Triggers: "inicializar docs", "criar estrutura docs", "setup documentacao",
-  "organizar documentacao", "estrutura de pastas docs".
+  Use quando o usuario pedir para criar a estrutura padrao de documentacao do
+  projeto (diretorios numerados 01-09, READMEs template, organizacao por tipo:
+  briefing, UCs, DER, ADRs, APIs, testes, operacoes). Tambem quando mencionar
+  "inicializar docs", "criar estrutura docs", "setup documentacao",
+  "organizar documentacao", "estrutura de pastas docs". NAO use se a estrutura
+  ja existe e o usuario nao pediu --force.
 argument-hint: "[--dry-run | --force | --no-move]"
 allowed-tools:
   - Read
@@ -138,3 +140,27 @@ Ao final, exiba um relatorio com:
 - Este comando e idempotente - pode ser executado multiplas vezes
 - Arquivos ja existentes nao sao sobrescritos (exceto com `--force`)
 - Arquivos de projeto como `tasks-*.md` e `cronograma.md` sao mantidos na raiz
+
+---
+
+## Gotchas
+
+### Idempotente nao significa "rodar sem pensar"
+
+Rodar duas vezes nao estraga nada (READMEs nao sobrescritos), mas se o projeto ja tem uma organizacao ALTERNATIVA (ex: `docs/rfcs/`, `docs/guides/`), a skill vai criar 01-09 ao lado sem aviso. Antes de rodar, verificar `docs/` — se existe organizacao alternativa, perguntar ao usuario se deve coexistir ou substituir.
+
+### tasks-*.md e cronograma*.md ficam NA RAIZ de docs/
+
+Nao mover esses arquivos para subdiretorios. Eles sao arquivos de projeto global, nao artefatos de categoria. O mapeamento do passo 5 exclui explicitamente esses padroes.
+
+### --force sobrescreve READMEs, nao o conteudo dos diretorios
+
+A flag `--force` regenera os READMEs template. Nao deleta arquivos reais (UCs, ADRs) dentro dos diretorios. Mas se o usuario customizou os READMEs, --force apaga essas customizacoes.
+
+### Movimentacao automatica pode errar em casos ambiguos
+
+Um arquivo `API-GATEWAY-SETUP.md` pode ir para 04-arquitetura ou 05-definicao-apis dependendo do conteudo. Quando o padrao nao bate claramente, listar o arquivo no relatorio como "nao movido — requer revisao manual" ao inves de chutar.
+
+### Mover arquivo quebra links relativos
+
+Se `UC-CAD-001.md` referencia `../outro-doc.md`, mover o UC para `02-requisitos-casos-uso/` quebra o link. Apos mover, avisar no relatorio sobre links que podem precisar atualizacao — nao tentar corrigir automaticamente.

@@ -1,11 +1,12 @@
 ---
 name: analyze
 description: |
-  Analise de consistencia cross-artifact read-only entre spec, plan, tasks e
-  constitution. Identifica duplicacoes, ambiguidades, gaps de cobertura e
-  violacoes de principios. NAO modifica arquivos.
-  Triggers: "analisar consistencia", "analyze", "cross-check", "audit artifacts",
-  "analise de consistencia".
+  Use quando o usuario pedir para analisar consistencia entre artefatos SDD
+  (spec, plan, tasks, constitution), auditar duplicacoes/ambiguidades/gaps,
+  ou validar cobertura de requisitos. Tambem quando mencionar "analyze",
+  "cross-check", "auditar artefatos", "analise de consistencia", "validar
+  spec vs tasks". NAO use para validar um unico documento (use
+  validate-documentation) ou para modificar arquivos — esta skill e read-only.
 argument-hint: "[caminho para diretorio da feature ou escopo]"
 allowed-tools:
   - Read
@@ -255,3 +256,27 @@ Perguntar ao usuario:
 - `validate-documentation`: Valida UM documento (UC) contra padroes de qualidade estrutural
 - `analyze`: Valida MULTIPLOS artefatos ENTRE SI (spec vs plan vs tasks vs constitution)
 - Ambos coexistem — validate-docs para documentos individuais, analyze para consistencia cross-artifact
+
+---
+
+## Gotchas
+
+### STRICTLY READ-ONLY — quebrar isso invalida o contrato
+
+A skill NAO escreve nem edita arquivos. Se uma correcao parece obvia, sugira no relatorio e aguarde aprovacao explicita do usuario. Aplicar fixes automaticamente viola o proposito da analise.
+
+### Violacoes de constitution sao SEMPRE CRITICAL
+
+Nao importa o quao pequena a violacao parece. Se conflita com um principio MUST, a severidade e CRITICAL e bloqueia `/execute-task` ate resolver. Nao rebaixe para HIGH por "contexto".
+
+### Max 50 findings — o resto vai para overflow
+
+Ultrapassar esse limite dilui o sinal. Se mais de 50 candidatos, priorizar por (Impacto x Incerteza) e agregar o restante num resumo no final do relatorio.
+
+### Nao inventar secoes ausentes
+
+Se a spec nao tem "Edge Cases", reporte como **Gap** (E. Gaps de Cobertura) — nao alucine conteudo "como deveria ser". O papel da skill e detectar, nao preencher.
+
+### Resultados devem ser deterministicos
+
+Re-rodar a analise sem mudancas nos artefatos deve produzir os mesmos IDs, contagens e severidades. Se duas execucoes consecutivas divergem, o modelo interno esta instavel — rever heuristicas.

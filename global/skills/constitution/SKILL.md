@@ -1,10 +1,11 @@
 ---
 name: constitution
 description: |
-  Cria ou atualiza a constituicao do projeto — principios imutaveis de governanca
-  que guiam todas as decisoes de arquitetura, qualidade e processo.
-  Triggers: "criar constituicao", "constitution", "principios do projeto",
-  "governance", "atualizar constituicao".
+  Use quando o usuario pedir para criar, atualizar ou consolidar principios
+  imutaveis de governanca do projeto. Tambem quando mencionar "criar
+  constituicao", "constitution", "principios do projeto", "governance",
+  "atualizar constituicao". NAO use para documentar decisoes tecnicas
+  pontuais — essas sao ADRs.
 argument-hint: "[descricao do projeto ou principios desejados]"
 allowed-tools:
   - Read
@@ -214,18 +215,56 @@ Apresentar ao usuario:
 
 ## EXEMPLOS DE PRINCIPIOS
 
-**Para projetos Go microservicos:**
-- Library-First: Features comecam como bibliotecas standalone
-- Test-First (NON-NEGOTIABLE): TDD obrigatorio, Red-Green-Refactor
-- Integration Testing: Testes contra banco real, nao mocks
-- Observability: Logging estruturado obrigatorio
+Os exemplos abaixo ilustram formato — adaptar ao dominio do projeto, nao copiar literalmente.
 
-**Para projetos Frontend:**
+**Principios de arquitetura:**
+- Library-First: Features comecam como bibliotecas standalone
+- Modularidade: Servicos comunicam via contratos, nao memoria compartilhada
+- Simplicity: YAGNI — nao abstrair prematuramente
+
+**Principios de qualidade:**
+- Test-First (NON-NEGOTIABLE): TDD obrigatorio, Red-Green-Refactor
+- Integration Testing: Testes contra sistema real, nao mocks
+- Observability: Logging estruturado obrigatorio em todas as operacoes criticas
+
+**Principios de UX/acessibilidade:**
 - Component-First: UI construida de componentes reutilizaveis
 - Accessibility: WCAG 2.1 AA como minimo
-- Type Safety: TypeScript strict mode, sem `any`
+- Progressive Enhancement: Funcionalidade core funciona sem JS
 
-**Para projetos genericos:**
-- Simplicity: YAGNI — nao abstrair prematuramente
+**Principios de seguranca/compliance:**
 - Security: OWASP Top 10 como baseline
+- Deny by Default: Permissoes explicitas em vez de implicitas
+- Data Minimization: Coletar/persistir so o necessario
+
+**Principios de processo:**
 - Documentation: Codigo auto-documentado, comentarios para o "por que"
+- Reviewable Changes: PRs pequenos e focados, nao merges gigantes
+
+---
+
+## Gotchas
+
+### Principios devem ser declarativos, testaveis e livres de linguagem vaga
+
+"Sistema deve ser robusto" nao e principio, e aspiracao. Trocar por MUST/SHOULD com rationale: "MUST: toda operacao de escrita em banco deve ser idempotente (Why: retry sem corrupcao de estado)".
+
+### Versao segue SemVer — e o bump deve ser justificado
+
+- MAJOR: remove ou redefine principio de forma incompativel
+- MINOR: adiciona principio ou expande secao materialmente
+- PATCH: clarifica texto sem mudar semantica
+
+Se o bump e ambiguo, propor rationale ao usuario antes de finalizar — datas e versao sao auditadas.
+
+### Placeholders `[ALL_CAPS]` nao sobrevivem no documento final
+
+Todo placeholder no template tem que ser preenchido com conteudo concreto ou marcado como `TODO(<CAMPO>): explicacao`. Placeholders nao-resolvidos em produto final e indicador de constituicao incompleta.
+
+### Principios conflitantes invalidam a constituicao
+
+Se "Moving Fast" e "Zero Bugs" coexistem como principios MUST, o projeto nao tem governanca — tem contradicao. Detectar conflitos antes de salvar e pedir ao usuario para resolver a tensao (tipicamente promovendo um a MUST e rebaixando outro a SHOULD com trade-off documentado).
+
+### Sync Impact Report e obrigatorio em atualizacoes
+
+Bumps MAJOR/MINOR precisam listar quais artefatos (CLAUDE.md, plans, tasks) precisam atualizacao. Sem isso, a constituicao desinterna-se dos outros documentos silenciosamente.

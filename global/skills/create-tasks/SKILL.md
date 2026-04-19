@@ -1,10 +1,13 @@
 ---
 name: create-tasks
 description: |
-  Cria backlog de tarefas tecnicas estruturado por fases, com numeracao hierarquica,
-  criticidade e matriz de dependencias.
-  Triggers: "criar tarefas", "criar backlog", "montar tasks", "gerar backlog",
-  "planejar tarefas", "task list", "decomposicao de tarefas".
+  Use quando o usuario pedir para decompor um escopo ou spec em backlog de
+  tarefas tecnicas, criar tasks.md, ou organizar trabalho em fases com
+  numeracao hierarquica, criticidade e dependencias. Tambem quando mencionar
+  "criar tarefas", "criar backlog", "montar tasks", "gerar backlog",
+  "planejar tarefas", "task list", "decomposicao de tarefas". NAO use para
+  executar uma tarefa (use execute-task) ou gerar plano tecnico de
+  arquitetura (use plan).
 argument-hint: "[descricao do escopo ou caminho para documento de referencia]"
 allowed-tools:
   - Read
@@ -177,28 +180,32 @@ Ref: {Referencia a UC, ADR ou documento, se aplicavel}
 
 ### Organizacao de Fases
 
-Fases devem seguir ordem logica de construcao:
+Fases devem seguir ordem logica de construcao. Os exemplos abaixo sao
+ilustrativos — adaptar a estrutura as camadas reais do projeto:
 
 ```
-Tipica para projetos backend (Go microservicos):
+Exemplo para projeto com backend + persistencia + frontend:
 
-FASE 1 - Fundacao (migrations, domain, DTOs, factory wiring)
-FASE 2 - Backend Core (repository, service, handler, routes)
-FASE 3 - Integracao (RabbitMQ events, inter-service clients, S3 storage)
-FASE 4 - Frontend (types, API service, hooks, components, pages)
-FASE 5 - Testes e Qualidade (unit tests, lint, review)
+FASE 1 - Fundacao (infra, setup, CI/CD, migrations iniciais)
+FASE 2 - Dominio (entidades, regras, contratos)
+FASE 3 - Backend (persistencia, servicos, handlers/endpoints)
+FASE 4 - Integracao (mensageria, storage, clientes externos)
+FASE 5 - Frontend (tipos, chamadas API, componentes, paginas)
+FASE 6 - Testes e Qualidade (unit, integracao, lint, review)
+FASE 7 - Observabilidade (logs, metricas, dashboards, alertas)
 
-Tipica para projetos genericos:
+Exemplo para biblioteca/CLI:
 
-FASE 1 - Fundacao (infra, setup, CI/CD)
-FASE 2 - Dominio (entidades, regras, SDK/clients)
-FASE 3..N - Features por dominio (ordenadas por dependencia)
-FASE N+1 - Observabilidade (metricas, dashboards, alertas)
+FASE 1 - Fundacao (estrutura do projeto, build, CI)
+FASE 2 - Dominio (tipos, interfaces publicas)
+FASE 3 - Implementacao (funcionalidades core)
+FASE 4 - Testes (unit, contract, property-based)
+FASE 5 - Documentacao e release
 ```
 
-**Para monorepos multi-servico**: Use Agent para ler documentacao de multiplos
-servicos em paralelo ao analisar o escopo. Isso economiza tempo ao gerar tarefas
-que cruzam fronteiras de servico.
+**Para projetos multi-modulo**: Use Agent para ler documentacao de multiplos
+modulos/servicos em paralelo ao analisar o escopo. Isso economiza tempo ao
+gerar tarefas que cruzam fronteiras.
 
 ### Matriz de Dependencias
 
@@ -254,3 +261,35 @@ Antes de finalizar o documento, verifique:
 - Se ha documentacao de referencia para consultar
 - Escopo que deve ser incluido/excluido
 - Preferencia de granularidade (mais ou menos subtarefas)
+
+---
+
+## Gotchas
+
+### Deteccao de origem e OBRIGATORIA antes de escolher o path de salvamento
+
+Se a chamada veio de uma spec em `docs/specs/{name}/`, o `tasks.md` vai em `docs/specs/{name}/tasks.md`, NAO em `docs/tasks-*.md`. Criar o arquivo fora do diretorio da spec quebra a composicao SDD — as skills downstream (analyze, execute-task) nao encontram o backlog.
+
+### Toda tarefa de implementacao precisa de subtarefa de teste
+
+Decomposicao sem teste e incompleta. Se a tarefa e "Implementar endpoint X", deve haver uma subtarefa "Escrever testes de integracao para endpoint X". A skill checa isso — nao relaxe.
+
+### Criticidade `[C]/[A]/[M]` em TODAS as tarefas
+
+Tarefa sem criticidade nao permite priorizacao pelo `/review-task`. `[C]` nao e "critico em geral" — e "impacto financeiro/regulatorio/SLA direto". `[A]` e funcionalidade core sem a qual o sistema nao opera. `[M]` e o resto.
+
+### Granularidade: subtarefa = 1-4 horas de trabalho atomico
+
+Subtarefa gigante (multi-dia) e tarefa disfarcada. Se aparece "1.2.1 Implementar autenticacao OAuth2 completa", decomponha mais: setup do provider, handlers de callback, validacao de token, logout, cada um vira subtarefa separada.
+
+### Referenciar documentacao existente (UCs, ADRs, specs) em Ref:
+
+Tarefa orfa sem `Ref:` dificulta entender contexto quando alguem executa semanas depois. Se existe `UC-XXX`, `ADR-YYY` ou spec que origina a tarefa, referencie explicitamente.
+
+### Matriz de dependencias deve refletir ordem REAL de execucao
+
+Diagrama Mermaid desenhado "como deveria ser" mas que contradiz a ordem das fases (ex: Fase 5 depende de Fase 7) indica que a estrutura esta errada. Revisite a ordenacao antes de publicar.
+
+### Nao confundir "escopo excluido" com "fora do MVP"
+
+Escopo excluido = explicitamente NAO faz parte deste backlog (documentar porque). Fora do MVP = pode fazer parte no futuro mas fora desta rodada. Sao colunas diferentes do relatorio final.

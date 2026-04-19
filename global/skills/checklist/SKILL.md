@@ -1,11 +1,12 @@
 ---
 name: checklist
 description: |
-  Gera checklists de validacao de qualidade de requisitos ("Unit Tests for English").
-  Testa se os requisitos estao bem escritos, completos e claros — NAO se a
-  implementacao funciona. Suporta dominios: ux, api, security, performance, etc.
-  Triggers: "criar checklist", "checklist", "quality gate", "validar requisitos",
-  "requirements checklist".
+  Use quando o usuario pedir checklist de qualidade de requisitos, quality gate,
+  ou "unit tests for English". Tambem quando mencionar "criar checklist",
+  "checklist", "validar requisitos", "requirements checklist", tipicamente
+  seguido de dominio (ux, api, security, performance, a11y). NAO use para
+  testar implementacao — a skill valida QUALIDADE DO REQUISITO, nao se o
+  codigo funciona.
 argument-hint: "[dominio: ux | api | security | performance] [contexto adicional]"
 allowed-tools:
   - Read
@@ -239,3 +240,27 @@ Criar diretorio `checklists/` se nao existir.
 - `/checklist [outro-dominio]` — Gerar checklist para outro dominio
 - `/plan` ou `/create-tasks` — Prosseguir com o fluxo SDD
 ```
+
+---
+
+## Gotchas
+
+### Checklist valida REQUISITO, nao IMPLEMENTACAO
+
+O erro mais comum: escrever items como "Verificar se o botao funciona". Isso testa implementacao. O item correto e "Sao os requisitos de interacao definidos para o botao?". Se o item comeca com "Verificar", "Testar", "Confirmar que X funciona", esta errado.
+
+### Rastreabilidade minima 80%
+
+Items sem referencia a `[Spec §X.Y]`, `[Gap]`, `[Ambiguity]`, `[Conflict]` ou `[Assumption]` sao ruido — nao da para priorizar nem validar. Abaixo de 80% o checklist perde utilidade como quality gate.
+
+### Soft cap 40 items por dominio — priorize risco
+
+Um checklist com 200 items e ignorado. Se mais de 40 candidatos, priorizar por risco/impacto, agrupar near-duplicates, e agregar edge cases de baixo impacto num item unico.
+
+### APPEND, nunca sobrescrever
+
+Se o arquivo do dominio ja existe, continue os IDs (CHK015, CHK016...) ao final — nao substitua conteudo existente nem reinicie a numeracao. Usuarios ja podem ter marcado items.
+
+### Adjetivos vagos em items de checklist tambem sao proibidos
+
+"Sao os requisitos bem documentados?" e tao vago quanto "sistema deve ser robusto". Use criterios verificaveis: "Cada requisito funcional tem criterio de aceite mensuravel?"
