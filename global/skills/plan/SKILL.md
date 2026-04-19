@@ -22,6 +22,20 @@ allowed-tools:
 Gere um plano de implementacao completo a partir de uma feature spec, cobrindo
 arquitetura, decisoes tecnicas, modelo de dados e contratos.
 
+## Pre-requisitos
+
+**Obrigatorio**: `docs/specs/{feature}/spec.md` ja existente. Sem spec, abortar.
+
+**Recomendado**:
+- `/clarify` executado (reduz NEEDS CLARIFICATION na Etapa 3)
+- `docs/constitution.md` existente (usado como gate — violacoes sao bloqueantes)
+
+## Proximos passos
+
+1. `/checklist` — gerar quality gate antes de implementar
+2. `/create-tasks` — decompor o plano em backlog executavel
+3. `/analyze` — apos ter tasks, validar consistencia cross-artifact
+
 ## Argumentos
 
 $ARGUMENTS

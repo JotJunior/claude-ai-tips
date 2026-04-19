@@ -33,10 +33,16 @@ Analise o argumento fornecido. Ele pode ser:
 
 1. **Identifique o dominio** do caso de uso com base no contexto do projeto.
 
-   O dominio e um codigo curto (2-4 letras) que agrupa UCs relacionados. NAO
-   existe uma lista fixa — derive do dominio do projeto atual. Se existir
-   `config.json` nesta skill com dominios customizados, usar essa lista. Caso
-   contrario, pergunte ao usuario ou infira da documentacao existente.
+   O dominio e um codigo curto (2-6 letras maiusculas) que agrupa UCs relacionados.
+
+   **Ordem de precedencia** ao derivar o dominio:
+   1. Campo `domains` em `config.json` (mesmo diretorio desta skill), se
+      preenchido com dominios do projeto
+   2. Dominios ja usados em UCs existentes (Glob `UC-*.md` + extrair prefixos)
+   3. Perguntar ao usuario via AskUserQuestion
+
+   NAO existe uma lista universal — os dominios fazem sentido relativos ao
+   projeto em questao.
 
    Exemplos comuns (ilustrativos — nao usar sem verificar o contexto):
    - **AUTH**: Autenticacao e autorizacao

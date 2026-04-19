@@ -25,6 +25,21 @@ allowed-tools:
 
 Execute uma tarefa especifica do projeto seguindo o fluxo obrigatorio de execucao.
 
+## Pre-requisitos
+
+**Obrigatorio**: arquivo de tasks existente contendo a tarefa a executar.
+Localizacoes suportadas: `docs/specs/*/tasks.md` (SDD), `docs/tasks.md`,
+`docs/tasks-*.md`, `tasks.md`, `TODO.md`.
+
+**Recomendado**: `spec.md`, `plan.md` e documentacao relacionada ja existentes
+(a Etapa 1 da skill le esses antes de comecar).
+
+## Proximos passos
+
+1. `/execute-task {proxima-id}` — continuar com a proxima tarefa pendente
+2. `/review-task` — revisar progresso e identificar dependencias desbloqueadas
+3. `/analyze` — se suspeita de drift entre implementacao e spec
+
 ## Tarefa Solicitada
 
 $ARGUMENTS

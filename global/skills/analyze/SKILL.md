@@ -22,6 +22,19 @@ de cobertura entre os artefatos de uma feature (spec, plan, tasks, constitution)
 
 **STRICTLY READ-ONLY**: NAO modifica nenhum arquivo. Produz relatorio estruturado.
 
+## Pre-requisitos
+
+**Obrigatorio**: `spec.md` E `tasks.md` existentes na feature a analisar.
+Sem ambos, a skill aborta e indica qual comando rodar primeiro.
+
+**Opcional**: `plan.md` e `docs/constitution.md` aumentam a cobertura da analise.
+
+## Proximos passos
+
+1. Se issues CRITICAL: resolver antes de `/execute-task`
+2. Se apenas LOW/MEDIUM: prosseguir com `/execute-task` mas agendar cleanup
+3. `/specify`, `/clarify` ou `/plan` — conforme findings apontem onde corrigir
+
 ## Argumentos
 
 $ARGUMENTS

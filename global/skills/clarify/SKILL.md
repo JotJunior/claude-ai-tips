@@ -20,6 +20,19 @@ allowed-tools:
 Identifique e resolva ambiguidades em uma feature spec existente via perguntas
 estruturadas, integrando as respostas diretamente no documento.
 
+## Pre-requisitos
+
+**Obrigatorio**: `spec.md` ja existente (criado via `/specify` ou manualmente).
+Sem spec, a skill aborta e instrui a rodar `/specify` primeiro.
+
+**Opcional**: `docs/constitution.md` para validar respostas contra principios.
+
+## Proximos passos
+
+1. `/checklist` — gerar quality gate de requisitos apos clarificacao
+2. `/plan` — spec agora esta pronta para gerar plano tecnico
+3. `/clarify` novamente — apenas se Outstanding de alto impacto persistirem
+
 ## Argumentos
 
 $ARGUMENTS

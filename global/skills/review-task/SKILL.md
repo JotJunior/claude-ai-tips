@@ -20,6 +20,18 @@ allowed-tools:
 
 Analise o arquivo de tarefas do projeto e gere um relatorio de status.
 
+## Pre-requisitos
+
+**Obrigatorio**: arquivo de tasks existente em alguma das localizacoes
+suportadas (`docs/specs/*/tasks.md`, `docs/tasks.md`, `docs/tasks-*.md`,
+`tasks.md`, `TODO.md`).
+
+## Proximos passos
+
+1. `/execute-task {id}` — iniciar a proxima tarefa recomendada pelo relatorio
+2. Resolver dependencias apontadas como "bloqueadoras"
+3. `/analyze` — se o relatorio revelar muitas tarefas sem evidencia de conclusao
+
 ---
 
 ## Instrucoes de Revisao

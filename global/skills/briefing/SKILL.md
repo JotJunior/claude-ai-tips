@@ -23,6 +23,19 @@ allowed-tools:
 Conduza uma entrevista estruturada de discovery para capturar a essencia do projeto,
 produzindo um documento de briefing que serve de fundacao para todos os artefatos SDD.
 
+## Pre-requisitos
+
+Nenhum. Esta e tipicamente a primeira skill do pipeline SDD para novos projetos.
+Se ja existe um briefing, esta skill pode atualiza-lo.
+
+## Proximos passos
+
+Apos salvar o briefing, o fluxo sugerido e:
+
+1. `/constitution` — derivar principios de governanca a partir do briefing
+2. `/specify` — especificar as features do MVP identificadas no briefing
+3. `/initialize-docs` (se ainda nao feito) — garantir estrutura padrao de docs/
+
 ## Argumentos
 
 $ARGUMENTS

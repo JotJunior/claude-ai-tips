@@ -33,6 +33,12 @@ Execute os seguintes passos para inicializar a estrutura de documentacao:
 
 Primeiro, verifique o diretorio `docs/` atual usando Glob e Bash.
 
+### Configuracao
+
+Se `config.json` existe no diretorio desta skill, usar a estrutura customizada
+nele definida (campo `structure`, `docs_dir`, `keep_in_root`, `file_routing`).
+Caso contrario, usar a estrutura default 01-09 documentada abaixo.
+
 ### 2. Estrutura Padrao de Diretorios
 
 Crie os seguintes diretorios (se nao existirem):

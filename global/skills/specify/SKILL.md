@@ -22,6 +22,20 @@ allowed-tools:
 Transforme uma descricao em linguagem natural em uma feature spec completa seguindo
 o formato Spec-Driven Development. Foco no QUE e POR QUE — nunca no COMO implementar.
 
+## Pre-requisitos
+
+**Opcional mas recomendado**:
+- `/briefing` — contextualiza a feature dentro do projeto
+- `/constitution` — principios ajudam a calibrar escopo e padroes de qualidade
+
+Sem esses, a skill funciona mas pode precisar de mais `[NEEDS CLARIFICATION]`.
+
+## Proximos passos
+
+1. `/clarify` — resolver ambiguidades da spec (se houver `[NEEDS CLARIFICATION]`)
+2. `/plan` — gerar plano tecnico de implementacao
+3. `/checklist` — validar qualidade dos requisitos antes de implementar
+
 ## Argumentos
 
 $ARGUMENTS

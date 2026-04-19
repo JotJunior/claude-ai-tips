@@ -22,6 +22,20 @@ allowed-tools:
 
 Crie um documento de backlog de tarefas tecnicas seguindo o padrao estruturado abaixo.
 
+## Pre-requisitos
+
+**Recomendado (fluxo SDD)**: `plan.md` e `spec.md` ja existentes em
+`docs/specs/{feature}/`. Com eles, o backlog se liga a fases tecnicas claras.
+
+**Alternativa standalone**: descricao textual do escopo ou lista de features.
+Neste caso, salva em `docs/tasks-{nome-escopo}.md`.
+
+## Proximos passos
+
+1. `/analyze` — validar consistencia entre spec, plan e tasks
+2. `/execute-task {id}` — comecar execucao pela primeira tarefa critica
+3. `/review-task` — acompanhar progresso conforme tarefas sao concluidas
+
 ## Argumentos
 
 $ARGUMENTS
@@ -211,6 +225,16 @@ Antes de finalizar o documento, verifique:
 - Se ha documentacao de referencia para consultar
 - Escopo que deve ser incluido/excluido
 - Preferencia de granularidade (mais ou menos subtarefas)
+
+### Configuracao
+
+`config.json` (mesmo diretorio desta skill) pode customizar:
+- `criticality_levels` — tags customizadas alem de [C]/[A]/[M]
+- `output_paths.spec_derived` e `output_paths.standalone` — onde salvar
+- `phase_prefix` — default "FASE", pode ser "PHASE", "STAGE", etc.
+- `subtask_granularity_hours` — janela esperada de esforco por subtarefa
+
+Se config.json ausente, usar defaults documentados no template.
 
 ### Scripts auxiliares
 

@@ -21,6 +21,18 @@ allowed-tools:
 Gere checklists que validam a QUALIDADE dos requisitos — nao da implementacao.
 Conceito: "Unit Tests for English".
 
+## Pre-requisitos
+
+**Recomendado**: `spec.md` existente para referenciar requisitos. Sem spec, a
+skill pode gerar um checklist generico de qualidade de requisitos, mas a
+rastreabilidade (`[Spec §X.Y]`) fica comprometida.
+
+## Proximos passos
+
+1. Revisar o checklist e marcar items atendidos
+2. `/clarify` — para resolver items que revelaram ambiguidades
+3. `/plan` ou `/create-tasks` — prosseguir no fluxo SDD se o gate passou
+
 ## Argumentos
 
 $ARGUMENTS

@@ -20,6 +20,21 @@ allowed-tools:
 Crie ou atualize a constituicao do projeto — o documento de principios imutaveis que governa
 decisoes de arquitetura, qualidade e processo.
 
+## Pre-requisitos
+
+**Recomendado**: `/briefing` executado antes. A constituicao deriva principios do
+contexto do projeto (visao, prioridades, restricoes) — sem briefing, os
+principios ficam genericos.
+
+**Opcional**: `docs/constitution.md` existente (para atualizar em vez de criar
+do zero). A skill versiona via SemVer (MAJOR/MINOR/PATCH).
+
+## Proximos passos
+
+1. `/specify` — especificar features alinhadas aos principios
+2. `/plan` — planos tecnicos vao respeitar a constitution (Constitution Check como gate)
+3. `/analyze` — apos ter specs/plans/tasks, validar alinhamento contra a constitution
+
 ## Argumentos
 
 $ARGUMENTS
