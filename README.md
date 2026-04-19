@@ -30,6 +30,7 @@ para tarefas de documentação, desenvolvimento, segurança e qualidade de códi
 │       ├── plan/               # Plano de implementação técnico
 │       ├── review-task/        # Revisão de status de tarefas
 │       ├── specify/            # Feature spec no formato SDD
+│       ├── validate-docs-rendered/ # Validação de renderização (Mermaid, links, tabelas)
 │       └── validate-documentation/ # Validação de documentação
 ├── language-related/           # Skills e hooks específicos por linguagem
 │   ├── go/                     # Go
@@ -74,7 +75,8 @@ Skills independentes que podem ser usados em qualquer momento:
 | **initialize-docs** | "inicializar docs", "setup documentação" | Cria hierarquia padrão de documentação com 9 níveis |
 | **insights** | "aplicar insights", "melhorar claude.md" | Analisa o projeto e aplica insights de uso comprovados ao CLAUDE.md, hooks e workflows |
 | **owasp-security** | Ao revisar segurança | Revisão de segurança cobrindo OWASP Top 10:2025, ASVS 5.0 e segurança de IA Agêntica (2026) |
-| **validate-documentation** | "validar documentação", "verificar UC" | Valida documentos contra padrões de qualidade |
+| **validate-documentation** | "validar documentação", "verificar UC" | Valida documentos individuais contra padrões de qualidade estrutural |
+| **validate-docs-rendered** | "validar renderização", "verificar diagramas" | Valida que a documentação Markdown renderiza corretamente (Mermaid, links internos, frontmatter, tabelas) |
 
 ---
 
