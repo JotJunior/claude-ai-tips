@@ -112,207 +112,27 @@ Para cada dimensao da entrevista, verificar se a informacao ja existe no context
 
 ### 3.1 Dimensoes de Discovery
 
-A entrevista cobre 7 dimensoes. Cada dimensao tem 1-2 perguntas.
+A entrevista cobre 7 dimensoes, com 1-2 perguntas cada. O roteiro completo
+(texto de cada pergunta, exemplos, formatos, regras) esta em
+`references/discovery-guide.md`. Consultar sob demanda em vez de memorizar.
+
+Dimensoes:
+
+1. **Visao e Proposito** — elevator pitch
+2. **Usuarios e Stakeholders** — atores e quem decide
+3. **Escopo e Prioridades** — MVP vs pos-MVP, trade-offs
+4. **Restricoes** — prazo, equipe, budget, tech
+5. **Contexto Tecnico** — stack, infra, integracoes
+6. **Qualidade e Padroes** — testes, seguranca, observabilidade, compliance
+7. **Visao de Futuro** — evolucao em 6-12 meses
+
 **Perguntas sao feitas UMA POR VEZ**, aguardando resposta antes de avancar.
-
----
-
-#### DIMENSAO 1: Visao e Proposito
-
-**O que captura**: A essencia do projeto — o que e, por que existe, qual problema resolve.
-
-**Pergunta 1.1 — Elevator Pitch**:
-
-```markdown
-## Pergunta 1: Visao do Projeto
-
-Descreva o projeto em 2-3 frases, como se estivesse explicando para alguem
-que nunca ouviu falar dele.
-
-**O que preciso saber**:
-- O que o projeto FAZ
-- Qual PROBLEMA resolve
-- Para QUEM
-
-**Exemplo**: "Um sistema de gestao de pedidos que permite lojistas acompanharem
-vendas em tempo real e emitirem notas automaticamente. Resolve o problema de
-visibilidade operacional para pequenos comercios."
-
-Responda com sua descricao livre.
-```
-
----
-
-#### DIMENSAO 2: Usuarios e Stakeholders
-
-**O que captura**: Quem usa o sistema e quem toma decisoes.
-
-**Pergunta 2.1 — Atores Principais**:
-
-```markdown
-## Pergunta 2: Usuarios e Atores
-
-Quem sao os USUARIOS do sistema? Liste os tipos de usuario (personas/papeis)
-e o que cada um faz.
-
-**Exemplos de papeis**: admin, operador, cliente final, parceiro, sistema externo
-
-**Formato sugerido**:
-- [Papel]: [O que faz no sistema]
-- [Papel]: [O que faz no sistema]
-
-Responda listando os papeis, ou descreva livremente.
-```
-
----
-
-#### DIMENSAO 3: Escopo e Prioridades
-
-**O que captura**: O que esta dentro e fora do escopo, e o que e mais importante.
-
-**Pergunta 3.1 — Features Core vs Nice-to-Have**:
-
-```markdown
-## Pergunta 3: Escopo e Prioridades
-
-Quais sao as funcionalidades ESSENCIAIS (sem elas o projeto nao faz sentido)
-vs funcionalidades DESEJAVEIS (agregam valor mas podem esperar)?
-
-**Formato sugerido**:
-
-**Essenciais (MVP)**:
-1. [Feature]
-2. [Feature]
-
-**Desejaveis (pos-MVP)**:
-1. [Feature]
-2. [Feature]
-
-Responda listando ou descrevendo livremente.
-```
-
-**Pergunta 3.2 — Trade-offs** (se projeto nao-trivial):
-
-```markdown
-## Pergunta 4: Trade-offs
-
-Quando precisar escolher, qual sua prioridade?
-
-| Opcao | Descricao |
-|-------|-----------|
-| A | **Velocidade de entrega** — Lancar rapido, iterar depois |
-| B | **Qualidade e robustez** — Fazer bem feito, mesmo que demore |
-| C | **Escopo completo** — Entregar tudo planejado, ajustando prazo |
-| D | **Experiencia do usuario** — UX impecavel, mesmo sacrificando features |
-
-Responda com a letra (ou ordene por prioridade, ex: "B > D > A > C").
-```
-
----
-
-#### DIMENSAO 4: Restricoes
-
-**O que captura**: Limites reais do projeto — tempo, equipe, orcamento, tech.
-
-**Pergunta 4.1 — Restricoes do Projeto**:
-
-```markdown
-## Pergunta 5: Restricoes
-
-Quais restricoes o projeto tem? Responda o que souber:
-
-- **Prazo**: Ha deadline? (ex: "lancar em 3 meses", "sem prazo fixo")
-- **Equipe**: Quantas pessoas? Qual experiencia? (ex: "1 dev fullstack senior")
-- **Budget**: Ha limitacao de custo? (ex: "usar apenas servicos free-tier")
-- **Tecnica**: Alguma tecnologia obrigatoria ou proibida? (ex: "tem que ser em Go", "sem vendor lock-in")
-
-Responda o que for relevante — pode pular itens que nao se aplicam.
-```
-
----
-
-#### DIMENSAO 5: Contexto Tecnico
-
-**O que captura**: Stack, infraestrutura, integracoes.
-
-**Pergunta 5.1 — Stack e Infraestrutura**:
-
-Pular se ja inferido de arquivos do projeto (go.mod, package.json, etc.).
-
-```markdown
-## Pergunta 6: Stack Tecnica
-
-Qual a stack tecnica do projeto? Se ainda nao decidiu, descreva preferencias.
-
-**Categorias**:
-- **Backend**: (ex: Go, Node.js, Python, Java)
-- **Frontend**: (ex: React, Vue, mobile nativo, nenhum)
-- **Banco de dados**: (ex: PostgreSQL, MongoDB, SQLite)
-- **Infraestrutura**: (ex: Docker, Kubernetes, serverless, VPS)
-- **Integracoes externas**: (ex: Stripe, SendGrid, APIs de terceiros)
-
-Responda o que souber. Se preferir que eu sugira, diga "sugira baseado no projeto".
-```
-
----
-
-#### DIMENSAO 6: Qualidade e Padroes
-
-**O que captura**: Expectativas de qualidade, compliance, observabilidade.
-
-**Pergunta 6.1 — Padroes de Qualidade**:
-
-```markdown
-## Pergunta 7: Qualidade e Padroes
-
-Quais padroes de qualidade sao importantes para o projeto?
-
-| Opcao | Descricao |
-|-------|-----------|
-| A | **Testes rigorosos** — TDD, cobertura alta, CI/CD |
-| B | **Seguranca primeiro** — OWASP, auditoria, compliance (LGPD/GDPR) |
-| C | **Observabilidade** — Logging, metricas, alertas, tracing |
-| D | **Performance** — Baixa latencia, alta concorrencia |
-| E | **Acessibilidade** — WCAG, i18n, suporte a multiplos dispositivos |
-| F | **Documentacao** — Codigo documentado, ADRs, specs completos |
-
-Selecione todas que se aplicam (ex: "A, B, F") ou descreva suas expectativas.
-```
-
----
-
-#### DIMENSAO 7: Visao de Futuro
-
-**O que captura**: Direcao de longo prazo, escalabilidade, evolucao.
-
-**Pergunta 7.1 — Evolucao**:
-
-```markdown
-## Pergunta 8: Visao de Futuro
-
-Como voce ve o projeto daqui a 6-12 meses?
-
-- Vai crescer em **usuarios**? (escala)
-- Vai crescer em **features**? (escopo)
-- Vai precisar de **mais desenvolvedores**? (equipe)
-- Ha planos de **monetizacao** ou **mudanca de modelo**?
-
-Descreva livremente o que imagina para o futuro do projeto.
-```
-
----
 
 ### 3.2 Regras da Entrevista
 
-1. **Uma pergunta por vez** — aguardar resposta antes de avancar
-2. **Adaptar ao contexto** — pular perguntas cujas respostas ja sao conhecidas
-3. **Aceitar respostas livres** — nao forcar formato; extrair informacao do texto
-4. **Aceitar "nao sei"** — marcar como `[a definir]` e seguir em frente
-5. **Aceitar atalhos** — se usuario responder varias dimensoes de uma vez, registrar todas
-6. **Maximo 10 perguntas** — se usuario disser "chega", "pronto" ou "prossiga", encerrar
-7. **Nao julgar respostas** — registrar fielmente; criticas sao trabalho do `/advisor`
-8. **Confirmar inferencias** — quando preencher algo inferido, confirmar brevemente:
-   "Detectei que o projeto usa [linguagem + banco identificados do package.json/go.mod/etc]. Correto?"
+Ver detalhamento em `references/discovery-guide.md#regras-da-entrevista`.
+Resumo: uma pergunta por vez, maximo 10 total, adaptar ao contexto, confirmar
+inferencias, nao julgar respostas.
 
 ### 3.3 Transicao entre Perguntas
 
@@ -327,106 +147,18 @@ Apos cada resposta:
 
 ### 4.1 Template do Briefing
 
-Apos encerrar a entrevista, consolidar todas as respostas no template:
+Apos encerrar a entrevista, consolidar todas as respostas usando
+`templates/briefing.md` (mesmo diretorio desta skill). Estrutura:
 
-```markdown
-# Project Briefing: [PROJECT_NAME]
-
-**Data**: [DATE]
-**Status**: Draft
-**Versao**: 1.0
-
----
-
-## 1. Visao e Proposito
-
-**O que e**: [Descricao concisa do projeto]
-
-**Problema que resolve**: [Problema central]
-
-**Proposta de valor**: [Por que alguem usaria isso]
-
-## 2. Usuarios e Stakeholders
-
-| Ator | Papel | Acoes Principais |
-|------|-------|-----------------|
-| [Nome] | [Tipo] | [O que faz] |
-
-**Stakeholders de decisao**: [Quem decide prioridades, aprova entregas]
-
-## 3. Escopo
-
-### MVP (Essencial)
-
-1. [Feature essencial]
-2. [Feature essencial]
-3. [Feature essencial]
-
-### Pos-MVP (Desejavel)
-
-1. [Feature desejavel]
-2. [Feature desejavel]
-
-### Fora de Escopo
-
-- [O que explicitamente NAO faz parte do projeto]
-
-## 4. Prioridades e Trade-offs
-
-**Ordem de prioridade**: [ex: Qualidade > UX > Velocidade > Escopo]
-
-**Decisoes explicitas**:
-- [Trade-off aceito, ex: "Aceitar escopo menor para manter qualidade"]
-
-## 5. Restricoes
-
-| Restricao | Valor | Notas |
-|-----------|-------|-------|
-| Prazo | [valor ou "flexivel"] | [contexto] |
-| Equipe | [tamanho e perfil] | [contexto] |
-| Budget | [valor ou "nao definido"] | [contexto] |
-| Tecnica | [restricoes obrigatorias] | [contexto] |
-
-## 6. Stack Tecnica
-
-| Camada | Tecnologia | Justificativa |
-|--------|-----------|---------------|
-| Backend | [tech] | [por que] |
-| Frontend | [tech] | [por que] |
-| Banco de dados | [tech] | [por que] |
-| Infraestrutura | [tech] | [por que] |
-| Integracoes | [tech] | [por que] |
-
-## 7. Qualidade e Padroes
-
-**Padroes adotados**:
-- [Padrao 1 e o que significa para o projeto]
-- [Padrao 2 e o que significa para o projeto]
-
-**Compliance**: [LGPD, GDPR, PCI-DSS, ou "nenhum especifico"]
-
-## 8. Visao de Futuro
-
-**6 meses**: [Onde o projeto deve estar]
-
-**12 meses**: [Evolucao esperada]
-
-**Riscos conhecidos**:
-- [Risco 1]
-- [Risco 2]
-
----
-
-## Itens a Definir
-
-| Item | Dimensao | Impacto |
-|------|----------|---------|
-| [O que falta decidir] | [Qual dimensao] | [Alto/Medio/Baixo] |
-
----
-
-**Proximo passo recomendado**: `/constitution` para definir principios de governanca
-```
+1. Visao e Proposito
+2. Usuarios e Stakeholders
+3. Escopo (MVP / Pos-MVP / Fora de Escopo)
+4. Prioridades e Trade-offs
+5. Restricoes (prazo, equipe, budget, tecnica)
+6. Stack Tecnica
+7. Qualidade e Padroes
+8. Visao de Futuro
++ Itens a Definir (pendencias)
 
 ### 4.2 Regras de Sintese
 

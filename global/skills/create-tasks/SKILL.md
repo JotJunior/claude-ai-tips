@@ -82,64 +82,14 @@ O documento DEVE conter todas as secoes abaixo, nesta ordem:
 
 ### Template Completo
 
-```markdown
-# Tarefas {Nome do Projeto} - {Escopo}
+Ver `templates/tasks.md` (mesmo diretorio desta skill). Estrutura:
 
-Escopo: {Descricao concisa do que este backlog cobre}
-
-**Legenda de status:**
-- `[ ]` Pendente
-- `[~]` Em andamento
-- `[x]` Concluido
-- `[!]` Bloqueado
-
-**Legenda de criticidade:**
-- `[C]` Critico - Impacto financeiro direto ou bloqueante
-- `[A]` Alto - Funcionalidade essencial
-- `[M]` Medio - Necessario mas sem urgencia imediata
-
----
-
-## FASE {N} - {Nome da Fase}
-
-### {N}.1 {Nome da Tarefa} `[{C|A|M}]`
-
-Ref: {Referencia a UC, ADR ou documento, se aplicavel}
-
-- [ ] {N}.1.1 {Descricao da subtarefa}
-- [ ] {N}.1.2 {Descricao da subtarefa}
-- [ ] {N}.1.3 {Descricao da subtarefa}
-
-### {N}.2 {Nome da Tarefa} `[{C|A|M}]`
-
-- [ ] {N}.2.1 {Descricao da subtarefa}
-- [ ] {N}.2.2 {Descricao da subtarefa}
-
----
-
-## Matriz de Dependencias
-
-{Diagrama mostrando ordem de execucao e dependencias entre fases}
-
-## Resumo Quantitativo
-
-| Fase | Tarefas | Subtarefas | Criticidade |
-|------|---------|------------|-------------|
-| 1 - {Nome} | {N} | {N} | {C|A|M} |
-| **Total** | **{N}** | **{N}** | - |
-
-## Escopo Coberto
-
-| Item | Descricao | Fase |
-|------|-----------|------|
-| {ID} | {O que esta incluido} | {N} |
-
-## Escopo Excluido
-
-| Item | Descricao | Motivo |
-|------|-----------|--------|
-| {ID} | {O que foi excluido} | {Justificativa} |
-```
+- Cabecalho com escopo + legendas de status e criticidade
+- Fases numeradas (FASE 1, FASE 2, ...)
+- Tarefas com numeracao hierarquica (1.1, 1.2, ...) e tag `[C]`/`[A]`/`[M]`
+- Subtarefas como checkboxes numerados (1.1.1, 1.1.2, ...)
+- Matriz de Dependencias (Mermaid flowchart)
+- Resumo Quantitativo, Escopo Coberto, Escopo Excluido
 
 ---
 

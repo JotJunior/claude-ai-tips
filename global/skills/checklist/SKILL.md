@@ -146,27 +146,16 @@ Organizar items por dimensao:
 
 ### 3.3 Exemplos por Dominio
 
-**UX:**
-- "Sao os requisitos de hierarquia visual definidos com criterios mensuráveis? [Clareza, Spec §FR-1]"
-- "Sao requisitos de estado de interacao (hover, focus, active) consistentemente definidos? [Consistencia]"
-- "Sao requisitos de acessibilidade especificados para todos os elementos interativos? [Cobertura, Gap]"
-- "E o fallback definido quando imagens falham ao carregar? [Edge Case, Gap]"
+Cada dominio tem um catalogo de items em `references/{dominio}.md` (mesmo
+diretorio desta skill). Consultar sob demanda ao gerar o checklist:
 
-**API:**
-- "Sao formatos de resposta de erro especificados para todos os cenarios de falha? [Completude]"
-- "Sao requisitos de rate limiting quantificados com thresholds especificos? [Clareza]"
-- "Sao requisitos de autenticacao consistentes entre todos os endpoints? [Consistencia]"
-- "Sao requisitos de retry/timeout definidos para dependencias externas? [Cobertura, Gap]"
+- `references/ux.md` — hierarquia visual, estados de interacao, acessibilidade, responsividade
+- `references/api.md` — contratos, error handling, auth, rate limiting, retry, observabilidade
+- `references/security.md` — authN/Z, protecao de dados, input validation, logging, compliance
+- `references/performance.md` — targets, escalabilidade, degradacao, caching, queries
+- `references/requirements.md` — qualidade geral de requisitos (default)
 
-**Security:**
-- "Sao requisitos de autenticacao especificados para todos os recursos protegidos? [Cobertura]"
-- "Sao requisitos de protecao de dados definidos para informacoes sensiveis? [Completude]"
-- "O modelo de ameacas esta documentado e requisitos alinhados a ele? [Traceability]"
-
-**Performance:**
-- "Sao requisitos de performance quantificados com metricas especificas? [Clareza]"
-- "Sao targets de performance definidos para todas as jornadas criticas? [Cobertura]"
-- "Sao requisitos de degradacao definidos para cenarios de alta carga? [Edge Case, Gap]"
+Esses sao ponto de partida — nao copiar sem adaptar ao contexto da feature.
 
 ### 3.4 Rastreabilidade
 

@@ -116,45 +116,19 @@ Criar representacoes internas (nao incluir artefatos raw no output):
 
 ### 3.1 Passes de Deteccao
 
-Focar em findings de alto sinal. Limite: **50 findings total**.
-Agregar restante em resumo de overflow.
+Executar 6 passes sobre os modelos semanticos. Detalhamento completo de cada
+pass (o que flaggear, severidade tipica, exemplos) em
+`references/consistency-checks.md` (mesmo diretorio desta skill):
 
-#### A. Deteccao de Duplicacao
+- **A. Duplicacao** — requisitos near-duplicate
+- **B. Ambiguidade** — adjetivos vagos, placeholders nao resolvidos
+- **C. Sub-especificacao** — verbos sem objeto, criterios incompletos
+- **D. Alinhamento com Constitution** — violacoes MUST sao automaticamente CRITICAL
+- **E. Gaps de Cobertura** — requisitos orfaos, tasks orfas
+- **F. Inconsistencia** — drift de terminologia, contradicoes entre artefatos
 
-- Identificar requisitos near-duplicate
-- Marcar fraseado de menor qualidade para consolidacao
-
-#### B. Deteccao de Ambiguidade
-
-- Flaggear adjetivos vagos sem criterios mensuráveis:
-  `rapido`, `escalavel`, `seguro`, `intuitivo`, `robusto`
-- Flaggear placeholders nao resolvidos:
-  `TODO`, `TKTK`, `???`, `<placeholder>`, `[NEEDS CLARIFICATION]`
-
-#### C. Sub-especificacao
-
-- Requisitos com verbos mas sem objeto ou outcome mensuravel
-- User stories sem criterios de aceite alinhados
-- Tasks referenciando arquivos/componentes nao definidos em spec/plan
-
-#### D. Alinhamento com Constitution
-
-- Qualquer requisito ou elemento do plan conflitando com principio MUST
-- Secoes obrigatorias ou quality gates da constitution ausentes
-- **Violacoes de constitution sao automaticamente CRITICAL**
-
-#### E. Gaps de Cobertura
-
-- Requisitos com zero tasks associadas
-- Tasks sem requisito/story mapeado
-- Requisitos nao-funcionais nao refletidos em tasks (performance, security)
-
-#### F. Inconsistencia
-
-- Drift de terminologia (mesmo conceito nomeado diferente entre artefatos)
-- Entidades referenciadas no plan ausentes na spec (ou vice-versa)
-- Contradicoes de ordenacao de tasks (ex: tasks de integracao antes de setup sem nota de dependencia)
-- Requisitos conflitantes (ex: um requer Next.js enquanto outro especifica Vue)
+Focar em findings de alto sinal. Limite: **50 findings total**. Agregar
+restante em resumo de overflow.
 
 ---
 
@@ -162,12 +136,15 @@ Agregar restante em resumo de overflow.
 
 ### 4.1 Heuristica de Severidade
 
+Tabela completa em `references/consistency-checks.md#heuristica-de-severidade`.
+Resumo:
+
 | Severidade | Criterio |
 |------------|----------|
-| **CRITICAL** | Viola principio MUST da constitution, artefato core ausente, requisito com zero cobertura que bloqueia funcionalidade baseline |
-| **HIGH** | Requisito duplicado ou conflitante, atributo de seguranca/performance ambiguo, criterio de aceite nao-testavel |
-| **MEDIUM** | Drift de terminologia, cobertura ausente de requisito nao-funcional, edge case sub-especificado |
-| **LOW** | Melhorias de estilo/redacao, redundancia menor que nao afeta ordem de execucao |
+| **CRITICAL** | Violacao de MUST na constitution, artefato core ausente, requisito core sem cobertura |
+| **HIGH** | Duplicacao/conflito, seguranca/performance ambigua, criterio nao-testavel |
+| **MEDIUM** | Drift de terminologia, NFR parcialmente coberto, edge case sub-especificado |
+| **LOW** | Estilo, redundancia menor |
 
 ---
 

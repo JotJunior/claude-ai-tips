@@ -107,47 +107,13 @@ Para cada placeholder no template:
 
 ### 3.1 Template da Constituicao
 
-Preencha o template abaixo substituindo TODOS os placeholders por texto concreto:
+Usar `templates/constitution.md` (mesmo diretorio desta skill) e substituir
+TODOS os placeholders `[ALL_CAPS]` por texto concreto. Estrutura:
 
-```markdown
-# [PROJECT_NAME] Constitution
-
-## Core Principles
-
-### [PRINCIPLE_1_NAME]
-
-[PRINCIPLE_1_DESCRIPTION]
-
-### [PRINCIPLE_2_NAME]
-
-[PRINCIPLE_2_DESCRIPTION]
-
-### [PRINCIPLE_3_NAME]
-
-[PRINCIPLE_3_DESCRIPTION]
-
-### [PRINCIPLE_4_NAME]
-
-[PRINCIPLE_4_DESCRIPTION]
-
-### [PRINCIPLE_5_NAME]
-
-[PRINCIPLE_5_DESCRIPTION]
-
-## [SECTION_2_NAME]
-
-[SECTION_2_CONTENT]
-
-## [SECTION_3_NAME]
-
-[SECTION_3_CONTENT]
-
-## Governance
-
-[GOVERNANCE_RULES]
-
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-```
+- **Core Principles** — 3-5 principios declarativos e testaveis
+- Secoes opcionais conforme o projeto (ex: Quality Standards, Architecture Decisions)
+- **Governance** — regras de amendment, versioning, exception handling
+- Rodape com **Version / Ratified / Last Amended**
 
 ### 3.2 Regras de Preenchimento
 

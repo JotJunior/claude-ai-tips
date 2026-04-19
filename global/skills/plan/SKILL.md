@@ -115,21 +115,9 @@ Se constitution nao existe: pular esta etapa e documentar "No constitution found
 
 ### 3.1 Preencher Contexto
 
-Detectar do projeto e da spec (marcar unknowns como NEEDS CLARIFICATION):
-
-```markdown
-## Technical Context
-
-**Language/Version**: [ex: Go 1.24, Python 3.11, TypeScript 5.x ou NEEDS CLARIFICATION]
-**Primary Dependencies**: [ex: Chi v5, FastAPI, React 18 ou NEEDS CLARIFICATION]
-**Storage**: [ex: PostgreSQL, Redis, files ou N/A]
-**Testing**: [ex: go test, pytest, vitest ou NEEDS CLARIFICATION]
-**Target Platform**: [ex: Kubernetes, Vercel, mobile ou NEEDS CLARIFICATION]
-**Project Type**: [ex: library, cli, web-service, mobile-app ou NEEDS CLARIFICATION]
-**Performance Goals**: [ex: 1000 req/s, 60 fps ou NEEDS CLARIFICATION]
-**Constraints**: [ex: <200ms p95, <100MB memory ou NEEDS CLARIFICATION]
-**Scale/Scope**: [ex: 10k users, 1M LOC ou NEEDS CLARIFICATION]
-```
+Ver secao **Technical Context** em `templates/plan.md` (mesmo diretorio desta
+skill). Preencher cada campo detectando do projeto e da spec — marcar unknowns
+como `NEEDS CLARIFICATION` apenas apos tentar inferir do codebase.
 
 ### 3.2 Inferencia
 
@@ -163,21 +151,8 @@ Agent 2: "Find best practices for {tech} in {domain}"
 
 ### 4.3 Consolidar em research.md
 
-```markdown
-# Research: [FEATURE]
-
-## Decision 1: [Topico]
-
-**Decision**: [O que foi escolhido]
-**Rationale**: [Por que escolhido]
-**Alternatives considered**: [O que mais foi avaliado]
-
-## Decision 2: [Topico]
-
-**Decision**: [...]
-**Rationale**: [...]
-**Alternatives considered**: [...]
-```
+Use `templates/research.md` como base. Uma secao `## Decision N` por unknown
+resolvido, com **Decision / Rationale / Alternatives considered**.
 
 **Output**: `docs/specs/{feature}/research.md` com todos os NEEDS CLARIFICATION resolvidos.
 
@@ -189,84 +164,26 @@ Agent 2: "Find best practices for {tech} in {domain}"
 
 ### 5.1 Modelo de Dados
 
-Extrair entidades da spec → `data-model.md`:
-
-```markdown
-# Data Model: [FEATURE]
-
-## Entity: [Name]
-
-| Field | Type | Constraints | Notes |
-|-------|------|-------------|-------|
-| id | UUID | PK | Auto-generated |
-| name | string | NOT NULL, min 3 chars | |
-| status | enum | CHECK (active, inactive) | Default: active |
-| created_at | timestamp | NOT NULL | Auto-set |
-
-### Relationships
-
-- [Entity A] 1:N [Entity B] via `entity_a_id`
-- [Entity C] N:M [Entity D] via `entity_c_entity_d` join table
-
-### State Transitions (if applicable)
-
-draft → active → suspended → archived
-```
+Base: `templates/data-model.md`. Extrair entidades da spec, uma secao
+`## Entity: Name` por entidade, com tabela de campos, relacionamentos e state
+transitions.
 
 **Output**: `docs/specs/{feature}/data-model.md`
 
 ### 5.2 Contratos de Interface
 
-Se o projeto expoe interfaces externas (APIs, CLI, eventos):
-
-```markdown
-# Contracts: [FEATURE]
-
-## [Endpoint/Command/Event]
-
-**Method**: POST /api/v1/resource
-**Auth**: Required (JWT)
-
-### Request
-
-| Field | Type | Required | Validation |
-|-------|------|----------|------------|
-| name | string | yes | min 3, max 100 |
-
-### Response (200)
-
-| Field | Type | Description |
-|-------|------|-------------|
-| id | uuid | Created resource ID |
-
-### Error Responses
-
-| Status | Code | Description |
-|--------|------|-------------|
-| 400 | VALIDATION_ERROR | Invalid input |
-| 409 | CONFLICT | Resource already exists |
-```
-
-**Output**: `docs/specs/{feature}/contracts/` (um arquivo por grupo de endpoints)
+Se o projeto expoe interfaces externas (APIs, CLI, eventos), use
+`templates/contracts.md` — um arquivo por grupo de endpoints em
+`docs/specs/{feature}/contracts/`.
 
 Pular se projeto e puramente interno (build scripts, one-off tools).
 
+**Output**: `docs/specs/{feature}/contracts/*.md`
+
 ### 5.3 Quickstart / Cenarios de Teste
 
-```markdown
-# Quickstart: [FEATURE]
-
-## Scenario 1: [Happy Path]
-
-1. [Passo]
-2. [Passo]
-3. **Expected**: [Resultado]
-
-## Scenario 2: [Error Case]
-
-1. [Passo]
-2. **Expected**: [Erro esperado]
-```
+Base: `templates/quickstart.md`. Um cenario por fluxo critico (happy path +
+ao menos um error case), no formato "1. Passo → 2. Passo → **Expected**: resultado".
 
 **Output**: `docs/specs/{feature}/quickstart.md`
 
@@ -276,51 +193,13 @@ Pular se projeto e puramente interno (build scripts, one-off tools).
 
 ### 6.1 Template do Plano
 
-Consolidar tudo no plano final:
+Consolidar tudo em `templates/plan.md` preenchido com:
 
-```markdown
-# Implementation Plan: [FEATURE]
-
-**Feature**: `[short-name]` | **Date**: [DATE] | **Spec**: [link relativo]
-
-## Summary
-
-[Requisito primario + abordagem tecnica da pesquisa]
-
-## Technical Context
-
-[Conteudo da Etapa 3, com NEEDS CLARIFICATION ja resolvidos]
-
-## Constitution Check
-
-[Conteudo da Etapa 2]
-
-## Project Structure
-
-### Documentation (this feature)
-
-docs/specs/[feature]/
-├── spec.md
-├── plan.md          # This file
-├── research.md      # Phase 0 output
-├── data-model.md    # Phase 1 output
-├── quickstart.md    # Phase 1 output
-└── contracts/       # Phase 1 output
-
-### Source Code (repository root)
-
-[Arvore de diretorios real do projeto, com paths concretos]
-
-**Structure Decision**: [Decisao documentada sobre estrutura escolhida]
-
-## Complexity Tracking
-
-> Preencher APENAS se Constitution Check tem violacoes que precisam justificativa
-
-| Violacao | Por Que Necessario | Alternativa Simples Rejeitada Porque |
-|----------|-------------------|--------------------------------------|
-| [ex: 4o servico] | [necessidade] | [por que 3 sao insuficientes] |
-```
+- **Summary** — requisito primario + abordagem tecnica da pesquisa
+- **Technical Context** — da Etapa 3, com NEEDS CLARIFICATION ja resolvidos
+- **Constitution Check** — da Etapa 2
+- **Project Structure** — documentacao (feature dir) + source code (arvore real do projeto)
+- **Complexity Tracking** — preencher APENAS se houve violacoes de constitution que precisam justificativa
 
 **Output**: `docs/specs/{feature}/plan.md`
 

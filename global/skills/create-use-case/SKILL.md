@@ -17,7 +17,7 @@ allowed-tools:
 
 # Skill: Criar Caso de Uso
 
-Crie um documento de caso de uso completo seguindo o template em `template-uc.md` (no mesmo diretorio desta skill).
+Crie um documento de caso de uso completo seguindo o template em `templates/use-case.md` (no mesmo diretorio desta skill).
 
 ## Argumentos
 
@@ -52,7 +52,7 @@ Analise o argumento fornecido. Ele pode ser:
    - Padrao: `UC-{DOMINIO}-{NUMERO}` (ex: UC-CAD-001)
    - Verifique IDs existentes no projeto com Glob `UC-*.md`
 
-3. **Leia o template** em `template-uc.md` (diretorio desta skill)
+3. **Leia o template** em `templates/use-case.md` (diretorio desta skill)
 
 4. **Gere o documento** preenchendo todas as secoes do template
 
