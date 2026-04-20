@@ -163,7 +163,7 @@ ALTER TABLE orders ALTER COLUMN status SET STATISTICS 1000;
 ANALYZE orders;
 
 -- Or analyze specific columns
-ANALYZE (订单, status, customer_id);
+ANALYZE orders (status, customer_id);
 ```
 
 ## Example: Optimizing a Slow Query
