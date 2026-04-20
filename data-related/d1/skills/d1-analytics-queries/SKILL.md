@@ -1,6 +1,8 @@
 ---
 name: d1-analytics-queries
-description: Write analytics queries using window functions, CTEs, and aggregates in D1. Use when "d1 analytics", "window function d1", "aggregate query d1", "report d1", "sql analytics d1".
+description: |
+  Write analytics queries using window functions, CTEs, and aggregates in D1. Use when "d1 analytics", "window function d1", "aggregate query d1", "report d1", "sql analytics d1".
+  Use quando o usuário pedir: "analytics d1", "queries analíticas d1", "agregações d1", "análise d1".
 allowed-tools:
   - Read
   - Glob

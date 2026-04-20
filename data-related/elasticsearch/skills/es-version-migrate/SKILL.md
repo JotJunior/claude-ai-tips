@@ -1,6 +1,8 @@
 ---
 name: es-version-migrate
-description: Migrate Elasticsearch between major versions (7 to 8, 8 to 9). Use when "es upgrade", "elasticsearch migration version", "es 7 to 8", "es upgrade major", "es version upgrade".
+description: |
+  Migrate Elasticsearch between major versions (7 to 8, 8 to 9). Use when "es upgrade", "elasticsearch migration version", "es 7 to 8", "es upgrade major", "es version upgrade".
+  Use quando o usuário pedir: "migrar versão es", "upgrade elasticsearch", "atualizar elasticsearch".
 allowed-tools:
   - Read
   - Glob

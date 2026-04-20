@@ -1,6 +1,8 @@
 ---
 name: ts-add-webhook
-description: Create webhook endpoint with HMAC signature validation and idempotency
+description: |
+  Create webhook endpoint with HMAC signature validation and idempotency
+  Use quando o usuário pedir: "criar webhook ts", "endpoint webhook typescript", "handler webhook", "webhook handler".
 allowed-tools:
   - Read
   - Glob

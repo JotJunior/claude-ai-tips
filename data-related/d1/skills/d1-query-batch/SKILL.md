@@ -1,6 +1,8 @@
 ---
 name: d1-query-batch
-description: Batch multiple D1 queries to reduce latency via db.batch(). Use when "d1 batch", "batch query d1", "d1 prepare batch", "multiple queries d1", "atomic queries d1".
+description: |
+  Batch multiple D1 queries to reduce latency via db.batch(). Use when "d1 batch", "batch query d1", "d1 prepare batch", "multiple queries d1", "atomic queries d1".
+  Use quando o usuário pedir: "batch d1", "queries em lote d1", "executar batch d1".
 allowed-tools:
   - Read
   - Glob

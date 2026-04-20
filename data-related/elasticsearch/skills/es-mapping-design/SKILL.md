@@ -1,6 +1,8 @@
 ---
 name: es-mapping-design
-description: Design Elasticsearch index mapping with types, analyzers, and multi-fields. Use when "es mapping", "elasticsearch schema", "design mapping es", "index mapping", "es analyzer".
+description: |
+  Design Elasticsearch index mapping with types, analyzers, and multi-fields. Use when "es mapping", "elasticsearch schema", "design mapping es", "index mapping", "es analyzer".
+  Use quando o usuário pedir: "mapping es", "desenhar mapping elasticsearch", "field types es", "campo elasticsearch".
 allowed-tools:
   - Read
   - Glob

@@ -1,6 +1,8 @@
 ---
 name: es-reindex-zero-downtime
-description: Reindex Elasticsearch with zero-downtime via alias swap. Use when "es reindex", "elasticsearch reindex", "alias swap es", "zero downtime es", "index rotation".
+description: |
+  Reindex Elasticsearch with zero-downtime via alias swap. Use when "es reindex", "elasticsearch reindex", "alias swap es", "zero downtime es", "index rotation".
+  Use quando o usuário pedir: "reindex es", "reindex sem downtime", "alias swap", "trocar alias".
 allowed-tools:
   - Read
   - Glob

@@ -1,6 +1,8 @@
 ---
 name: pg-query-optimize
-description: Optimize slow PostgreSQL queries using EXPLAIN ANALYZE, index analysis, and query rewriting. Use when asked to optimize query postgres, query lenta, slow query, explain analyze, improve query performance.
+description: |
+  Optimize slow PostgreSQL queries using EXPLAIN ANALYZE, index analysis, and query rewriting. Use when asked to optimize query postgres, query lenta, slow query, explain analyze, improve query performance.
+  Use quando o usuário pedir: "otimizar query", "explain analyze", "query lenta", "postgres lento".
 allowed-tools:
   - Read
   - Glob

@@ -1,6 +1,8 @@
 ---
 name: d1-prepared-stmts
-description: Use D1 prepared statements with bind() for security and performance. Use when "d1 prepare", "prepared statement d1", "sql injection d1", "d1 bind parameters", "db.prepare".
+description: |
+  Use D1 prepared statements with bind() for security and performance. Use when "d1 prepare", "prepared statement d1", "sql injection d1", "d1 bind parameters", "db.prepare".
+  Use quando o usuário pedir: "prepared statement d1", "stmt parametrizado d1", "prepared stmt".
 allowed-tools:
   - Read
   - Glob

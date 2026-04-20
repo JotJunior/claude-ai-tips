@@ -1,6 +1,8 @@
 ---
 name: d1-fts5-setup
-description: Configure Full-Text Search (FTS5) virtual tables in D1 for scalable search. Use when "d1 fts", "full text search d1", "fts5 cloudflare", "search d1", "fts5 virtual table".
+description: |
+  Configure Full-Text Search (FTS5) virtual tables in D1 for scalable search. Use when "d1 fts", "full text search d1", "fts5 cloudflare", "search d1", "fts5 virtual table".
+  Use quando o usuário pedir: "fts5 d1", "full text search d1", "busca textual d1", "configurar fts5".
 allowed-tools:
   - Read
   - Glob

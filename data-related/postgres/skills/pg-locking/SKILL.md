@@ -1,6 +1,8 @@
 ---
 name: pg-locking
-description: Handle PostgreSQL locking issues including lock types, advisory locks, deadlock detection, and contention analysis. Use when asked to postgres locking, deadlock postgres, lock contention, advisory lock, lock timeout, pg locks.
+description: |
+  Handle PostgreSQL locking issues including lock types, advisory locks, deadlock detection, and contention analysis. Use when asked to postgres locking, deadlock postgres, lock contention, advisory lock, lock timeout, pg locks.
+  Use quando o usuário pedir: "lock postgres", "deadlock", "row lock", "advisory lock".
 allowed-tools:
   - Read
   - Glob

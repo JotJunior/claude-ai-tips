@@ -1,6 +1,8 @@
 ---
 name: es-query-build
-description: Build Elasticsearch bool queries with must, should, filter, must_not clauses. Use when "es query", "elasticsearch query", "query dsl es", "search query es", "bool query".
+description: |
+  Build Elasticsearch bool queries with must, should, filter, must_not clauses. Use when "es query", "elasticsearch query", "query dsl es", "search query es", "bool query".
+  Use quando o usuário pedir: "construir query es", "query dsl elasticsearch", "bool query", "query elasticsearch".
 allowed-tools:
   - Read
   - Glob

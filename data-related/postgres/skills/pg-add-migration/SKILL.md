@@ -1,6 +1,8 @@
 ---
 name: pg-add-migration
-description: Create idempotent PostgreSQL migration files with up/down SQL scripts for safe database schema changes. Use when asked to add postgres migration, nova migration sql, alembic migration, migration postgres, create migration. Also when mentioning schema changes, alter table, add column, create index.
+description: |
+  Create idempotent PostgreSQL migration files with up/down SQL scripts for safe database schema changes. Use when asked to add postgres migration, nova migration sql, alembic migration, migration postgres, create migration. Also when mentioning schema changes, alter table, add column, create index.
+  Use quando o usuário pedir: "criar migration postgres", "nova migration pg", "add migration".
 allowed-tools:
   - Read
   - Glob

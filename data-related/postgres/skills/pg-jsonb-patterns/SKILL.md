@@ -1,6 +1,8 @@
 ---
 name: pg-jsonb-patterns
-description: Work with PostgreSQL JSONB data type including storage, querying, indexing with GIN, and manipulation with jsonb_set. Use when asked to jsonb postgres, jsonb query, jsonb index, schema flexible postgres, jsonb performance, jsonb storage.
+description: |
+  Work with PostgreSQL JSONB data type including storage, querying, indexing with GIN, and manipulation with jsonb_set. Use when asked to jsonb postgres, jsonb query, jsonb index, schema flexible postgres, jsonb performance, jsonb storage.
+  Use quando o usuário pedir: "jsonb", "indexar jsonb", "query jsonb", "padrões jsonb", "otimizar jsonb".
 allowed-tools:
   - Read
   - Glob

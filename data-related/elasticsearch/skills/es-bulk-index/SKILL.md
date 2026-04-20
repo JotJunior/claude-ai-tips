@@ -1,6 +1,8 @@
 ---
 name: es-bulk-index
-description: Use Elasticsearch Bulk API for batch indexing (10MB / 5000 docs per request). Use when "es bulk", "bulk index es", "elasticsearch bulk", "bulk insert es", "bulk api".
+description: |
+  Use Elasticsearch Bulk API for batch indexing (10MB / 5000 docs per request). Use when "es bulk", "bulk index es", "elasticsearch bulk", "bulk insert es", "bulk api".
+  Use quando o usuário pedir: "bulk index es", "indexação em lote es", "_bulk elasticsearch", "bulk api".
 allowed-tools:
   - Read
   - Glob

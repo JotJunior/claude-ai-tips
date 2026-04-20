@@ -1,6 +1,8 @@
 ---
 name: pg-review-schema
-description: Review existing PostgreSQL schemas for issues, smells, normalization problems, missing constraints, and performance improvements. Use when asked to review schema postgres, audit schema sql, schema smell, schema check postgres, analyze postgres schema.
+description: |
+  Review existing PostgreSQL schemas for issues, smells, normalization problems, missing constraints, and performance improvements. Use when asked to review schema postgres, audit schema sql, schema smell, schema check postgres, analyze postgres schema.
+  Use quando o usuário pedir: "revisar schema", "auditar schema postgres", "schema review", "validar schema".
 allowed-tools:
   - Read
   - Glob

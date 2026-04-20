@@ -1,6 +1,8 @@
 ---
 name: ts-add-migration
-description: Create Drizzle ORM migration files for Cloudflare D1 or Neon Postgres
+description: |
+  Create Drizzle ORM migration files for Cloudflare D1 or Neon Postgres
+  Use quando o usuário pedir: "criar migration drizzle", "nova migration ts", "add migration typescript".
 allowed-tools:
   - Read
   - Glob

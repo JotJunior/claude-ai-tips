@@ -1,6 +1,8 @@
 ---
 name: d1-migration-strategy
-description: Strategy for D1 migrations with zero-downtime, rollback, and multi-region considerations. Use when "d1 migration strategy", "zero downtime d1", "migration d1 production", "d1 schema changes".
+description: |
+  Strategy for D1 migrations with zero-downtime, rollback, and multi-region considerations. Use when "d1 migration strategy", "zero downtime d1", "migration d1 production", "d1 schema changes".
+  Use quando o usuário pedir: "migration d1", "estratégia migration d1", "migrar d1", "migrate d1".
 allowed-tools:
   - Read
   - Glob

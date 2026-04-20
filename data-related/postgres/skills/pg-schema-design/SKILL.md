@@ -1,6 +1,8 @@
 ---
 name: pg-schema-design
-description: Design PostgreSQL schemas following 3NF, naming conventions, and best practices for primary keys, foreign keys, constraints, and audit columns. Use when asked to design schema postgres, normalizar schema, schema review postgres, modelar tabela. Also when mentioning table creation, entity modeling, or database modeling.
+description: |
+  Design PostgreSQL schemas following 3NF, naming conventions, and best practices for primary keys, foreign keys, constraints, and audit columns. Use when asked to design schema postgres, normalizar schema, schema review postgres, modelar tabela. Also when mentioning table creation, entity modeling, or database modeling.
+  Use quando o usuário pedir: "desenhar schema", "modelar tabelas", "schema design postgres", "criar schema".
 allowed-tools:
   - Read
   - Glob

@@ -1,6 +1,8 @@
 ---
 name: d1-schema-design
-description: Design SQLite schema optimized for Cloudflare D1 (STRICT tables, INTEGER PK, GENERATED columns, B-tree indexes). Use when "d1 schema design", "design d1 table", "sqlite schema cloudflare", "create table d1".
+description: |
+  Design SQLite schema optimized for Cloudflare D1 (STRICT tables, INTEGER PK, GENERATED columns, B-tree indexes). Use when "d1 schema design", "design d1 table", "sqlite schema cloudflare", "create table d1".
+  Use quando o usuário pedir: "schema d1", "modelar d1", "desenhar tabelas d1", "criar schema d1".
 allowed-tools:
   - Read
   - Glob

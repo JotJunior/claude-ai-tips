@@ -1,6 +1,8 @@
 ---
 name: ts-add-queue-consumer
-description: Add Cloudflare Queue consumer with retry, DLQ, and batch processing
+description: |
+  Add Cloudflare Queue consumer with retry, DLQ, and batch processing
+  Use quando o usuário pedir: "consumer queue ts", "cloudflare queue consumer", "criar consumer", "queue consumer".
 allowed-tools:
   - Read
   - Glob

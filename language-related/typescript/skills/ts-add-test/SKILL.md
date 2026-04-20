@@ -1,6 +1,8 @@
 ---
 name: ts-add-test
-description: Create Vitest unit/integration tests for Cloudflare Workers with Hono
+description: |
+  Create Vitest unit/integration tests for Cloudflare Workers with Hono
+  Use quando o usuário pedir: "criar teste ts", "vitest test", "novo teste typescript", "adicionar teste".
 allowed-tools:
   - Read
   - Glob

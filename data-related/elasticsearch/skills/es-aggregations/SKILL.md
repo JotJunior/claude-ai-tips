@@ -1,6 +1,8 @@
 ---
 name: es-aggregations
-description: Use Elasticsearch aggregations (terms, date_histogram, metrics, nested, pipeline). Use when "es aggregation", "elasticsearch agg", "facet es", "stats es", "bucket aggregation".
+description: |
+  Use Elasticsearch aggregations (terms, date_histogram, metrics, nested, pipeline). Use when "es aggregation", "elasticsearch agg", "facet es", "stats es", "bucket aggregation".
+  Use quando o usuário pedir: "agregações elasticsearch", "aggs es", "bucket aggregation", "terms aggregation".
 allowed-tools:
   - Read
   - Glob

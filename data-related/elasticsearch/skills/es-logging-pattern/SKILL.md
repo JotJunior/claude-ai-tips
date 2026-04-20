@@ -1,6 +1,8 @@
 ---
 name: es-logging-pattern
-description: Configure Elasticsearch index pattern for logs with time-based ILM rollover. Use when "es logs", "elasticsearch logging", "ilm pattern", "logs index es", "elastic stack logging".
+description: |
+  Configure Elasticsearch index pattern for logs with time-based ILM rollover. Use when "es logs", "elasticsearch logging", "ilm pattern", "logs index es", "elastic stack logging".
+  Use quando o usuário pedir: "log elasticsearch", "padrão logging es", "ingest logs es", "estrutura logs".
 allowed-tools:
   - Read
   - Glob
