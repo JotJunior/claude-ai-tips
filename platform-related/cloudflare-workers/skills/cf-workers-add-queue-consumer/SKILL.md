@@ -1,6 +1,7 @@
 ---
 name: cf-workers-add-queue-consumer
-description: Configure Cloudflare Queue consumer with retry and DLQ. Use quando: "add queue consumer", "wrangler queue", "cloudflare queue setup", "novo consumer", "configurar queue worker". Tambem quando: criar producer para enfileirar, configurar retry policy, DLQ. NAO use quando: filas SQS (use data-related/aws/), processamento em batch fora do Workers.
+description: |
+  Configure Cloudflare Queue consumer with retry and DLQ. Use quando: "add queue consumer", "wrangler queue", "cloudflare queue setup", "novo consumer", "configurar queue worker". Tambem quando: criar producer para enfileirar, configurar retry policy, DLQ. NAO use quando: filas SQS (use data-related/aws/), processamento em batch fora do Workers.
 allowed-tools:
   - Read
   - Bash

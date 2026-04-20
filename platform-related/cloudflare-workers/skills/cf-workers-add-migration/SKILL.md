@@ -1,6 +1,7 @@
 ---
 name: cf-workers-add-migration
-description: Apply D1 migration via wrangler migrations system. Use quando: "add d1 migration", "nova migration cloudflare", "wrangler migration", "d1 migration", "criar migration d1". Tambem quando: criar/alterar tabelas D1, adicionar indice, seed data. NAO use quando: migrating PostgreSQL (use go-add-migration), operacao via API REST (use cf-api-call).
+description: |
+  Apply D1 migration via wrangler migrations system. Use quando: "add d1 migration", "nova migration cloudflare", "wrangler migration", "d1 migration", "criar migration d1". Tambem quando: criar/alterar tabelas D1, adicionar indice, seed data. NAO use quando: migrating PostgreSQL (use go-add-migration), operacao via API REST (use cf-api-call).
 allowed-tools:
   - Read
   - Bash

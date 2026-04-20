@@ -1,6 +1,7 @@
 ---
 name: cf-workers-add-webhook
-description: Create secure webhook endpoint with signature validation and idempotency. Use quando: "add cf webhook", "webhook cloudflare", "secure webhook", "stripe webhook worker", "webhook signature validation", "hmac verification". Tambem quando: receber webhooks dePayment providers (Stripe, Pagar.me), notificacoes de APIs externas, eventos de webhooks. NAO use quando: endpoint interno sem validacao (use generic route), webhook GraphQL, webhook sem idempotencia.
+description: |
+  Create secure webhook endpoint with signature validation and idempotency. Use quando: "add cf webhook", "webhook cloudflare", "secure webhook", "stripe webhook worker", "webhook signature validation", "hmac verification". Tambem quando: receber webhooks dePayment providers (Stripe, Pagar.me), notificacoes de APIs externas, eventos de webhooks. NAO use quando: endpoint interno sem validacao (use generic route), webhook GraphQL, webhook sem idempotencia.
 allowed-tools:
   - Read
   - Bash

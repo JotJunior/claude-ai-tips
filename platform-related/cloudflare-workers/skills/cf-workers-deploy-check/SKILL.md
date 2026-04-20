@@ -1,6 +1,7 @@
 ---
 name: cf-workers-deploy-check
-description: Pre-deploy validation: bindings, secrets, migrations, observability, rollback plan. Use quando: "cf deploy check", "wrangler deploy validation", "pre-deploy worker", "validar deploy cloudflare", "deploy worker production", "revisar antes de fazer deploy". Tambem quando: validar ambiente antes de migration, verificar secrets faltando, garantir observability configurado. NAO use quando: rollback de emergencia (use plano de rollback jah definido), deploy de infraestrutura (use cf-api-call).
+description: |
+  Pre-deploy validation: bindings, secrets, migrations, observability, rollback plan. Use quando: "cf deploy check", "wrangler deploy validation", "pre-deploy worker", "validar deploy cloudflare", "deploy worker production", "revisar antes de fazer deploy". Tambem quando: validar ambiente antes de migration, verificar secrets faltando, garantir observability configurado. NAO use quando: rollback de emergencia (use plano de rollback jah definido), deploy de infraestrutura (use cf-api-call).
 allowed-tools:
   - Read
   - Bash
