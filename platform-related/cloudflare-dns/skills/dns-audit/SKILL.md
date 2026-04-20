@@ -228,7 +228,7 @@ check_stale_records() {
   declare -a STALE_RECORDS=()
   
   for rec in "${RECORDS_JSON[@]}"; do
-    MODIFIED=$(echo "$rec" | jq -r '.modified_at')
+    MODIFIED=$(echo "$rec" | jq -r '.modified_on')
     if [ "$MODIFIED" \< "$CUTOFF_DATE" ]; then
       STALE_COUNT=$((STALE_COUNT + 1))
       STALE_RECORDS+=("$(echo "$rec" | jq -r '.name') ($(echo "$rec" | jq -r '.type')) — modificado em $MODIFIED")

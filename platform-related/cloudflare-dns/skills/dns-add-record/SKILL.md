@@ -53,7 +53,7 @@ O token precisa do scope `Zone:DNS:Edit` para criar records.
 | MX | `type=MX`, `name`, `content`, `priority` | `ttl` | priority 0-65535, apex apenas |
 | TXT | `type=TXT`, `name`, `content` | `ttl` | max 255 chars por string; usar array para strings longas |
 | SRV | `type=SRV`, `name`, `content`, `priority`, `weight`, `port` | `ttl` | FQDN no content |
-| CAA | `type=CAA`, `name`, `content`, `caas_property` | `ttl` | issue/iodef |
+| CAA | `type=CAA`, `name`, `data: {flags, tag, value}` | `ttl` | issue/iodef/issuewild |
 | NS | — | — | NS records sao gerenciados automaticamente pelo CF |
 
 ## Workflow
@@ -258,8 +258,11 @@ curl -s -X POST "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_recor
   -d '{
     "type": "CAA",
     "name": "example.com",
-    "content": "issue letsencrypt.org",
-    "caas_property": 0,
+    "data": {
+      "flags": 0,
+      "tag": "issue",
+      "value": "letsencrypt.org"
+    },
     "ttl": 300
   }' | jq '.result'
 ```

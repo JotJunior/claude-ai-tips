@@ -87,8 +87,8 @@ Resposta esperada:
       "content": "203.0.113.10",
       "ttl": 300,
       "proxied": true,
-      "created_at": "2024-01-15T10:00:00Z",
-      "modified_at": "2024-06-20T14:30:00Z"
+      "created_on": "2024-01-15T10:00:00Z",
+      "modified_on": "2024-06-20T14:30:00Z"
     }
   ],
   "result_info": {

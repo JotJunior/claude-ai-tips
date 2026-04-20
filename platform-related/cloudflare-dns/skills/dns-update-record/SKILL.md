@@ -61,7 +61,7 @@ CURRENT=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/
   -H "Content-Type: application/json")
 
 echo "Estado atual:"
-echo "$CURRENT" | jq '{id, type, name, content, ttl, proxied, modified_at}'
+echo "$CURRENT" | jq '{id, type, name, content, ttl, proxied, modified_on}'
 ```
 
 ### Passo 2 — Mostrar diff ao usuario (confirmacao)
@@ -113,7 +113,7 @@ fi
 ### Passo 5 — PUT (substituicao total)
 
 ```bash
-# Substituir todos os campos (exceto id, created_at, zone_id)
+# Substituir todos os campos (exceto id, created_on, zone_id)
 RECORD_ID="abc123def456"
 
 RESPONSE=$(curl -s -X PUT "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records/${RECORD_ID}" \
@@ -156,7 +156,7 @@ fi
 
 # Mostrar estado atual
 echo "=== Record Atual ==="
-echo "$CURRENT" | jq -r '.result | "ID: \(.id)\nType: \(.type)\nName: \(.name)\nContent: \(.content)\nTTL: \(.ttl)\nProxied: \(.proxied)\nModificado: \(.modified_at)"'
+echo "$CURRENT" | jq -r '.result | "ID: \(.id)\nType: \(.type)\nName: \(.name)\nContent: \(.content)\nTTL: \(.ttl)\nProxied: \(.proxied)\nModificado: \(.modified_on)"'
 
 # PATCH apenas os campos que o usuario forneceu
 NEW_CONTENT="203.0.113.30"

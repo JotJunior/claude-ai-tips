@@ -66,7 +66,7 @@ if [ "$(echo "$RECORD" | jq -r '.success')" != "true" ]; then
 fi
 
 echo "=== Record a ser removido ==="
-echo "$RECORD" | jq -r '.result | "ID:       \(.id)\nType:     \(.type)\nName:     \(.name)\nContent:  \(.content)\nTTL:      \(.ttl)\nProxied: \(.proxied)\nCriado:   \(.created_at)\nModificado: \(.modified_at)"'
+echo "$RECORD" | jq -r '.result | "ID:       \(.id)\nType:     \(.type)\nName:     \(.name)\nContent:  \(.content)\nTTL:      \(.ttl)\nProxied: \(.proxied)\nCriado:   \(.created_on)\nModificado: \(.modified_on)"'
 ```
 
 ### Passo 2 — Confirmacao interativa (dry-run default)
