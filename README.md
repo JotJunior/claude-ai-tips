@@ -357,6 +357,21 @@ Contribuições são bem-vindas. Para adicionar novos skills ou hooks:
 7. **config.json**: use para parâmetros que variam entre projetos
 8. Teste com o Claude Code antes de submeter
 
+## 📚 Documentação completa
+
+Este README é a porta de entrada. **[A documentação detalhada está em `docs/`](./docs/)** — guias, exemplos, filosofia, catálogo de skills, glossário.
+
+| Começar por | Link |
+|-------------|------|
+| Quickstart 5-min | [docs/getting-started.md](./docs/getting-started.md) |
+| Filosofia + 3 categorias | [docs/architecture.md](./docs/architecture.md) |
+| Catálogo completo de skills | [docs/skills-catalog.md](./docs/skills-catalog.md) |
+| Gestão de credenciais | [docs/guides/credentials.md](./docs/guides/credentials.md) |
+| Cloudflare (Wrangler + API) | [docs/guides/cloudflare.md](./docs/guides/cloudflare.md) |
+| Releases e metodologia git | [docs/guides/releases.md](./docs/guides/releases.md) |
+| Exemplos end-to-end | [docs/examples/](./docs/examples/) |
+| Como contribuir | [docs/contributing.md](./docs/contributing.md) |
+
 ## Categorias de Skills
 
 A partir da versão 2.1.0, o toolkit é organizado em **3 namespaces por propósito**. Cada namespace tem README próprio com critérios de inclusão.
