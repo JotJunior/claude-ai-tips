@@ -1,0 +1,68 @@
+{
+  "hooks": {
+    "PostToolCall": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/language-related/typescript/hooks/ts-typecheck-gate.sh",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/language-related/typescript/hooks/ts-eslint-gate.sh",
+            "timeout": 15
+          },
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/language-related/typescript/hooks/check-date-toisostring.sh",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/language-related/typescript/hooks/check-uuid-v4.sh",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/language-related/typescript/hooks/check-soft-delete.sh",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/language-related/typescript/hooks/check-sql-in-routes.sh",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/language-related/typescript/hooks/check-pii-in-logs.sh",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/language-related/typescript/hooks/check-file-budget.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PreToolCall": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/language-related/typescript/hooks/check-wrangler-deploy.sh",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/language-related/typescript/hooks/check-commit-to-main.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}
