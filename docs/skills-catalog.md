@@ -14,14 +14,9 @@ links para `SKILL.md`.
 | [Go](#language-related--go) | 8 + 4 hooks | estável |
 | [.NET](#language-related--dotnet) | 8 | estável |
 | [Cloudflare Shared](#platform-related--cloudflare-shared) | 3 + 1 hook | 2.1.0 |
-| [TypeScript](#language-related--typescript-planejada) | — | planejada |
-| [Python](#language-related--python-planejada) | — | planejada |
-| [Cloudflare Workers](#platform-related--cloudflare-workers-planejada) | — | planejada |
-| [Cloudflare DNS](#platform-related--cloudflare-dns-planejada) | — | planejada |
-| [Neon](#platform-related--neon-planejada) | — | planejada |
-| [Postgres](#data-related--postgres-planejada) | — | planejada |
-| [D1](#data-related--d1-planejada) | — | planejada |
-| [Elasticsearch](#data-related--elasticsearch-planejada) | — | planejada |
+| [TypeScript](#language-related--typescript-scaffold) | — | scaffold |
+| [Python](#language-related--python-scaffold) | — | scaffold |
+| [Categorias futuras](#categorias-futuras-sem-scaffold-ainda) | — | TBD |
 
 **Total ativo**: 46 skills + 5 hooks + hubs de documentação.
 
@@ -367,93 +362,49 @@ Upgrade explícito do Wrangler no PM detectado (bun/pnpm/yarn/npm).
 
 ---
 
-## Skills planejadas
+## Categorias com scaffold (sem skills concretas ainda)
 
-### Language-related — typescript (planejada)
+As categorias abaixo possuem README com escopo e princípios definidos,
+mas ainda não têm skills implementadas. Skills serão adicionadas
+conforme demanda real dos projetos — evitando vaporware.
 
-Padrões observados nos projetos de referência (unity-dash, inde-intelligence,
-split-ai): Cloudflare Workers + Hono + Zod + Drizzle + TS strict.
+### Language-related — typescript (scaffold)
 
-Skills planejadas:
+Pasta `language-related/typescript/` com README definindo escopo
+(Cloudflare Workers + Hono + Zod + Drizzle + TS strict, observado em
+projetos de referência como unity-dash, inde-intelligence, split-ai).
+Sem skills implementadas.
 
-- `ts-commit` — conventional commits + commitlint + detecta submodules
-- `ts-review-pr` — gate completo (lint, typecheck, tests, architecture-check)
-- `ts-add-domain` — scaffold bounded context (controller/service/repository/mapper/types/schema)
-- `ts-add-route` — rota Hono com Zod + service delegation
-- `ts-add-migration` — Drizzle sequencial
-- `ts-add-test` — Vitest + vitest-pool-workers
-- `ts-add-queue-consumer` — CF Queue consumer com DLQ + idempotência
-- `ts-add-webhook` — handler com HMAC + idempotência + raw logging
-- `ts-add-component` — React + shadcn/ui + design tokens enforce
-- `ts-refactor-budget` — divide arquivo estourado em façade + submódulos
-- `ts-deploy-check` — pre-push discipline completa
-- `ts-review-security` — PII masking + vault tenant-scoped
-- `ts-upgrade-zod-schema` — migração v3/v4 com regen OpenAPI
+**README**: [`language-related/typescript/README.md`](../language-related/typescript/README.md)
 
-Hooks planejados: `ts-typecheck-gate`, `ts-eslint-gate`, `check-date-toisostring`,
-`check-uuid-v4`, `check-soft-delete`, `check-sql-in-routes`, `check-pii-in-logs`,
-`check-file-budget`, `check-wrangler-deploy`, `check-commit-to-main`.
+### Language-related — python (scaffold)
 
-### Language-related — python (planejada)
+Pasta `language-related/python/` com README definindo escopo (PEP 8/484,
+ruff, black, mypy, pytest, pyproject.toml moderno). Sem skills implementadas.
 
-Baseado em projetos Python do autor (api-gw, mem0, mcp-brasil-api):
+**README**: [`language-related/python/README.md`](../language-related/python/README.md)
 
-Skills planejadas: `py-commit`, `py-add-fastapi-route`, `py-add-pydantic-model`,
-`py-add-test` (pytest), `py-add-structlog`, `py-review-pr`, `py-setup-project`,
-`py-upgrade-pkg-manager`.
+## Categorias futuras (sem scaffold ainda)
 
-Hooks planejados: `py-typecheck-gate` (mypy), `py-lint-gate` (ruff/black).
+As categorias abaixo são candidatas para iteração futura. **Sem pasta
+criada e sem skills planejadas em concreto** — o escopo será definido
+quando houver demanda real.
 
-### Platform-related — cloudflare-workers (planejada)
+- `platform-related/cloudflare-workers/` — Workers + ops D1/KV/R2/Queues
+  (consumirá `cloudflare-shared/`)
+- `platform-related/cloudflare-dns/` — DNS via API REST da Cloudflare
+- `platform-related/neon/` — provisionamento Neon Postgres serverless
+- `data-related/postgres/` — consumo Postgres (incluindo variants Neon,
+  Supabase, RDS)
+- `data-related/d1/` — consumo D1 (SQLite edge)
+- `data-related/elasticsearch/` — consumo ES 8.x/9.x
 
-Consome `cloudflare-shared`. Skills para Workers + ops de D1/KV/R2/Queues:
+> **Nota anti-vaporware**: este toolkit deliberadamente evita listar
+> skills futuras com nomes específicos antes de implementá-las. Quando
+> uma skill for criada, ela aparece aqui no catálogo principal — não na
+> seção "futuras".
 
-`cf-workers-add-route`, `cf-workers-add-migration` (D1), `cf-workers-add-queue-consumer`,
-`cf-workers-add-webhook`, `cf-workers-deploy-check`, `cf-workers-add-binding`,
-`cf-workers-create-d1`, `cf-workers-create-kv-namespace`, `cf-workers-create-r2-bucket`.
-
-### Platform-related — cloudflare-dns (planejada)
-
-`dns-list-records`, `dns-add-record`, `dns-update-record`, `dns-delete-record`,
-`dns-bulk-import`, `dns-audit` (valida SPF/DKIM/DMARC, dangling CNAMEs),
-`dns-migrate-zone`.
-
-### Platform-related — neon (planejada)
-
-Para Neon Postgres serverless:
-
-`neon-credentials-setup`, `neon-create-project`, `neon-create-branch`,
-`neon-merge-branch`, `neon-list-connections`, `neon-configure-pooler`,
-`neon-anonymize-branch`.
-
-### Data-related — postgres (planejada)
-
-Consumo Postgres (incluindo variants Neon, Supabase, RDS):
-
-`pg-schema-design`, `pg-add-migration` (Drizzle + raw SQL), `pg-query-optimize`
-(EXPLAIN ANALYZE), `pg-indexing` (B-tree, GIN, GiST, BRIN, partial),
-`pg-jsonb-patterns`, `pg-fts-setup` (tsvector/tsquery), `pg-locking`
-(MVCC, FOR UPDATE, SKIP LOCKED), `pg-partitioning`, `pg-audit-query`
-(pg_stat_statements), `pg-review-schema`.
-
-### Data-related — d1 (planejada)
-
-Consumo D1 (SQLite edge):
-
-`d1-schema-design`, `d1-query-batch` (Promise.all + db.batch, complementa
-lint `no-serial-d1-await`), `d1-fts5-setup` (virtual table + triggers),
-`d1-prepared-stmts`, `d1-analytics-queries`, `d1-migration-strategy`
-(backward-compat obrigatória).
-
-### Data-related — elasticsearch (planejada)
-
-Consumo ES 8.x/9.x:
-
-`es-mapping-design`, `es-query-build` (bool/filter/must/should/nested),
-`es-aggregations` (date_histogram, terms, cardinality, pipelines),
-`es-bulk-index` (backpressure + error handling), `es-reindex-zero-downtime`
-(alias swap), `es-version-migrate` (7→8, 8→9 breaking), `es-logging-pattern`
-(ELK stack).
+Para propor uma skill nova, veja [contributing.md](./contributing.md).
 
 ---
 
