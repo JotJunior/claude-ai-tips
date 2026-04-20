@@ -30,12 +30,12 @@ fi
 
 OUTPUT=$($RUNNER mypy "$FILE_PATH" 2>&1) || {
   cat >&2 <<MSG
-Type check failed in \$FILE_PATH
+Type check failed in $FILE_PATH
 
-\$OUTPUT
+$OUTPUT
 
 Hint: Run manually with:
-  uv run mypy \$FILE_PATH
+  uv run mypy $FILE_PATH
 
 Documentation: language-related/python/skills/py-review-pr/
 MSG

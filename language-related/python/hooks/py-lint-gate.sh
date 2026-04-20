@@ -30,12 +30,12 @@ fi
 
 OUTPUT=$($RUNNER ruff check "$FILE_PATH" 2>&1) || {
   cat >&2 <<MSG
-Linting failed in \$FILE_PATH
+Linting failed in $FILE_PATH
 
-\$OUTPUT
+$OUTPUT
 
 Hint: Run manually with:
-  uv run ruff check --fix \$FILE_PATH
+  uv run ruff check --fix $FILE_PATH
 
 Documentation: language-related/python/skills/py-review-pr/
 MSG

@@ -22,12 +22,12 @@ cd "$CLAUDE_PROJECT_DIR" 2>/dev/null || exit 0
 if grep -qE 'db\.delete\(|await db\.delete\(' "$FILE_PATH" 2>/dev/null; then
   # Check if there's a deletedAt column in schema files
   HAS_SOFT_DELETE=false
-  for schema_file in $(find . -name '*.schema.ts' -o -name '*.schema.tsx' 2>/dev/null); do
+  while IFS= read -r -d '' schema_file; do
     if grep -q 'deletedAt' "$schema_file" 2>/dev/null; then
       HAS_SOFT_DELETE=true
       break
     fi
-  done
+  done < <(find . \( -name '*.schema.ts' -o -name '*.schema.tsx' \) -print0 2>/dev/null)
   
   if $HAS_SOFT_DELETE; then
     cat >&2 <<MSG
