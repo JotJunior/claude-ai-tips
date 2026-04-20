@@ -149,7 +149,11 @@ For nested object fields:
           "cumulative_sum": { "buckets_path": "monthly_sales" }
         },
         "moving_avg": {
-          "moving_avg": { "buckets_path": "monthly_sales", "window": 3 }
+          "moving_fn": {
+            "buckets_path": "monthly_sales",
+            "window": 3,
+            "script": "MovingFunctions.unweightedAvg(values)"
+          }
         }
       }
     }
