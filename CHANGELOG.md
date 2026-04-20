@@ -5,6 +5,58 @@ Todas as mudanças relevantes deste projeto são documentadas aqui.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 este projeto adere a [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [3.1.0] - 2026-04-20
+
+Versão MINOR — adição de suíte automatizada de testes para os scripts
+POSIX distribuídos em `global/skills/**/scripts/`.
+
+### Added
+
+- **Suite automatizada de testes em `tests/`** cobrindo os 5 scripts
+  shell do toolkit (`metrics.sh`, `next-task-id.sh`, `next-uc-id.sh`,
+  `scaffold.sh`, `validate.sh`). Entry point único `tests/run.sh` executa
+  44 scenarios em 3–4 segundos e reporta status trichotômico
+  PASS / FAIL / ERROR no formato TAP.
+
+- **Harness POSIX puro** em `tests/lib/harness.sh` com gestão isolada
+  por `mktemp -d` + `trap EXIT/INT/TERM`, e os helpers `assert_exit`,
+  `assert_stdout_contains`, `assert_stderr_contains`, `assert_stdout_match`,
+  `assert_no_side_effect`, `fixture` e `run_all_scenarios`. Zero
+  Bash-isms; zero dependências além das ferramentas POSIX canônicas.
+
+- **Regressão dedicada do bug histórico de `metrics.sh`**
+  (`scenario_regressao_bug_grep_c_sem_matches`) protegendo contra o
+  retorno do padrão defeituoso `grep -c ... || printf '0'` que
+  concatenava `"0\n0"` e quebrava expressões aritméticas. Validado
+  revertendo o fix temporariamente durante a entrega: a suíte detectou
+  3 FAILs incluindo o dedicado.
+
+- **Modos do runner**: `--list` (lista scenarios sem executar),
+  `--check-coverage` (detecta scripts sem teste e testes sem script;
+  exit 1 em órfão), filtragem por `PATTERN` posicional, `--help`.
+
+- **Governança de cobertura (FR-009 da spec)**: no modo normal, órfãos
+  aparecem como warning (`ORPHANS: N` + bloco `# WARN:`) sem bloquear;
+  no modo `--check-coverage`, órfãos fazem exit 1. Convenção estrita
+  `tests/test_<nome>.sh` para cada `global/skills/<skill>/scripts/<nome>.sh`.
+
+- **`tests/README.md`** com quickstart, arquitetura, formato TAP, exit
+  codes, contrato do harness (tabelas de helpers) e guia para adicionar
+  teste ao script novo.
+
+- **Spec completa em `docs/specs/shell-scripts-tests/`**: `spec.md` +
+  `plan.md` + `research.md` + `data-model.md` + `contracts/runner-cli.md`
+  + `quickstart.md` + `checklists/requirements.md` + `tasks.md`. Feature
+  entregue em 5 fases, 113 subtarefas, 100% concluídas.
+
+### Known issue (fora do escopo desta release)
+
+- `validate.sh` (linhas 273–284) contém o mesmo padrão
+  `grep -c || printf '0'` do bug histórico de `metrics.sh`. Afeta
+  apenas stderr (não exit code nem stdout). Registrado em
+  `docs/specs/shell-scripts-tests/tasks.md` §FASE 2. Candidato para
+  nova feature em ciclo SDD separado.
+
 ## [3.0.0] - 2026-04-20
 
 Versão MAJOR devido a remoção de asset distribuído (contrato de instalação
