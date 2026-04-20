@@ -241,8 +241,20 @@ done
 
 # Recalcula contadores do arquivo de findings
 # (devido a pipe em while que executa em subshell)
-ERRORS=$(grep -c '	ERRO	' "$FINDINGS" 2>/dev/null || printf '0')
-WARNINGS=$(grep -c '	AVISO	' "$FINDINGS" 2>/dev/null || printf '0')
+#
+# Padrao defeituoso HISTORICO corrigido aqui (analogo ao fix em metrics.sh,
+# commit ead1b68): o antigo `$(... || printf '0')` concatenava "0\n0" quando
+# grep -c nao encontrava matches (grep -c imprime "0" e sai codigo 1,
+# disparando o fallback em adicao ao "0" ja emitido). O resultado era
+# aritmetica invalida em `[ "$VAR" -gt 0 ]` mais abaixo e poluicao de
+# stderr com "integer expression expected". O padrao seguro e
+# `VAR=$(grep -c ...) || VAR=0` que so dispara fallback no exit code nao-zero.
+ERRORS=$(grep -c '	ERRO	' "$FINDINGS" 2>/dev/null) || ERRORS=0
+WARNINGS=$(grep -c '	AVISO	' "$FINDINGS" 2>/dev/null) || WARNINGS=0
+# Defesa-em-profundidade (FR-008): preservadas deliberadamente apos o fix
+# da causa raiz acima. Se o padrao vier a ser alterado no futuro, estas
+# atribuicoes continuam protegendo contra variavel vazia. Remocao nao
+# traria ganho operacional e ampliaria diff desnecessariamente.
 ERRORS=${ERRORS:-0}
 WARNINGS=${WARNINGS:-0}
 

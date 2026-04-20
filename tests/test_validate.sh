@@ -33,6 +33,13 @@ scenario_docs_validos() {
   # (Nao usamos '*ERRO*' porque a palavra aparece no header da tabela de
   # resumo, independente de haver ou nao ERROs reais.)
   assert_stdout_contains "Nenhum issue encontrado" || return 1
+  # Invariant adicional desbloqueado pelo fix em fix-validate-stderr-noise
+  # (FR-006): antes do fix, as comparacoes aritmeticas no bloco "Proximos
+  # Passos" do validate.sh falhavam silenciosamente quando ERRORS/WARNINGS
+  # eram "0\n0", e a linha "Nenhuma acao necessaria" nunca aparecia. Apos
+  # o fix, ela aparece corretamente em docs validos. Ancoramos aqui para
+  # que um futuro bug que quebre essa semantica seja detectado.
+  assert_stdout_contains "Nenhuma acao necessaria" || return 1
 }
 
 # ==== 3.5.2 mermaid quebrado (ver nota sobre bug (b) acima) ====
@@ -87,6 +94,36 @@ scenario_default_docs() {
   case "$_CAPTURED_STDERR" in
     *"unbound variable"*)
       _fail "scenario_default_docs" "stderr contem 'unbound variable' — bug de set -u"
+      return 1
+      ;;
+  esac
+}
+
+# ==== Regressao — stderr limpo em docs validos ====
+#
+# Ref: docs/specs/fix-validate-stderr-noise/spec.md §FR-003, §FR-004, §US2.
+# Historia: durante a entrega de shell-scripts-tests descobriu-se que o
+# validate.sh emite "integer expression expected" em stderr quando algum
+# contador interno nao encontra matches (fixture `valid/` e o pior caso —
+# zera ERROS e AVISOS). O padrao `grep -c || printf '0'` nas linhas 244-245
+# e analogo ao bug historico de metrics.sh (ead1b68).
+#
+# Este scenario captura esse contrato negativo: stderr NAO pode conter
+# "integer expression expected" nem "[:" apos execucao normal.
+
+scenario_stderr_limpo_em_docs_validos() {
+  fixture "docs-site/valid" || return 2
+  capture sh "$SCRIPT" "$TMPDIR_TEST" || return 2
+  # Invariant: stderr livre de mensagens mecanicas do bug grep -c.
+  case "${_CAPTURED_STDERR:-}" in
+    *"integer expression expected"*)
+      _fail "scenario_stderr_limpo_em_docs_validos" \
+        "stderr contem 'integer expression expected' — bug latente do grep -c ativo"
+      return 1
+      ;;
+    *"[: "*)
+      _fail "scenario_stderr_limpo_em_docs_validos" \
+        "stderr contem '[: ' — sintoma de comparacao aritmetica com valor corrompido"
       return 1
       ;;
   esac
