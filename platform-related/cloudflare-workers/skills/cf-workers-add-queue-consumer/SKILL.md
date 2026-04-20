@@ -185,17 +185,16 @@ export default {
                 
                 message.ack();
             } catch (error) {
-                // Nao jogue excecao se max_retries ja atingiu
-                // verificar com message.timestamp
-                const retryCount = message.rcpt Attempts();
-                
+                // message.attempts: número de tentativas já realizadas (1-based)
+                const retryCount = message.attempts;
+
                 if (retryCount >= 3) {
                     // Vai para DLQ apos max_retries
                     throw error;
                 }
-                
+
                 // Manual retry
-                await message.retry();
+                message.retry();
             }
         }
     }
