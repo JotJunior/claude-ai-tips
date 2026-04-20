@@ -60,14 +60,20 @@ complementares (`advisor`, `bugfix`, `create-use-case`, `image-generation`,
 ### Skills por categoria
 
 ```
-language-related/go/             # 8 skills + 4 hooks
-language-related/dotnet/         # 8 skills
+language-related/go/                  # 8 skills + 4 hooks
+language-related/dotnet/              # 8 skills
+language-related/typescript/          # 13 skills + 10 hooks (2.3.0)
+language-related/python/              # 8 skills + 2 hooks (2.3.0)
 platform-related/cloudflare-shared/   # 3 skills + 1 hook + 3 references
-data-related/                    # scaffold (sem skills ainda)
+platform-related/cloudflare-workers/  # 9 skills (2.3.0)
+platform-related/cloudflare-dns/      # 7 skills (2.3.0)
+platform-related/neon/                # 7 skills (2.3.0)
+data-related/postgres/                # 10 skills (2.3.0)
+data-related/d1/                      # 6 skills (2.3.0)
+data-related/elasticsearch/           # 7 skills (2.3.0)
 ```
 
-Futuras fases adicionarão `typescript/`, `python/`, `cloudflare-workers/`,
-`cloudflare-dns/`, `neon/`, `postgres/`, `d1/`, `elasticsearch/`.
+**Total**: 113 skills + 17 hooks distribuídos em 11 categorias.
 
 ## Princípio de partição em 3 categorias
 

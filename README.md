@@ -33,12 +33,19 @@ para tarefas de documentação, desenvolvimento, segurança e qualidade de códi
 │       ├── validate-docs-rendered/
 │       └── validate-documentation/
 ├── language-related/           # Skills e hooks específicos por linguagem
-│   ├── go/                     # Go
-│   │   ├── skills/             # Skills para projetos Go
-│   │   ├── hooks/              # Hooks de validação para Go
-│   │   └── settings.json       # Configuração de hooks
-│   └── dotnet/                 # .NET
-│       └── skills/             # Skills para projetos .NET
+│   ├── go/                     # Go (8 skills + 4 hooks)
+│   ├── dotnet/                 # .NET (8 skills)
+│   ├── typescript/             # TypeScript (13 skills + 10 hooks)
+│   └── python/                 # Python (8 skills + 2 hooks)
+├── platform-related/           # Skills de provisionamento/operação
+│   ├── cloudflare-shared/      # Fundação CF (3 skills + 1 hook)
+│   ├── cloudflare-workers/     # CF Workers ops (9 skills)
+│   ├── cloudflare-dns/         # CF DNS via API v4 (7 skills)
+│   └── neon/                   # Neon Postgres serverless (7 skills)
+└── data-related/               # Skills de consumo de dados
+    ├── postgres/               # PostgreSQL 15+ (10 skills)
+    ├── d1/                     # Cloudflare D1 / SQLite (6 skills)
+    └── elasticsearch/          # Elasticsearch 8.x (7 skills)
 ```
 
 ### Anatomia de uma skill
@@ -288,6 +295,28 @@ cp language-related/go/settings.json seu-projeto/.claude/settings.json
 
 # Skills de .NET — copiar para projeto .NET
 cp -r language-related/dotnet/skills/ seu-projeto/.claude/skills/
+
+# Skills de TypeScript (CF Workers + Hono + Drizzle + Zod + Vitest)
+cp -r language-related/typescript/skills/ seu-projeto/.claude/skills/
+cp -r language-related/typescript/hooks/ seu-projeto/.claude/hooks/
+cp language-related/typescript/settings.json seu-projeto/.claude/settings.json
+
+# Skills de Python (FastAPI + Pydantic v2 + structlog + uv)
+cp -r language-related/python/skills/ seu-projeto/.claude/skills/
+cp -r language-related/python/hooks/ seu-projeto/.claude/hooks/
+cp language-related/python/settings.json seu-projeto/.claude/settings.json
+
+# Skills de plataforma Cloudflare (Workers, DNS)
+cp -r platform-related/cloudflare-workers/skills/ seu-projeto/.claude/skills/
+cp -r platform-related/cloudflare-dns/skills/ seu-projeto/.claude/skills/
+
+# Skills de Neon Postgres serverless
+cp -r platform-related/neon/skills/ seu-projeto/.claude/skills/
+
+# Skills de banco de dados (Postgres / D1 / Elasticsearch)
+cp -r data-related/postgres/skills/ seu-projeto/.claude/skills/
+cp -r data-related/d1/skills/ seu-projeto/.claude/skills/
+cp -r data-related/elasticsearch/skills/ seu-projeto/.claude/skills/
 ```
 
 ### Estrutura de Destino
@@ -396,9 +425,9 @@ A regra para decidir onde uma skill entra:
 
 | Namespace | Subpastas | Status |
 |-----------|-----------|--------|
-| `language-related/` | `go/` ✓ estável, `dotnet/` ✓ estável, `typescript/` planejada, `python/` planejada | parcial |
-| `platform-related/` | `cloudflare-shared/`, `cloudflare-workers/`, `cloudflare-dns/`, `neon/` planejadas | scaffold |
-| `data-related/` | `postgres/`, `d1/`, `elasticsearch/` planejadas | scaffold |
+| `language-related/` | `go/` ✓, `dotnet/` ✓, `typescript/` ✓ (2.3.0), `python/` ✓ (2.3.0) | completo |
+| `platform-related/` | `cloudflare-shared/` ✓, `cloudflare-workers/` ✓ (2.3.0), `cloudflare-dns/` ✓ (2.3.0), `neon/` ✓ (2.3.0) | completo |
+| `data-related/` | `postgres/` ✓ (2.3.0), `d1/` ✓ (2.3.0), `elasticsearch/` ✓ (2.3.0) | completo |
 
 ### Skills globais agnósticas
 
