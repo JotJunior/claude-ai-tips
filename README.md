@@ -3,15 +3,13 @@
 Conjunto de ferramentas para aumentar a produtividade no desenvolvimento do dia a dia com
 o [Claude Code](https://claude.ai/code).
 
-Este repositorio contém **skills**, **hooks** e **insights** que estendem as capacidades do Claude Code
+Este repositorio contém **skills** e **hooks** que estendem as capacidades do Claude Code
 para tarefas de documentação, desenvolvimento, segurança e qualidade de código.
 
 ## Estrutura
 
 ```
-├── global/                     # Skills e insights globais (independentes de linguagem)
-│   ├── insights/               # Insights de uso extraídos de sessões reais
-│   │   └── usage-insights.md   # Padrões de fricção e estratégias comprovadas
+├── global/                     # Skills globais (independentes de linguagem)
 │   └── skills/                 # 19 skills globais (cada skill é uma pasta)
 │       ├── advisor/
 │       ├── analyze/
@@ -213,18 +211,17 @@ em 134 sessões. Projetado para eliminar ciclos de "corrige-revela-corrige" em a
 
 ## Insights de Uso
 
-O diretório `global/insights/` contém padrões extraídos de sessões reais de uso (1.490 mensagens,
-134 sessões). Esses insights alimentam skills como `bugfix` e `apply-insights`, e documentam:
+A skill `apply-insights` aplica insights de uso ao projeto. Ela lê de
+`~/.claude/insights/usage-insights.md` (se existir) e cai em best-practices
+genéricas quando ausente.
 
-- **Padrões de fricção recorrentes** - Bugs em cascata multi-serviço, abordagens iniciais erradas, artefatos obsoletos
-- **Estratégias comprovadas** - Protocolo de bug fix, segurança em migrations, convenções de código
-- **Recomendações para CLAUDE.md** - Regras e hooks que melhoram a efetividade do Claude Code
-
-Use o skill `apply-insights` para analisar seu projeto e aplicar automaticamente as recomendações relevantes.
-
-> **Nota:** o Claude Code também tem uma slash command nativa `/insights` que analisa suas
-> sessões (função introspectiva). A skill `apply-insights` é prescritiva — aplica um playbook
-> curado ao projeto. Por isso o rename na versão 2.0.0: evitar colisão de nome.
+O arquivo de insights é **por usuário**, não distribuído neste repositório:
+gere o seu via a slash command nativa `/insights` do Claude Code (que
+analisa suas sessões reais) ou mantenha um playbook curado manualmente.
+A skill `apply-insights` deste toolkit é **prescritiva** (aplica o playbook
+ao projeto) — distinta do `/insights` nativo, que é **introspectivo**
+(analisa suas sessões). O rename da skill de `insights` → `apply-insights`
+em 2.0.0 foi feito justamente para tornar essa separação explícita.
 
 ## Skills para Go
 
@@ -278,9 +275,6 @@ cp -r global/skills/ seu-projeto/.claude/skills/
 # Skills globais — instalação global
 cp -r global/skills/ ~/.claude/skills/
 
-# Insights — copiar para o projeto (usado pelo skill apply-insights)
-cp -r global/insights/ seu-projeto/.claude/insights/
-
 # Skills de Go — copiar para projeto Go
 cp -r language-related/go/skills/ seu-projeto/.claude/skills/
 cp -r language-related/go/hooks/ seu-projeto/.claude/hooks/
@@ -295,13 +289,13 @@ cp -r language-related/dotnet/skills/ seu-projeto/.claude/skills/
 ```
 ~/.claude/                  # Instalação global
 ├── skills/
-└── insights/               # (opcional, para insights de uso)
+└── insights/               # (opcional, gerado pelo /insights nativo ou curado manualmente)
 
 seu-projeto/
 └── .claude/                # Instalação por projeto
     ├── skills/
     ├── hooks/              # (opcional, para hooks de linguagem)
-    └── insights/           # (opcional, para insights de uso)
+    └── insights/           # (opcional, gerado pelo /insights nativo ou curado manualmente)
 ```
 
 ## Convenções de Nomenclatura

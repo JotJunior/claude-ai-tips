@@ -5,6 +5,59 @@ Todas as mudanças relevantes deste projeto são documentadas aqui.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 este projeto adere a [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [3.0.0] - 2026-04-20
+
+Versão MAJOR devido a remoção de asset distribuído (contrato de instalação
+muda — usuários que faziam `cp -r global/insights/` precisam migrar).
+
+### Removed (BREAKING)
+
+- **Diretório `global/insights/` removido do repositório.** O arquivo
+  `usage-insights.md` que vivia ali era uma curadoria específica de sessões
+  de um usuário (Go + TypeScript + PostgreSQL multi-serviço), não um playbook
+  genérico. Distribuí-lo como parte do toolkit confundia quem clonava: o
+  conteúdo era tratado como autoritativo quando era apenas o snapshot de um
+  contexto.
+
+  **Como fica agora**:
+
+  - A skill `apply-insights` continua funcionando — ela sempre leu de
+    `~/.claude/insights/usage-insights.md` (espaço do usuário), nunca de
+    `global/insights/` diretamente.
+  - Se o arquivo `~/.claude/insights/usage-insights.md` existir, a skill o
+    usa. Caso contrário, cai em best-practices genéricas (comportamento
+    já documentado no SKILL.md).
+  - O modelo recomendado agora: gerar o arquivo via a slash command nativa
+    `/insights` do Claude Code (que analisa suas sessões reais) ou curá-lo
+    manualmente. Cada usuário mantém o seu próprio.
+
+  **Impacto para consumidores**:
+
+  - O comando `cp -r global/insights/ ~/.claude/insights/` (documentado no
+    README) não existe mais — o diretório-fonte foi removido.
+  - Quem já tinha copiado o arquivo para `~/.claude/insights/` mantém a
+    cópia local intocada.
+  - README atualizado: seção "Insights de Uso" reescrita para refletir o
+    modelo por-usuário; diagrama de estrutura e bloco de instalação
+    limpos.
+  - CLAUDE.md atualizado: seção "Renomeando uma skill" não referencia mais
+    `global/insights/`.
+
+### Migration
+
+1. Se você dependia do arquivo distribuído:
+
+   ```bash
+   # O arquivo pode continuar no seu ~/.claude/insights/ se você já o copiou
+   ls ~/.claude/insights/usage-insights.md
+
+   # Caso contrário, gere o seu via o /insights nativo do Claude Code,
+   # ou mantenha um playbook curado manualmente neste caminho
+   ```
+
+2. Se você referenciava `global/insights/` em scripts ou docs próprios,
+   remover a referência — o caminho não resolve mais.
+
 ## [2.0.0] - 2026-04-19
 
 Versão MAJOR devido a rename de skill user-visível (identificador de invocação
