@@ -14,11 +14,16 @@ links para `SKILL.md`.
 | [Go](#language-related--go) | 8 + 4 hooks | estável |
 | [.NET](#language-related--dotnet) | 8 | estável |
 | [Cloudflare Shared](#platform-related--cloudflare-shared) | 3 + 1 hook | 2.1.0 |
-| [TypeScript](#language-related--typescript-scaffold) | — | scaffold |
-| [Python](#language-related--python-scaffold) | — | scaffold |
-| [Categorias futuras](#categorias-futuras-sem-scaffold-ainda) | — | TBD |
+| [TypeScript](#language-related--typescript) | 13 + 10 hooks | 2.3.0 |
+| [Python](#language-related--python) | 8 + 2 hooks | 2.3.0 |
+| [Cloudflare Workers](#platform-related--cloudflare-workers) | 9 | 2.3.0 |
+| [Cloudflare DNS](#platform-related--cloudflare-dns) | 7 | 2.3.0 |
+| [Neon](#platform-related--neon) | 7 | 2.3.0 |
+| [Postgres](#data-related--postgres) | 10 | 2.3.0 |
+| [D1](#data-related--d1) | 6 | 2.3.0 |
+| [Elasticsearch](#data-related--elasticsearch) | 7 | 2.3.0 |
 
-**Total ativo**: 46 skills + 5 hooks + hubs de documentação.
+**Total ativo**: 113 skills + 17 hooks + hubs de documentação.
 
 ---
 
@@ -362,49 +367,197 @@ Upgrade explícito do Wrangler no PM detectado (bun/pnpm/yarn/npm).
 
 ---
 
-## Categorias com scaffold (sem skills concretas ainda)
+## Language-related — typescript
 
-As categorias abaixo possuem README com escopo e princípios definidos,
-mas ainda não têm skills implementadas. Skills serão adicionadas
-conforme demanda real dos projetos — evitando vaporware.
-
-### Language-related — typescript (scaffold)
-
-Pasta `language-related/typescript/` com README definindo escopo
-(Cloudflare Workers + Hono + Zod + Drizzle + TS strict, observado em
-projetos de referência como unity-dash, inde-intelligence, split-ai).
-Sem skills implementadas.
+13 skills + 10 hooks + settings.json para Cloudflare Workers + Hono +
+Drizzle + Zod + Vitest + TS strict. Stack observada em projetos de
+referência (unity-dash, inde-intelligence, split-ai).
 
 **README**: [`language-related/typescript/README.md`](../language-related/typescript/README.md)
 
-### Language-related — python (scaffold)
+| Skill | Trigger | Descrição |
+|-------|---------|-----------|
+| **ts-add-component** | "add component", "novo componente" | React + shadcn/ui + Tailwind + design tokens |
+| **ts-add-domain** | "add domain", "criar bounded context" | Scaffold DDD (controller/service/repo/mapper) |
+| **ts-add-migration** | "add migration", "drizzle migration" | Drizzle migration D1/Postgres idempotente |
+| **ts-add-queue-consumer** | "add queue", "queue consumer" | CF Queue + retry + DLQ + idempotency |
+| **ts-add-route** | "add route", "novo endpoint" | Hono + zValidator + service delegation |
+| **ts-add-test** | "add test", "vitest test" | Vitest AAA + mocks de bindings CF |
+| **ts-add-webhook** | "add webhook", "webhook handler" | HMAC SHA256 + idempotency + replay protection |
+| **ts-commit** | "commit", "atomic commit" | Conventional commits PT-BR atômicos |
+| **ts-deploy-check** | "deploy check", "pre-deploy" | Validação bindings/secrets/migrations pré-deploy |
+| **ts-refactor-budget** | "refactor budget", "file too big" | Enforcement file (250) + function (50) size budget |
+| **ts-review-pr** | "review pr", "code review" | Checklist Workers (CPU, security, types) |
+| **ts-review-security** | "security review", "audit security" | PII/SQLi/XSS/JWT/CORS/rate-limit audit |
+| **ts-upgrade-zod-schema** | "upgrade zod", "zod v4" | Migração Zod v3 → v4 |
 
-Pasta `language-related/python/` com README definindo escopo (PEP 8/484,
-ruff, black, mypy, pytest, pyproject.toml moderno). Sem skills implementadas.
+### Hooks (10)
+
+| Hook | Disparo | Validação |
+|------|---------|-----------|
+| **ts-typecheck-gate.sh** | PostToolCall Write\|Edit | `tsc --noEmit` |
+| **ts-eslint-gate.sh** | PostToolCall | ESLint com auto-detect PM |
+| **check-date-toisostring.sh** | PostToolCall | Bloqueia `Date.toISOString` sem timezone |
+| **check-uuid-v4.sh** | PostToolCall | Sugere ULID/CUID2 onde aplicável |
+| **check-soft-delete.sh** | PostToolCall | Bloqueia hard delete em entidades com `deletedAt` |
+| **check-sql-in-routes.sh** | PostToolCall | SQL fora de routes (repository pattern) |
+| **check-pii-in-logs.sh** | PostToolCall | Bloqueia PII em logs |
+| **check-file-budget.sh** | PostToolCall | Warning > 250, block > 400 linhas |
+| **check-wrangler-deploy.sh** | PreToolCall Bash | Bloqueia `wrangler deploy` em main |
+| **check-commit-to-main.sh** | PreToolCall Bash | Força feature branches |
+
+---
+
+## Language-related — python
+
+8 skills + 2 hooks + settings.json para FastAPI + Pydantic v2 + structlog +
+ruff + pytest + uv + mypy strict.
 
 **README**: [`language-related/python/README.md`](../language-related/python/README.md)
 
-## Categorias futuras (sem scaffold ainda)
+| Skill | Trigger | Descrição |
+|-------|---------|-----------|
+| **py-add-fastapi-route** | "add route", "fastapi route" | FastAPI + Pydantic + Depends + response_model |
+| **py-add-pydantic-model** | "add model", "pydantic model" | Pydantic v2 + ConfigDict + field_validator |
+| **py-add-structlog** | "add logging", "structlog setup" | Structured JSON + contextvars + middleware |
+| **py-add-test** | "add test", "pytest test" | pytest async + httpx AsyncClient + fixtures |
+| **py-commit** | "commit" | Conventional commits PT-BR atômicos |
+| **py-review-pr** | "review pr" | Checklist mypy strict + ruff + coverage |
+| **py-setup-project** | "setup project", "init python" | Bootstrap moderno (uv + ruff + mypy) |
+| **py-upgrade-pkg-manager** | "migrate to uv" | Migração pip/poetry → uv |
 
-As categorias abaixo são candidatas para iteração futura. **Sem pasta
-criada e sem skills planejadas em concreto** — o escopo será definido
-quando houver demanda real.
+### Hooks (2)
 
-- `platform-related/cloudflare-workers/` — Workers + ops D1/KV/R2/Queues
-  (consumirá `cloudflare-shared/`)
-- `platform-related/cloudflare-dns/` — DNS via API REST da Cloudflare
-- `platform-related/neon/` — provisionamento Neon Postgres serverless
-- `data-related/postgres/` — consumo Postgres (incluindo variants Neon,
-  Supabase, RDS)
-- `data-related/d1/` — consumo D1 (SQLite edge)
-- `data-related/elasticsearch/` — consumo ES 8.x/9.x
+| Hook | Disparo | Validação |
+|------|---------|-----------|
+| **py-typecheck-gate.sh** | PostToolCall Write\|Edit | `uv run mypy <file>` |
+| **py-lint-gate.sh** | PostToolCall | `uv run ruff check <file>` |
 
-> **Nota anti-vaporware**: este toolkit deliberadamente evita listar
-> skills futuras com nomes específicos antes de implementá-las. Quando
-> uma skill for criada, ela aparece aqui no catálogo principal — não na
-> seção "futuras".
+---
 
-Para propor uma skill nova, veja [contributing.md](./contributing.md).
+## Platform-related — cloudflare-workers
+
+9 skills focadas em platform layer (wrangler.toml, bindings, CPU/duration
+limits, observability). Diferente de `language-related/typescript/` (que
+cobre código). Depende de `cloudflare-shared/` (cf-api-call, credentials).
+
+**README**: [`platform-related/cloudflare-workers/README.md`](../platform-related/cloudflare-workers/README.md)
+
+| Skill | Trigger | Descrição |
+|-------|---------|-----------|
+| **cf-workers-add-route** | "add cloudflare route" | Route ou custom_domain (DNS + zone) |
+| **cf-workers-add-binding** | "add binding", "bind d1" | Binding genérico (D1/KV/R2/Queue/DO/AI/Vectorize) |
+| **cf-workers-create-d1** | "create d1", "init d1" | D1 database + binding + initial migration |
+| **cf-workers-create-kv-namespace** | "create kv" | KV namespace + dev local |
+| **cf-workers-create-r2-bucket** | "create r2" | R2 bucket + CORS |
+| **cf-workers-add-migration** | "add d1 migration" | D1 migration via wrangler migrations |
+| **cf-workers-add-queue-consumer** | "add queue consumer" | Queue consumer + retry + DLQ |
+| **cf-workers-add-webhook** | "add cf webhook" | Webhook HMAC + idempotency D1/KV |
+| **cf-workers-deploy-check** | "cf deploy check" | Validação pré-deploy (bindings, secrets) |
+
+---
+
+## Platform-related — cloudflare-dns
+
+7 skills para Cloudflare DNS via API v4 + wrangler. CRUD records
+(A/AAAA/CNAME/MX/TXT/SRV/CAA), bulk operations, audit, migration zone.
+
+Auth: Bearer token com scope `Zone:DNS:Edit`. Rate limit: 1200 req/5min.
+
+**README**: [`platform-related/cloudflare-dns/README.md`](../platform-related/cloudflare-dns/README.md)
+
+| Skill | Trigger | Descrição |
+|-------|---------|-----------|
+| **dns-list-records** | "list dns" | Lista paginada com filtros |
+| **dns-add-record** | "add dns", "add a record" | Cria record único (todos tipos) |
+| **dns-update-record** | "update dns" | PATCH parcial / PUT total |
+| **dns-delete-record** | "delete dns" | Remove com confirmação + audit log |
+| **dns-bulk-import** | "bulk import dns", "import zone file" | CSV ou BIND zone file (rate-limited) |
+| **dns-audit** | "audit dns" | SPF/DKIM/DMARC/CAA/DNSSEC review |
+| **dns-migrate-zone** | "migrate zone" | Migração entre Cloudflare accounts |
+
+---
+
+## Platform-related — neon
+
+7 skills para Neon Postgres serverless (branching Git-like, scale-to-zero).
+Conceitos: project, branch (CoW), endpoint, pooler.
+
+CLI: `neonctl`. API: `console.neon.tech/api/v2`. Auth: `NEON_API_KEY` (rotate 90d).
+
+**README**: [`platform-related/neon/README.md`](../platform-related/neon/README.md)
+
+| Skill | Trigger | Descrição |
+|-------|---------|-----------|
+| **neon-credentials-setup** | "setup neon" | NEON_API_KEY + connection strings |
+| **neon-create-project** | "create neon project" | Bootstrap project (region, pg_version) |
+| **neon-create-branch** | "create neon branch" | Branch CoW para dev/test |
+| **neon-merge-branch** | "merge neon branch" | Schema diff + apply via migrations |
+| **neon-list-connections** | "neon connections" | pg_stat_activity + cancel/terminate |
+| **neon-configure-pooler** | "neon pooler" | pgbouncer transaction mode (serverless) |
+| **neon-anonymize-branch** | "anonymize branch" | PII redaction safe staging |
+
+---
+
+## Data-related — postgres
+
+10 skills focadas em PostgreSQL 15+ (agnóstico de framework). Schema,
+queries, performance, JSONB, FTS, locking, partitioning.
+
+**README**: [`data-related/postgres/README.md`](../data-related/postgres/README.md)
+
+| Skill | Trigger | Descrição |
+|-------|---------|-----------|
+| **pg-schema-design** | "design schema postgres" | 3NF + naming + types + audit cols |
+| **pg-add-migration** | "add postgres migration" | SQL idempotente up/down + lock_timeout |
+| **pg-query-optimize** | "optimize query postgres" | EXPLAIN ANALYZE + indexes + rewrite |
+| **pg-indexing** | "add index postgres" | B-tree/GIN/GiST/BRIN/Hash + partial + covering |
+| **pg-jsonb-patterns** | "jsonb postgres" | Operadores + GIN index + jsonb_path_query |
+| **pg-fts-setup** | "fts postgres", "tsvector" | tsvector + GENERATED + GIN + bm25 |
+| **pg-locking** | "postgres locking", "deadlock" | Lock types + advisory + SKIP LOCKED |
+| **pg-partitioning** | "partition postgres" | RANGE/LIST/HASH + pg_partman + pruning |
+| **pg-audit-query** | "audit postgres", "history table" | Trigger + history JSONB + role tracking |
+| **pg-review-schema** | "review schema postgres" | Smell detection + checklist + priority |
+
+---
+
+## Data-related — d1
+
+6 skills para Cloudflare D1 (SQLite distribuído globalmente). Limites: 10GB/db,
+1000ms CPU/query, 50MB/blob. Sem extensões (apenas SQLite stdlib).
+
+**README**: [`data-related/d1/README.md`](../data-related/d1/README.md)
+
+| Skill | Trigger | Descrição |
+|-------|---------|-----------|
+| **d1-schema-design** | "d1 schema design" | STRICT tables + INTEGER PK + CHECK + GENERATED |
+| **d1-query-batch** | "d1 batch", "batch query d1" | `db.batch()` para reduzir round-trips |
+| **d1-fts5-setup** | "d1 fts", "fts5 cloudflare" | FTS5 virtual table + bm25 + highlight |
+| **d1-prepared-stmts** | "d1 prepare", "sql injection d1" | `prepare().bind()` obrigatório (anti-SQLi) |
+| **d1-analytics-queries** | "d1 analytics", "window function d1" | CTE + window functions + JSON1 + cache KV |
+| **d1-migration-strategy** | "d1 migration strategy" | Aditivo + backfill + zero-downtime + multi-region |
+
+---
+
+## Data-related — elasticsearch
+
+7 skills para Elasticsearch 8.x. Mapping, query DSL, aggregations, bulk,
+reindex zero-downtime, version migration, logging com ILM/data streams.
+
+Auth: API key (basic auth deprecated). Conceitos: index, mapping, document,
+query DSL, aggs, alias, ILM.
+
+**README**: [`data-related/elasticsearch/README.md`](../data-related/elasticsearch/README.md)
+
+| Skill | Trigger | Descrição |
+|-------|---------|-----------|
+| **es-mapping-design** | "es mapping" | text/keyword + multi-fields + analyzers |
+| **es-query-build** | "es query", "query dsl es" | bool query (must/should/filter/must_not) |
+| **es-aggregations** | "es aggregation" | terms + date_histogram + metrics + pipeline |
+| **es-bulk-index** | "es bulk", "bulk index es" | NDJSON + retry per-item + throttle |
+| **es-reindex-zero-downtime** | "es reindex", "alias swap es" | Reindex + alias swap atomic |
+| **es-version-migrate** | "es upgrade" | 7→8/8→9 + rolling upgrade + breaking changes |
+| **es-logging-pattern** | "es logs", "ilm pattern" | Data stream + ILM + ECS schema + ingest pipeline |
 
 ---
 
