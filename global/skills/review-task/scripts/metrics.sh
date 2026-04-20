@@ -26,10 +26,10 @@ fi
 
 # Conta checkboxes por status
 # Formato: "- [X] N.N.N descricao" onde X pode ser espaco, x, ~ ou !
-PENDING=$(grep -cE '^\- \[ \] ' "$FILE" 2>/dev/null || printf '0')
-DONE=$(grep -cE '^\- \[x\] ' "$FILE" 2>/dev/null || printf '0')
-IN_PROGRESS=$(grep -cE '^\- \[~\] ' "$FILE" 2>/dev/null || printf '0')
-BLOCKED=$(grep -cE '^\- \[!\] ' "$FILE" 2>/dev/null || printf '0')
+PENDING=$(grep -cE '^\- \[ \] ' "$FILE" 2>/dev/null) || PENDING=0
+DONE=$(grep -cE '^\- \[x\] ' "$FILE" 2>/dev/null) || DONE=0
+IN_PROGRESS=$(grep -cE '^\- \[~\] ' "$FILE" 2>/dev/null) || IN_PROGRESS=0
+BLOCKED=$(grep -cE '^\- \[!\] ' "$FILE" 2>/dev/null) || BLOCKED=0
 
 TOTAL=$((PENDING + DONE + IN_PROGRESS + BLOCKED))
 
@@ -42,13 +42,13 @@ fi
 PCT=$((DONE * 100 / TOTAL))
 
 # Conta tarefas (headers ### N.N) e fases (## FASE N)
-TASKS=$(grep -cE '^### [0-9]+\.[0-9]+ ' "$FILE" 2>/dev/null || printf '0')
-PHASES=$(grep -cE '^## FASE [0-9]+' "$FILE" 2>/dev/null || printf '0')
+TASKS=$(grep -cE '^### [0-9]+\.[0-9]+ ' "$FILE" 2>/dev/null) || TASKS=0
+PHASES=$(grep -cE '^## FASE [0-9]+' "$FILE" 2>/dev/null) || PHASES=0
 
 # Conta criticidade (tags [C], [A], [M] em linhas de header)
-CRITICAL=$(grep -cE '^### [0-9.]+ .* `\[C\]`' "$FILE" 2>/dev/null || printf '0')
-HIGH=$(grep -cE '^### [0-9.]+ .* `\[A\]`' "$FILE" 2>/dev/null || printf '0')
-MEDIUM=$(grep -cE '^### [0-9.]+ .* `\[M\]`' "$FILE" 2>/dev/null || printf '0')
+CRITICAL=$(grep -cE '^### [0-9.]+ .* `\[C\]`' "$FILE" 2>/dev/null) || CRITICAL=0
+HIGH=$(grep -cE '^### [0-9.]+ .* `\[A\]`' "$FILE" 2>/dev/null) || HIGH=0
+MEDIUM=$(grep -cE '^### [0-9.]+ .* `\[M\]`' "$FILE" 2>/dev/null) || MEDIUM=0
 
 # Output formatado
 cat <<EOF
