@@ -560,12 +560,12 @@ BUMP=patch npm run release   # vira 1.3.1
 
 Por design. Soluções:
 
-- Adicionar baseline entry no CHANGELOG (ver [releases.md](../guides/releases.md))
+- Adicionar baseline entry no CHANGELOG (ver [releases.md](../guides/releases/README.md))
 - Reescrever commits antigos via `git rebase -i` (cuidado — reescreve histórico)
 
 ## Ver também
 
-- [releases.md](../guides/releases.md) — detalhes completos dos padrões
+- [releases.md](../guides/releases/README.md) — detalhes completos dos padrões
 - [git-methodology/](../../global/skills/git-methodology/) — hub + references
 - [release-please-setup/SKILL.md](../../global/skills/release-please-setup/SKILL.md)
 - [release-manual-setup/SKILL.md](../../global/skills/release-manual-setup/SKILL.md)

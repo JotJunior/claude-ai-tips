@@ -582,8 +582,8 @@ git stash    # ou git add + git commit
 
 ## Ver também
 
-- [credentials.md](../guides/credentials.md) — não usado neste exemplo, mas útil
+- [credentials.md](../guides/credentials/README.md) — não usado neste exemplo, mas útil
   quando for publicar no npm (token npm em cred-store)
-- [releases.md](../guides/releases.md) — detalhes completos do padrão manual
+- [releases.md](../guides/releases/README.md) — detalhes completos do padrão manual
 - [examples/release-flow.md](./release-flow.md) — outras variações
 - [contributing.md](../contributing.md) — convenções ao contribuir

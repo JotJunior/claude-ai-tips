@@ -118,7 +118,7 @@ Skill específica de CF que pré-configura escopos recomendados:
 /cf-credentials-setup pessoal
 ```
 
-Fluxo: ver [cloudflare.md](./cloudflare.md#setup-inicial).
+Fluxo: ver [cloudflare.md](../cloudflare/setup.md).
 
 ### Registrar provider genérico
 

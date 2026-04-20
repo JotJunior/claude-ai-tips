@@ -188,7 +188,7 @@ Leitura apenas.
 - **Invocação**: "resolver credencial", "ler token", "carregar secret"
 - **Argumentos**: `<credential-key> [--format=raw|env|json] [--with-metadata]`
 - **Scripts**: `init-store.sh`, `resolve.sh`, `list.sh`
-- **Guia completo**: [credentials.md](./guides/credentials.md)
+- **Guia completo**: [credentials.md](./guides/credentials/README.md)
 - **SKILL.md**: [`global/skills/cred-store/SKILL.md`](../global/skills/cred-store/SKILL.md)
 
 ### `cred-store-setup`
@@ -222,7 +222,7 @@ Node.js no GitHub.
 
 - **Invocação**: "setup release-please", "automação de release"
 - **Templates**: `release-please-config.json`, `.release-please-manifest.json`, `release-please.yml`
-- **Guia**: [releases.md](./guides/releases.md#padrão-a-release-please)
+- **Guia**: [releases.md](./guides/releases/release-please.md)
 - **SKILL.md**: [`global/skills/release-please-setup/SKILL.md`](../global/skills/release-please-setup/SKILL.md)
 
 ### `release-manual-setup`
@@ -232,7 +232,7 @@ Padrão clw-auth.
 
 - **Invocação**: "release manual", "script release", "release caseiro"
 - **Templates**: `release.mjs` (310 linhas), `release.test.mjs` (155 linhas)
-- **Guia**: [releases.md](./guides/releases.md#padrão-b-release-manual-script-caseiro)
+- **Guia**: [releases.md](./guides/releases/release-manual.md)
 - **SKILL.md**: [`global/skills/release-manual-setup/SKILL.md`](../global/skills/release-manual-setup/SKILL.md)
 
 ### `changelog-write-entry`
@@ -336,7 +336,7 @@ Wrapper REST workhorse para Cloudflare API.
 - **Invocação**: "chamar API Cloudflare", "cf api", "endpoint cloudflare que não tem em wrangler"
 - **Argumentos**: `<METHOD> <PATH> [--account=<nick>] [--zone=<id>] [--data='...'] [--format=json|raw|pretty] [--retry=<n>] [--dry-run]`
 - **Script**: `scripts/call.sh` (301 linhas)
-- **Guia**: [cloudflare.md](./guides/cloudflare.md#api-rest-via-cf-api-call)
+- **Guia**: [cloudflare.md](./guides/cloudflare/api-cookbook.md)
 - **SKILL.md**: [`platform-related/cloudflare-shared/skills/cf-api-call/SKILL.md`](../platform-related/cloudflare-shared/skills/cf-api-call/SKILL.md)
 
 ### `cf-credentials-setup`

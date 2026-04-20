@@ -186,6 +186,6 @@ bash .../list.sh --format=json | jq '."cloudflare.pessoal.api_token".metadata'
   fluxo de registro
 - [`credential-storage.md`](../../platform-related/cloudflare-shared/references/credential-storage.md) —
   convenções específicas para CF
-- [`cloudflare.md`](./cloudflare.md) — uso de credenciais CF em prática
+- [`cloudflare.md`](../cloudflare/README.md) — uso de credenciais CF em prática
 - [1Password CLI docs](https://developer.1password.com/docs/cli/)
 - [macOS security man page](https://ss64.com/mac/security.html)

@@ -558,8 +558,8 @@ Inclua as aspas internas no JSON com escape.
 
 ## Ver também
 
-- [cloudflare.md](../guides/cloudflare.md) — guia completo
-- [credentials.md](../guides/credentials.md) — gestão de credenciais
+- [cloudflare.md](../guides/cloudflare/README.md) — guia completo
+- [credentials.md](../guides/credentials/README.md) — gestão de credenciais
 - [api-endpoint-catalog.md](../../platform-related/cloudflare-shared/references/api-endpoint-catalog.md) — mais endpoints
 - [Cloudflare DNS API docs](https://developers.cloudflare.com/api/resources/dns/)
 - [SPF record syntax](https://datatracker.ietf.org/doc/html/rfc7208)

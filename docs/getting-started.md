@@ -155,9 +155,9 @@ Agora que o toolkit está ativo, explore:
 
 | Guia | Conteúdo |
 |------|----------|
-| [guides/credentials.md](./guides/credentials.md) | Cascata de fontes, rotação, cookbook completo |
-| [guides/cloudflare.md](./guides/cloudflare.md) | DNS, WAF, Workers Builds, Analytics via API |
-| [guides/releases.md](./guides/releases.md) | release-please vs manual, hooks, quality gate |
+| [guides/credentials/README.md](./guides/credentials/README.md) | Cascata de fontes, rotação, cookbook completo |
+| [guides/cloudflare/README.md](./guides/cloudflare/README.md) | DNS, WAF, Workers Builds, Analytics via API |
+| [guides/releases/README.md](./guides/releases/README.md) | release-please vs manual, hooks, quality gate |
 | [skills-catalog.md](./skills-catalog.md) | Todas as skills com triggers e exemplos |
 | [architecture.md](./architecture.md) | Por que 3 categorias, anatomia de skill |
 

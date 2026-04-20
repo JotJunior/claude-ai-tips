@@ -366,9 +366,9 @@ Este README é a porta de entrada. **[A documentação detalhada está em `docs/
 | Quickstart 5-min | [docs/getting-started.md](./docs/getting-started.md) |
 | Filosofia + 3 categorias | [docs/architecture.md](./docs/architecture.md) |
 | Catálogo completo de skills | [docs/skills-catalog.md](./docs/skills-catalog.md) |
-| Gestão de credenciais | [docs/guides/credentials.md](./docs/guides/credentials.md) |
-| Cloudflare (Wrangler + API) | [docs/guides/cloudflare.md](./docs/guides/cloudflare.md) |
-| Releases e metodologia git | [docs/guides/releases.md](./docs/guides/releases.md) |
+| Gestão de credenciais | [docs/guides/credentials/README.md](./docs/guides/credentials/README.md) |
+| Cloudflare (Wrangler + API) | [docs/guides/cloudflare/README.md](./docs/guides/cloudflare/README.md) |
+| Releases e metodologia git | [docs/guides/releases/README.md](./docs/guides/releases/README.md) |
 | Exemplos end-to-end | [docs/examples/](./docs/examples/) |
 | Como contribuir | [docs/contributing.md](./docs/contributing.md) |
 

@@ -17,9 +17,9 @@ hooks e convenções para Claude Code.
 
 | Guia | O que cobre |
 |------|-------------|
-| [guides/credentials.md](./guides/credentials.md) | `cred-store` e `cred-store-setup` — cascata env/op/keychain/file, cookbook |
-| [guides/cloudflare.md](./guides/cloudflare.md) | `cloudflare-shared/` — setup de token, API REST via `cf-api-call`, Wrangler updates |
-| [guides/releases.md](./guides/releases.md) | `git-methodology/` — release-please vs manual, changelog, hooks, quality gate |
+| [guides/credentials/README.md](./guides/credentials/README.md) | `cred-store` e `cred-store-setup` — cascata env/op/keychain/file, cookbook |
+| [guides/cloudflare/README.md](./guides/cloudflare/README.md) | `cloudflare-shared/` — setup de token, API REST via `cf-api-call`, Wrangler updates |
+| [guides/releases/README.md](./guides/releases/README.md) | `git-methodology/` — release-please vs manual, changelog, hooks, quality gate |
 
 ## Exemplos end-to-end
 
