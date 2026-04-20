@@ -91,7 +91,7 @@ DIRECT_URL=postgres://user:pass@ep-xxx.region.neon.tech/dbname?sslmode=require
 
 ```typescript
 // drizzle.config.ts
-import { defineConfig } } from 'drizzle-kit';
+import { defineConfig } from 'drizzle-kit';
 
 export default defineConfig({
   schema: './src/db/schema.ts',
