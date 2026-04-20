@@ -53,10 +53,11 @@ Baseado no padrao `clw-auth/scripts/release.mjs`.
 - Commits seguem Conventional Commits (use `git-hooks-install`)
 - `CHANGELOG.md` existente (ou sera criado — skill suporta ambos)
 - Opcional: suite de testes executavel via `npm test`
+- Node.js >= 18
 
-## Fluxo
+## Setup passo-a-passo
 
-### Etapa 1: validar estado
+### 1. Validar estado do projeto
 
 ```bash
 test -f package.json || { echo "package.json obrigatorio"; exit 1; }
@@ -64,9 +65,7 @@ jq -e '.version' package.json
 node --version  # >=18 recomendado
 ```
 
-### Etapa 2: perguntar preferencias
-
-Via `AskUserQuestion`:
+### 2. Perguntar preferencias (via AskUserQuestion)
 
 1. **Versao inicial** se `package.json` tem `0.0.0` (sugerir `0.1.0`)
 2. **Pre-1.0 bump mode**: tratar `feat!:` como MAJOR ou MINOR em 0.x?
@@ -74,49 +73,36 @@ Via `AskUserQuestion`:
 3. **Body minimo**: `MIN_BODY_LENGTH` default 20 chars
 4. **Rodar tests**: incluir `npm test` antes do release?
 5. **Auto-push**: push tag + commit apos release, ou deixar manual?
-6. **Commit separator**: default `---CLW-COMMIT-END---` (customizavel
-   se projeto ja usa outro)
+6. **Commit separator**: default `---COMMIT-END---` (customizavel)
 
-### Etapa 3: copiar template
+### 3. Copiar templates
 
 ```bash
 mkdir -p scripts test
-cp templates/release.mjs ~/projeto/scripts/release.mjs
-cp templates/release.test.mjs ~/projeto/test/release.test.mjs
-chmod +x ~/projeto/scripts/release.mjs
+cp templates/release.mjs scripts/release.mjs
+cp templates/release.test.mjs test/release.test.mjs
+chmod +x scripts/release.mjs
 ```
 
-### Etapa 4: customizar parametros
-
-Editar topo de `scripts/release.mjs`:
+### 4. Customizar parametros no topo de `scripts/release.mjs`
 
 ```javascript
 const BODY_REQUIRED_TYPES = new Set(['feat', 'fix']);  // ajustar
-const MIN_BODY_LENGTH = 20;                             // ajustar
-const PRE_1_0_MAJOR_AS_MINOR = true;                    // false para SemVer estrito
-const RUN_TESTS_BEFORE = true;                          // false para pular
-const AUTO_PUSH = false;                                // true para push automatico
+const MIN_BODY_LENGTH     = 20;                          // ajustar
+const PRE_1_0_MAJOR_AS_MINOR = true;                     // false para SemVer estrito
+const RUN_TESTS_BEFORE    = true;                         // false para pular
+const AUTO_PUSH           = false;                        // true para push automatico
+const TAG_PREFIX          = 'v';                          // 'my-package-v' para monorepo
 ```
 
-### Etapa 5: adicionar npm script
+### 5. Adicionar npm script
 
 ```bash
 jq '.scripts.release = "node scripts/release.mjs"' package.json > /tmp/pkg.json
 mv /tmp/pkg.json package.json
 ```
 
-Resultado em `package.json`:
-
-```json
-"scripts": {
-  "release": "node scripts/release.mjs",
-  "test": "node --test test/*.test.mjs"
-}
-```
-
-### Etapa 6: inicializar CHANGELOG.md
-
-Se nao existir, criar:
+### 6. Inicializar CHANGELOG.md (se nao existir)
 
 ```markdown
 # Changelog
@@ -129,51 +115,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ```
 
-### Etapa 7: commit inicial
+### 7. Commit inicial
 
 ```bash
 git add scripts/release.mjs test/release.test.mjs CHANGELOG.md package.json
-git commit -m "chore(release): add manual release automation
-
-Adds scripts/release.mjs with conventional commit parsing, SemVer bump
-detection, Keep a Changelog generation, and quality gate for commit
-bodies. Test suite in test/release.test.mjs validates parser logic."
+git commit -m "chore(release): add manual release automation"
 ```
 
-### Etapa 8: validar
-
-Testar o release em modo dry (sem criar tag):
+### 8. Smoke test (dry run)
 
 ```bash
 DRY_RUN=1 npm run release
 ```
 
-Deve:
-- Listar commits desde tag zero ou ultima tag
-- Reportar quality issues (commits sem body)
-- Mostrar bump detectado
-- Imprimir entrada CHANGELOG que seria adicionada
-- Imprimir tag que seria criada
+Deve listar commits desde ultima tag, mostrar bump detectado,
+imprimir entrada CHANGELOG e tag que seria criada.
 
-### Etapa 9: relatorio
-
-```
-release manual configurado:
-  script:        scripts/release.mjs
-  test:          test/release.test.mjs
-  package:       my-project (versao atual: 0.1.0)
-  body min:      20 chars
-  test gate:     habilitado (npm test antes do release)
-  auto-push:     desabilitado
-  changelog:     CHANGELOG.md (Keep a Changelog 1.1.0)
-
-uso:
-  npm run release             # interativo (confirma bump detectado)
-  DRY_RUN=1 npm run release   # dry run (sem tag nem commit)
-  BUMP=major npm run release  # forca tipo especifico
-```
-
-## Flags do script gerado
+## Flags do script
 
 | Flag / env | Descricao |
 |-----------|-----------|
@@ -181,176 +139,71 @@ uso:
 | `BUMP=major\|minor\|patch` | Forca tipo de bump ignorando detecao automatica |
 | `NO_TESTS=1` | Pula `npm test` gate |
 | `NO_PUSH=1` | Nao faz push apos criar tag |
-| `--amend` | Amenda ultimo commit ao inves de criar novo `chore(release)` |
+| `AMEND=1` | Amenda ultimo commit ao inves de criar novo |
 
-## Quality gate
+## Smoke test esperado
 
-Antes de criar release, o script valida:
-
-### 1. Commits desde ultima tag sao conventional
-
-Regex `^([a-z]+)(\([^)]+\))?(!)?: .+$`. Commits nao-conformes sao
-listados como WARN (nao bloqueia — projetos legacy tem historico).
-
-### 2. feat/fix/breaking tem body >= MIN_BODY_LENGTH
-
-```javascript
-if (BODY_REQUIRED_TYPES.has(c.type) && (!c.body || c.body.length < MIN_BODY_LENGTH)) {
-  failing.push(c);
-}
+```bash
+DRY_RUN=1 npm run release
 ```
 
-Se qualquer commit falha, script **aborta** com lista detalhada e
-comandos de fix (`git commit --amend`, `git rebase -i <hash>^`).
+Saida esperada:
 
-### 3. Tests passam
+```
+Release v0.2.0 (minor from 0.1.0):
 
-Se `RUN_TESTS_BEFORE=true`, roda `npm test`. Falha aborta.
-
-### 4. Working tree limpa
-
-`git status --porcelain` deve ser vazio. Uncommitted changes bloqueiam
-release.
-
-## Changelog generation
-
-Script usa mesma logica do `clw-auth/scripts/release.mjs`:
-
-### groupCommits()
-
-Agrupa commits em 4 buckets:
-
-- **breaking** — qualquer com `!:` ou `BREAKING CHANGE:` no body
-- **feat** — tipo `feat`
-- **fix** — tipo `fix`
-- **chore** — qualquer outro tipo conventional
-
-### buildEntry()
-
-Gera secoes na ordem:
-
-```markdown
-## [1.2.0] - 2026-04-19
-
-### Breaking Changes
-
-- **Brief description** — rich body.
+## [0.2.0] - 2026-04-19
 
 ### Added
 
-- **New feature** — explanation.
+- **new feature** — description here.
 
-### Fixed
+Summary:
+  bump:        minor
+  current:     0.1.0
+  next:        0.2.0
+  commits:     3
+  tag:         v0.2.0
 
-- **Bug fix** — context.
-
-### Changed
-
-- **Refactor** — impact.
+(dry-run — no files modified, no commit, no tag)
 ```
 
-### formatEntry()
+## Gotchas criticos
 
-Concatena body em 1 paragrafo (remove quebras internas):
+### AUTO_PUSH=false por default
 
-```javascript
-function formatEntry(commit) {
-  const title = `**${commit.description}**`;
-  if (!commit.body) return `- ${title}`;
-  const bodyText = commit.body.split('\n').map(l => l.trim()).filter(Boolean).join(' ');
-  return `- ${title} — ${bodyText}`;
-}
-```
-
-## Test suite gerada
-
-`test/release.test.mjs` testa:
-
-- `parseCommit` — regex de conventional commits (feat/fix/chore, com/sem
-  scope, com `!`, com `BREAKING CHANGE` no body, commits nao-conformes)
-- `detectBumpType` — major > minor > patch (ordem de precedencia)
-- `checkQuality` — body ausente, body curto, body valido, breaking
-  requer body
-- `formatEntry` — entrada com body, sem body, body multilinha
-- `groupCommits` — separacao correta em breaking/feat/fix/chore
-
-Usa Node.js built-in test runner (`node --test`), zero dependencias.
-
-## Gotchas
-
-### ESM vs CommonJS
-
-Template usa ESM (`import`/`export`). Se projeto eh CommonJS:
-
-```javascript
-// Adaptar topo
-const { spawnSync } = require('node:child_process');
-const { readFileSync, writeFileSync } = require('node:fs');
-```
-
-Ou manter `.mjs` (ESM) mesmo em projeto CJS — Node.js aceita.
-
-### BUMP=major em 0.x
-
-Com `PRE_1_0_MAJOR_AS_MINOR=true`, `BUMP=major` em 0.9.5 resulta em 0.10.0
-(nao 1.0.0). Para ir pra 1.0.0, rodar `BUMP=major` com flag explicita
-`FORCE_1_0=1` ou editar `package.json` manualmente antes.
-
-### git log entre tags
-
-Primeiro release (sem tags ainda) usa `--max-count=1000` como limite
-artificial. Projeto com mais de 1000 commits sem tag precisa ajustar.
-
-### Commits de merge
-
-Script usa `--no-merges` para ignorar commits de merge (GitHub PR merge
-normalmente nao eh conventional).
-
-### Tag prefix
-
-Default: `v0.1.0`. Para monorepo ou customizacao:
-
-```javascript
-const TAG_PREFIX = 'my-package-v';  // resulta em my-package-v0.1.0
-```
-
-### Timestamps em CHANGELOG
-
-Sempre UTC (`new Date().toISOString().slice(0, 10)` = `YYYY-MM-DD`).
-Nao usar timezone local.
-
-### Amend vs new commit
-
-Default eh criar novo commit `chore(release): v0.1.0`. Se prefere amend
-(menos ruido no log): `AMEND=1 npm run release`. Risco: amend sobrescreve
-autor se config mudou.
-
-### Push automatico arriscado
-
-`AUTO_PUSH=true` + rede instavel = commit + tag criados mas push falha.
-Solucao: deixar `AUTO_PUSH=false` por default, fazer push manual apos
-verificar:
+`AUTO_PUSH=true` + rede instavel = commit + tag criados localmente
+mas push falha, deixando estado inconsistente. **Sempre usar
+`AUTO_PUSH=false`** e fazer push manual apos verificar:
 
 ```bash
 npm run release
 git push origin main
-git push origin v0.1.0  # ou: git push --tags
+git push origin v0.1.0
 ```
 
-### Signed commits/tags
+### BUMP=major em 0.x rera como minor
 
-Se projeto exige `gpg.sign`/`tag.gpgSign`, adicionar:
+Com `PRE_1_0_MAJOR_AS_MINOR=true` (default), `BUMP=major` em 0.9.5
+resulta em `0.10.0`, nao `1.0.0`. Para forcar 1.0.0: editar
+`package.json` manualmente para `1.0.0` antes de rodar release.
 
-```javascript
-git(['tag', '-a', tagName, '-m', message, '-s']);  // -s para signed
-git(['commit', '-S', '-m', commitMsg]);             // -S para signed commit
-```
+### Working tree deve estar limpa
+
+Release aborta se houver changes uncommitted. Faca `git stash` ou
+commite antes. Isso protege contra releases que capturam apenas
+parte das mudancas.
+
+## Referencias
+
+- **[Script walkthrough](./references/script-walkthrough.md)** — funcoes do release.mjs, fluxo, exit codes, parsing de CHANGELOG
+- **[Quality gate](./references/quality-gate.md)** — 4 checks executados, ordem, falhas comuns
+- **[Gotchas detalhados](./references/gotchas.md)** — todos os gotchas e limitacoes
 
 ## Ver tambem
 
-- [`git-methodology/references/commit-body-quality.md`](../git-methodology/references/commit-body-quality.md)
-- [`release-please-setup`](../release-please-setup/) — alternativa automatizada
 - [`release-quality-gate`](../release-quality-gate/) — validador isolado
+- [`release-please-setup`](../release-please-setup/) — alternativa automatizada
 - [`git-hooks-install`](../git-hooks-install/) — commit-msg validation
 - [clw-auth release.mjs](https://github.com/4i3n6/clw-auth/blob/master/scripts/release.mjs)
 
@@ -358,5 +211,5 @@ git(['commit', '-S', '-m', commitMsg]);             // -S para signed commit
 
 | Template | Destino | Descricao |
 |----------|---------|-----------|
-| `release.mjs` | `scripts/release.mjs` | Script principal (conventional parse + bump + changelog + tag) |
+| `release.mjs` | `scripts/release.mjs` | Script principal |
 | `release.test.mjs` | `test/release.test.mjs` | Test suite via node:test |
