@@ -206,6 +206,11 @@ CREATE TABLE b (...);      -- se b falhar, a ja foi criada
 
 ## Ver tambem
 
+- [`language-related/typescript/skills/ts-add-migration/`](../../../language-related/typescript/skills/ts-add-migration/) — **GERAR** arquivo de migration via Drizzle (use ANTES desta skill)
 - [`platform-related/cloudflare-workers/skills/cf-workers-create-d1/`](./cf-workers-create-d1/) — criar banco D1
 - [`data-related/d1/`](../../../data-related/d1/) — padroes de query e otimizacao
 - [`global/skills/cred-store/`](../../../global/skills/cred-store/) — gerenciamento de credenciais
+
+Workflow tipico:
+1. `ts-add-migration` → gera arquivo SQL via Drizzle
+2. `cf-workers-add-migration` (esta skill) → aplica no D1 local + producao

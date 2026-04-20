@@ -199,3 +199,11 @@ ALTER TABLE `members` ADD COLUMN `email_deleted_at` timestamp NULL;
 - **Database already exists with legacy schema**: Use manual ALTER with backup table strategy instead
 - **Large table restructure**: Consider zero-downtime approach with shadow table (see alter_table template)
 - **Emergency hotfix**: This skill is for planned migrations. For emergency column additions, still apply same conventions
+
+## Skills relacionadas
+
+Esta skill **gera o arquivo** de migration via Drizzle (`drizzle-kit generate`). Para **aplicar** o arquivo gerado em D1, use:
+
+- [`platform-related/cloudflare-workers/skills/cf-workers-add-migration/`](../../../platform-related/cloudflare-workers/skills/cf-workers-add-migration/) — `wrangler d1 migrations apply`
+
+Workflow típico: `ts-add-migration` (gerar) → `cf-workers-add-migration` (aplicar local + prod).
