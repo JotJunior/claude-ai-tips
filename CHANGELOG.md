@@ -5,6 +5,49 @@ Todas as mudanças relevantes deste projeto são documentadas aqui.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 este projeto adere a [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [3.1.1] - 2026-04-20
+
+Versão PATCH — correção de bug latente em `validate.sh` análogo ao
+histórico de `metrics.sh` (commit `ead1b68`).
+
+### Fixed
+
+- **`validate.sh` deixa de poluir stderr com `integer expression expected`.**
+  As linhas 244–245 continham o mesmo padrão defeituoso `grep -c ... || printf '0'`
+  que quebrou `metrics.sh`: em no-match, `grep -c` imprime `"0"` e sai com
+  exit 1, disparando o fallback que concatena outro `"0"` — resultado
+  `"0\n0"` quebra as comparações aritméticas subsequentes. Fix aplica o
+  padrão seguro `VAR=$(grep -c ...) || VAR=0`.
+- **Bug latente adicional revelado**: a aritmética corrompida fazia com
+  que os três `if` do bloco "Próximos Passos" (`Corrigir N ERRO(s)`,
+  `N AVISO(s)`, `Nenhuma ação necessária`) falhassem silenciosamente em
+  docs válidos. Com o fix, a mensagem de sucesso `- Nenhuma acao
+  necessaria. Documentacao renderiza corretamente.` volta a aparecer
+  quando aplicável.
+- Tabela Resumo do stdout deixa de renderizar `| X | 0\n0 |` em duas
+  linhas quando algum contador é zero — agora sempre em linha única
+  `| X | 0 |`.
+
+### Added
+
+- **`tests/test_validate.sh :: scenario_stderr_limpo_em_docs_validos`**:
+  regressão dedicada que captura stderr ao rodar `validate.sh` contra
+  `fixtures/docs-site/valid/` e falha se contiver `"integer expression
+  expected"` ou `"[: "`. Protege contra o retorno do bug histórico.
+- **Assertion adicional em `scenario_docs_validos`**: trava como
+  invariant a linha "Nenhuma acao necessaria" que agora aparece em docs
+  válidos.
+- Feature SDD completa em `docs/specs/fix-validate-stderr-noise/`:
+  spec + plan + research + quickstart + tasks + checklists/requirements
+  (29 subtarefas, 100% concluídas).
+
+### Contract preserved
+
+- Exit codes de `validate.sh` inalterados (0 em sucesso, 1 em ERROs).
+- Estrutura do stdout (seções, colunas, severidades) inalterada.
+- Apenas valores numéricos corrigidos onde estavam corrompidos, e
+  stderr limpo. Nenhum teste existente em `test_validate.sh` quebrou.
+
 ## [3.1.0] - 2026-04-20
 
 Versão MINOR — adição de suíte automatizada de testes para os scripts
