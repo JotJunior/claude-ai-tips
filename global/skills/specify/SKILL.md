@@ -45,6 +45,8 @@ $ARGUMENTS
 ## FLUXO DE EXECUCAO
 
 ```
+0. TRIAGEM         Classificar pedido e confirmar relevancia do SDD
+     |
 1. ANALISE         Parsear descricao e extrair conceitos
      |
 2. ESTRUTURA       Criar diretorio e gerar short name
@@ -57,6 +59,67 @@ $ARGUMENTS
      |
 6. SALVAMENTO      Salvar e reportar proximos passos
 ```
+
+---
+
+## ETAPA 0: TRIAGEM (OBRIGATORIA ANTES DE PROSSEGUIR)
+
+Antes de gerar qualquer artefato, classifique o pedido e valide com o usuario
+se o fluxo SDD completo faz sentido para o escopo. O fluxo SDD (spec → clarify
+→ plan → tasks) tem custo real e nem todo pedido justifica esse overhead.
+
+### 0.1 Classificar o pedido
+
+Analise `$ARGUMENTS` e classifique em uma das categorias:
+
+- **Feature nova**: comportamento/capacidade que o sistema nao tem hoje,
+  com multiplos atores, fluxos ou regras de negocio → SDD completo se paga.
+- **Ajuste/extensao pontual**: mudanca pequena em feature existente, uma
+  regra nova, um campo a mais → SDD provavelmente e overkill.
+- **Bugfix**: correcao de comportamento incorreto → NAO usar specify,
+  sugerir a skill `bugfix`.
+- **Refactor/tarefa tecnica**: mudanca interna sem impacto funcional
+  observavel → NAO usar specify, sugerir execucao direta ou `execute-task`.
+
+### 0.2 Avaliar relevancia do SDD
+
+Considere sinais de que o SDD completo vale o custo:
+- Feature tem 2+ user stories independentes? 
+- Envolve multiplos atores ou papeis?
+- Tem regras de negocio ou edge cases nao triviais?
+- Precisa alinhar stakeholders antes de implementar?
+- Vai gerar backlog de tarefas para mais de uma sessao de trabalho?
+
+Se a maioria e "nao", provavelmente o pedido pode ser resolvido inline ou
+com um UC/ADR pontual, sem passar pelo pipeline SDD.
+
+### 0.3 Apresentar a analise e deixar o usuario decidir
+
+Antes de criar diretorio ou arquivos, apresentar ao usuario:
+
+```markdown
+## Triagem do pedido
+
+**Classificacao**: [Feature nova | Ajuste pontual | Bugfix | Refactor]
+
+**Analise de relevancia SDD**:
+- [Justificar por que vale ou nao vale gerar spec completa]
+- [Citar sinais especificos do pedido]
+
+**Opcoes**:
+
+1. **Executar direto** — resolver o pedido sem gerar artefatos SDD
+   (recomendado se: escopo pequeno, bugfix, refactor, ajuste inline)
+2. **Criar feature SDD completa** — gerar spec + seguir pipeline
+   (recomendado se: feature com stories multiplas, stakeholders, backlog)
+3. **Alternativa sugerida**: [ex: criar UC classico, ADR, rodar bugfix]
+
+Qual caminho prefere?
+```
+
+**NUNCA prosseguir para ETAPA 1 sem confirmacao explicita do usuario.**
+Se o usuario escolher opcao 1 ou 3, encerrar a skill e executar o caminho
+escolhido (ou delegar para skill apropriada).
 
 ---
 
