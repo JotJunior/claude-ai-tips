@@ -24,10 +24,24 @@ Deriva de `spec.md`, `plan.md`, `research.md`, `data-model.md`,
 
 Ref: `plan.md` §Complexity Tracking, `docs/constitution.md` §Principio II
 
-- [ ] 0.1.1 Revisar Principio II da constitution e confirmar que excecao fica em `plan.md` da feature (nao em emenda de constitution)
-- [ ] 0.1.2 Expandir secao "Constitution Exception" em `plan.md` com criterios de sunset explicitos (quando reavaliar)
-- [ ] 0.1.3 Adicionar linha em `CHANGELOG.md` (UNRELEASED) sinalizando "dep opcional `jq` introduzida para merge de settings.json em hooks"
-- [ ] 0.1.4 Confirmar que `cli/lib/hooks.sh` sera o UNICO arquivo com referencia a `jq`; documentar essa restricao em comentario no topo do arquivo quando for criado
+> **Nota de execucao (2026-04-24)**: esta fase foi escrita antes da amendment
+> 1.1.0. Durante o `/analyze` inicial, o finding D1 ("jq exception") foi
+> classificado como CRITICAL por conflito com constitution §Decision Framework
+> item 4 — excecao a MUST exige amendment, nao apenas documentacao em plan.md.
+> A resolucao tomou caminho diferente do previsto nesta fase: criou-se a feature
+> `constitution-amend-optional-deps` que emendou Principio II formalmente
+> (1.0.0 → 1.1.0) com subsecao "Optional dependencies with graceful fallback".
+> Em consequencia, todas as subtarefas abaixo foram resolvidas por outros
+> artefatos.
+
+- [x] 0.1.1 Revisar Principio II da constitution e confirmar que excecao fica em `plan.md` da feature (nao em emenda de constitution)
+  → **Invertido**. Decisao final foi fazer amendment formal (`docs/specs/constitution-amend-optional-deps/`). Princípio II agora tem subsecao de carve-out; o caso `jq` e registrado em plan.md como demonstracao de conformidade, nao como excecao.
+- [x] 0.1.2 Expandir secao "Constitution Exception" em `plan.md` com criterios de sunset explicitos (quando reavaliar)
+  → **Satisfeita por reescrita**. Secao renomeada para "Optional-dep registry" na FASE 2 da amendment feature (commit 8b2ce2a). Em vez de "sunset" (amendment e permanente), o plan agora tem bloco "Limites deste registry — nao sao sunset — sao fronteiras" enumerando escopo e condicoes de revisao.
+- [x] 0.1.3 Adicionar linha em `CHANGELOG.md` (UNRELEASED) sinalizando "dep opcional `jq` introduzida para merge de settings.json em hooks"
+  → **Ja feito** via amendment feature FASE 3: entrada sob `[Unreleased] > Governance` em CHANGELOG.md documenta bump 1.0.0 → 1.1.0 e cita o `jq` em `cli/lib/hooks.sh` como primeiro caso concreto do carve-out.
+- [x] 0.1.4 Confirmar que `cli/lib/hooks.sh` sera o UNICO arquivo com referencia a `jq`; documentar essa restricao em comentario no topo do arquivo quando for criado
+  → **Formalizada estruturalmente**. Condicao (b) do carve-out 1.1.0 ("confinamento em um unico arquivo") e demonstracao em `plan.md` §Optional-dep registry. Comentario no topo do `cli/lib/hooks.sh` sera adicionado na subtarefa 7.1.1 quando o arquivo for criado (ja anotado la como "definir `detect_jq()` apenas nesse arquivo").
 
 ---
 
