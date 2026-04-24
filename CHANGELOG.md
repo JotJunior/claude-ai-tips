@@ -5,6 +5,22 @@ Todas as mudanças relevantes deste projeto são documentadas aqui.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 este projeto adere a [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [Unreleased]
+
+### Governance
+
+- **Constitution 1.0.0 → 1.1.0 (MINOR amendment)**: nova subseção "Optional
+  dependencies with graceful fallback" sob Princípio II disciplinando deps
+  não-POSIX em três condições cumulativas (uso opcional com fallback
+  verificável, confinamento em único arquivo, declaração explícita na feature).
+  Nota complementar no Decision Framework item 4 reconhece subseções de
+  carve-out como mecanismo válido quando precedidas por amendment MINOR.
+  Não afrouxa Princípio II — Bash-isms seguem proibidos, `ripgrep`/`fd`/`bats`
+  permanecem banidos mesmo como opcionais, deps obrigatórias continuam vetadas.
+  Primeiro caso concreto sob a nova regra: `jq` opcional em `cli/lib/hooks.sh`
+  da feature `cstk-cli`. Ver `docs/specs/constitution-amend-optional-deps/`
+  para histórico completo de raciocínio.
+
 ## [3.1.1] - 2026-04-20
 
 Versão PATCH — correção de bug latente em `validate.sh` análogo ao

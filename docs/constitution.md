@@ -1,19 +1,30 @@
 <!--
 Sync Impact Report
 - Version: (none) → 1.0.0  [initial ratification]
+- Version: 1.0.0 → 1.1.0  [MINOR: optional-deps carve-out]
 - Bump rationale: constituicao inexistente antes; criacao inicial versao 1.0.0.
-- Principios criados:
+  Amendment 1.1.0 adiciona subsecao no Principio II disciplinando "deps opcionais
+  com fallback graceful" em tres condicoes cumulativas; nota complementar no
+  Decision Framework item 4 reconhece subsecoes de carve-out como mecanismo valido
+  de conformidade quando precedidas por amendment MINOR.
+- Principios criados (1.0.0):
   I.   SDD como regra recursiva (NON-NEGOTIABLE)
   II.  POSIX sh puro para scripts (NON-NEGOTIABLE)
   III. Formato canonico de skill: progressive disclosure + gotchas + description-como-trigger
   IV.  Zero coleta remota (NON-NEGOTIABLE)
   V.   Profundidade sobre adocao
-- Secoes adicionadas: Quality Standards, Decision Framework, Governance
+- Principios afetados por 1.1.0: II expandido (nao alterado); I/III/IV/V inalterados.
+- Secoes adicionadas (1.0.0): Quality Standards, Decision Framework, Governance
+- Secoes modificadas (1.1.0): Principio II recebe subsecao "Optional dependencies
+  with graceful fallback"; Decision Framework item 4 recebe nota clarificadora.
 - Artefatos que precisam atualizacao (resolver quando conveniente):
-  * CLAUDE.md: adicionar secao curta "Principios" apontando para docs/constitution.md (NAO URGENTE — os principios ja sao seguidos de facto)
+  * CLAUDE.md: adicionar secao curta "Principios" apontando para docs/constitution.md (NAO URGENTE — os principios ja sao seguidos de facto). Avaliado novamente em 2026-04-24 durante amendment 1.1.0: mantido nao-urgente; Principio V favorece profundidade sobre marketing; rastreabilidade essencial ja existe via spec↔plan↔constitution.
   * docs/specs/shell-scripts-tests/plan.md §Constitution Check: atualmente diz "Constitution nao presente"; re-rodar /analyze ou re-checar manualmente agora que existe
   * README.md: referenciar docs/constitution.md na secao de "Contribuindo" (opcional)
-- TODOs pendentes: nenhum. Todos os placeholders foram resolvidos.
+  * docs/specs/cstk-cli/plan.md §Complexity Tracking: RESOLVIDO em 2026-04-24
+    — secao reescrita como "Optional-dep registry" referenciando o amendment
+    1.1.0 e demonstrando conformidade com as tres condicoes (a)(b)(c).
+- TODOs pendentes: nenhum bloqueante.
 -->
 
 # Claude Code Toolkit Constitution
@@ -61,6 +72,37 @@ escritos em POSIX sh portavel e rodam em qualquer ambiente POSIX sem setup.
   `bats`) estao banidas em scripts que acompanham skills.
 - Mensagens de erro em stderr, saida de dados em stdout. Exit codes convencionais
   (0 sucesso, 1 erro geral, 2 uso incorreto).
+
+#### Optional dependencies with graceful fallback (amendment 1.1.0)
+
+Excecao disciplinada a regra geral de zero dependencia externa. Uma ferramenta
+nao-POSIX PODE ser invocada por codigo do toolkit desde que as tres condicoes
+abaixo sejam CUMULATIVAS (todas MUST ser satisfeitas):
+
+(a) **Uso genuinamente opcional com fallback graceful documentado E verificavel.**
+    A feature MUST funcionar sem a ferramenta; quando ausente, o fallback
+    produz resultado correto (possivelmente com UX degradada) e MUST ser coberto
+    por teste automatizado.
+(b) **Codigo que referencia a dep confinado em UM unico arquivo identificavel.**
+    A dep nao se espalha pela codebase — grep pelo nome do executavel localiza
+    todas as mencoes em um unico arquivo fonte.
+(c) **Dep declarada explicitamente na documentacao da feature que a introduz.**
+    A dep aparece em `spec.md` ou `plan.md` da feature com justificativa, caminho
+    do arquivo confinado (condicao b) e descricao do fallback (condicao a).
+
+**O que NAO muda:**
+
+- Bash-isms permanecem proibidos em qualquer script (opcional ou nao). A
+  disciplina POSIX sh do bloco MUST acima continua integral.
+- Ferramentas ja banidas nominalmente (`ripgrep`, `fd`, `bats`) permanecem
+  vetadas inclusive como deps opcionais — este carve-out nao as reabilita.
+- Dependencias obrigatorias (sem fallback) permanecem proibidas sob o bloco MUST
+  do Principio II.
+
+**Primeiro caso concreto sob esta regra**: dep opcional em `jq` em
+`cli/lib/hooks.sh` da feature `cstk-cli`, introduzida em amendment 1.1.0. Ver
+[specs/cstk-cli/spec.md](specs/cstk-cli/spec.md) §FR-009d e
+[specs/cstk-cli/plan.md](specs/cstk-cli/plan.md) §Complexity Tracking.
 
 **Rationale:** o briefing marca POSIX sh como restricao tecnica explicita. Bug recente
 em `metrics.sh` (`grep -c` sem matches concatenando "0\n0" via fallback `|| printf '0'`)
@@ -177,6 +219,10 @@ Quando principios entram em tensao, a ordem de desempate e:
    SHOULD (Principio V), registrar no `plan.md` da feature com secao `Constitution
    Exception` explicando o trade-off e o sunset da excecao. Excecao a MUST
    (Principios I, II, IV) exige amendment da constitution — nao ha opt-out tacito.
+   Subsecoes de carve-out dentro de um Principio (como a subsecao "Optional
+   dependencies with graceful fallback" sob Principio II, introduzida em amendment
+   1.1.0) sao mecanismo valido de conformidade quando precedidas por amendment com
+   MINOR bump — representam disciplina explicita do principio, nao opt-out.
 
 ## Governance
 
@@ -205,4 +251,4 @@ Quando principios entram em tensao, a ordem de desempate e:
 - Datas em ISO YYYY-MM-DD.
 - Versao inicial 1.0.0 — qualquer amendment futuro muda este rodape.
 
-**Version**: 1.0.0 | **Ratified**: 2026-04-20 | **Last Amended**: 2026-04-20
+**Version**: 1.1.0 | **Ratified**: 2026-04-20 | **Last Amended**: 2026-04-24
