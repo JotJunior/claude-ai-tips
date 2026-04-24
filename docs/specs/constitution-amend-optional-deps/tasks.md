@@ -87,26 +87,19 @@ Ref: `spec.md` §US-2 + §FR-007 + §FR-009 + §FR-010, `contracts/amendment-tex
 Ref: `spec.md` §US-3 + §FR-006, `constitution.md` §Governance (propagacao
 obrigatoria MINOR), `quickstart.md` Scenarios 3 e 4
 
-- [ ] 3.1.1 No Sync Impact Report (editado em 1.1.2), marcar o item
-  "cstk-cli/plan.md §Complexity Tracking" como `RESOLVIDO` (ou remover da lista
-  "artefatos que precisam atualizacao", documentando em linha separada que foi
-  resolvido na mesma sessao)
-- [ ] 3.1.2 Verificacao SC-003 (nao-regressao): para cada spec ativa com tasks
-  pendentes — `docs/specs/cstk-cli/`, `docs/specs/shell-scripts-tests/`,
-  `docs/specs/fix-validate-stderr-noise/` — confirmar via leitura do Constitution
-  Check existente que nenhum principio que estava PASS em 1.0.0 passa a FAIL em
-  1.1.0. Feature `constitution-amend-optional-deps` (esta propria) nao conta —
-  seu plan ja refere 1.1.0
-- [ ] 3.1.3 Decidir sobre entrada em `CHANGELOG.md`: adicionar linha sob
-  UNRELEASED referenciando o amendment (ex: `docs: constitution amendment 1.1.0
-  — optional deps carve-out`); OU documentar explicitamente a decisao de nao
-  adicionar (amendments de governanca vs changelog de producto podem ter politicas
-  diferentes)
-- [ ] 3.1.4 Decidir sobre `CLAUDE.md`: avaliar se alguma instrucao do CLAUDE.md
-  (particularmente `§Installed vs Source Drift` e `§Como testar scripts shell`)
-  se beneficia de ponteiro explicito para a nova subsecao. Aplicar OU registrar
-  decisao de nao alterar
-- [ ] 3.1.5 Commit dos arquivos editados em commit unico referenciando esta
+- [x] 3.1.1 No Sync Impact Report, item "cstk-cli/plan.md §Complexity Tracking"
+  marcado como `RESOLVIDO em 2026-04-24`.
+- [x] 3.1.2 Verificacao SC-003 executada: `shell-scripts-tests` (gate pulado —
+  item pre-existente de 1.0.0, sem regressao), `fix-validate-stderr-noise`
+  (I/II/IV/V PASS inalterados sob 1.1.0), `cstk-cli` (II transita
+  FAIL/CRITICAL → PASS — melhoria, nao regressao).
+- [x] 3.1.3 CHANGELOG.md atualizado com entrada sob `[Unreleased] > Governance`
+  documentando bump 1.0.0 → 1.1.0 e os 3 guard rails.
+- [x] 3.1.4 Decidido MANTER CLAUDE.md inalterado nesta sessao: Principio V
+  (profundidade > adocao) desfavorece polimento marketing-ish; rastreabilidade
+  essencial ja existe via spec↔plan↔constitution. Decisao registrada no
+  Sync Impact Report.
+- [x] 3.1.5 Commit dos arquivos editados em commit unico referenciando esta
   spec: `docs/constitution.md` + `docs/specs/cstk-cli/plan.md` (+ opcionalmente
   `CHANGELOG.md` se 3.1.3 aplicou). Mensagem sugerida: `docs(constitution): 1.1.0
   — optional-deps carve-out (amend Principio II)`; body referencia
