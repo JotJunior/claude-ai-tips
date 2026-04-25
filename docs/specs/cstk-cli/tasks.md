@@ -106,28 +106,30 @@ Ref: `data-model.md` §Profile, `spec.md` §FR-009/009a/009b
 
 Ref: `contracts/cli-commands.md` §install, `spec.md` §FR-001/002/007/009, `quickstart.md` Scenario 1
 
-- [ ] 3.1.1 `cli/lib/install.sh`: parse argv (SKILL..., `--profile`, `--interactive`, `--scope`, `--dry-run`, `--yes`, `--from`)
-- [ ] 3.1.2 Resolver scope path (`~/.claude/skills/` vs `./.claude/skills/`); criar dir se nao existir (com confirmacao em project scope quando CWD parece nao ser projeto)
-- [ ] 3.1.3 Adquirir lock do escopo; exit 3 com mensagem instrutiva se falhar
-- [ ] 3.1.4 Resolver selecao final: union de SKILL explicito + `resolve_profile`
-- [ ] 3.1.5 Download do tarball da release alvo + verificacao SHA-256 (FR-010a) + extract em tempdir
-- [ ] 3.1.6 Para cada skill alvo: detectar estado (nao-existe / existe-nao-manifestado / existe-manifestado) e aplicar acao correspondente
-- [ ] 3.1.7 Preservar skills terceiras (existem em disco, ausentes do manifest e do catalog): log warn + skip (FR-007)
-- [ ] 3.1.8 Copiar skill alvo para destino; calcular source_sha256; upsert manifest
-- [ ] 3.1.9 Emitir summary em stderr com contagens (installed, updated, preserved, skipped, scope, toolkit_version) — FR-011
-- [ ] 3.1.10 Implementar modo dry-run: imprime plano com acoes por skill; zero writes no destino; retorna exit 0 (FR-012, SC-006)
-- [ ] 3.1.11 Escrever `tests/cstk/test_install.sh` cobrindo Scenario 1, preservacao third-party, dry-run vs real (SC-006)
+- [x] 3.1.1 `cli/lib/install.sh`: parse argv (SKILL..., `--profile`, `--interactive`, `--scope`, `--dry-run`, `--yes`, `--from`)
+- [x] 3.1.2 Resolver scope path (`~/.claude/skills/` vs `./.claude/skills/`); criar dir se nao existir (com confirmacao em project scope quando CWD parece nao ser projeto)
+- [x] 3.1.3 Adquirir lock do escopo; exit 3 com mensagem instrutiva se falhar
+- [x] 3.1.4 Resolver selecao final: union de SKILL explicito + `resolve_profile`
+- [x] 3.1.5 Download do tarball da release alvo + verificacao SHA-256 (FR-010a) + extract em tempdir
+- [x] 3.1.6 Para cada skill alvo: detectar estado (nao-existe / existe-nao-manifestado / existe-manifestado) e aplicar acao correspondente
+- [x] 3.1.7 Preservar skills terceiras (existem em disco, ausentes do manifest e do catalog): log warn + skip (FR-007)
+- [x] 3.1.8 Copiar skill alvo para destino; calcular source_sha256; upsert manifest
+- [x] 3.1.9 Emitir summary em stderr com contagens (installed, updated, preserved, skipped, scope, toolkit_version) — FR-011
+- [x] 3.1.10 Implementar modo dry-run: imprime plano com acoes por skill; zero writes no destino; retorna exit 0 (FR-012, SC-006)
+- [x] 3.1.11 Escrever `tests/cstk/test_install.sh` cobrindo Scenario 1, preservacao third-party, dry-run vs real (SC-006)
+  → Decisoes diferidas por dependencia de fase: (a) `--interactive` aceita flag mas retorna exit 2 com mensagem apontando FASE 8.1.5; (b) hooks de `language-*` em scope=project (FR-009b/c/d) ficam para FASE 7.2; (c) resolver "ultima release" via API GitHub fica para FASE 3.2 — install hoje exige `--from URL` (http/https/file) ou `$CSTK_RELEASE_URL`. (d) Re-install em skill ja manifestada vira "updated" sem deteccao de edit local — politica `--force`/`--keep` e exit 4 vivem em `update.sh` (FASE 4.1). 15 cenarios de teste (incluindo lock conflict exit 3 e checksum mismatch zero-writes).
 
 ### 3.2 Script de bootstrap `install.sh` `[A]`
 
 Ref: `spec.md` §FR-005a, `quickstart.md` Scenario 1 (parte inicial)
 
-- [ ] 3.2.1 Criar `cli/install.sh` standalone (POSIX sh, `set -eu`); descobre ultima release via `curl` na API do GitHub
-- [ ] 3.2.2 Download do tarball + `.sha256`; validar checksum (FR-010a); abort sem escrita em mismatch
-- [ ] 3.2.3 Criar `~/.local/bin/` e `~/.local/share/cstk/` se nao existirem; copiar `cstk` e `cli/lib/*`
-- [ ] 3.2.4 Escrever `~/.local/share/cstk/VERSION` com a tag baixada
-- [ ] 3.2.5 Detectar se `~/.local/bin/` esta no PATH; se nao, imprimir instrucao de como adicionar (sem modificar shell rc automaticamente)
-- [ ] 3.2.6 Escrever `tests/cstk/test_bootstrap.sh` com fixture de release mock (offline, via `CSTK_RELEASE_URL`)
+- [x] 3.2.1 Criar `cli/install.sh` standalone (POSIX sh, `set -eu`); descobre ultima release via `curl` na API do GitHub
+- [x] 3.2.2 Download do tarball + `.sha256`; validar checksum (FR-010a); abort sem escrita em mismatch
+- [x] 3.2.3 Criar `~/.local/bin/` e `~/.local/share/cstk/` se nao existirem; copiar `cstk` e `cli/lib/*`
+- [x] 3.2.4 Escrever `~/.local/share/cstk/VERSION` com a tag baixada
+- [x] 3.2.5 Detectar se `~/.local/bin/` esta no PATH; se nao, imprimir instrucao de como adicionar (sem modificar shell rc automaticamente)
+- [x] 3.2.6 Escrever `tests/cstk/test_bootstrap.sh` com fixture de release mock (offline, via `CSTK_RELEASE_URL`)
+  → API GitHub (`releases/latest`) parseada com `grep` + `sed` (sem `jq`, mantendo o carve-out 1.1.0 confinado a `cli/lib/hooks.sh`). `CSTK_REPO`, `INSTALL_BIN`, `INSTALL_LIB` honrados como overrides para forks/testes. Tag inferida do filename quando `CSTK_RELEASE_URL` setado (skipa API). 8 cenarios de teste (incluindo PATH on/off, mismatch zero-writes, re-run upgrade, tarball sem cli/).
 
 ---
 
