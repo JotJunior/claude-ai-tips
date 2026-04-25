@@ -78,23 +78,25 @@ Ref: `plan.md` §Project Structure, `research.md` Decisions 3, 7, 10
 
 Ref: `data-model.md` §Manifest, `spec.md` §FR-004
 
-- [ ] 2.1.1 `cli/lib/manifest.sh`: definir formato TSV v1 + constantes de paths (`~/.claude/skills/.cstk-manifest`, `./.claude/skills/.cstk-manifest`)
-- [ ] 2.1.2 Implementar `read_manifest` (awk -F'\t', skip header comment, yield skill\tversion\tsha\tinstalled_at)
-- [ ] 2.1.3 Implementar `write_manifest` com atomic replace (`mktemp` + `mv`)
-- [ ] 2.1.4 Implementar `upsert_entry <skill> <version> <sha> <iso-ts>` (idempotente)
-- [ ] 2.1.5 Implementar `remove_entry <skill>` (para --prune e doctor --fix)
-- [ ] 2.1.6 Implementar `detect_schema_version` — abortar com mensagem clara se header != v1 (preparacao para evolucao futura)
-- [ ] 2.1.7 Escrever `tests/cstk/test_manifest.sh`: fixtures para novo, upsert, remove, manifest corrompido, schema desconhecido
+- [x] 2.1.1 `cli/lib/manifest.sh`: definir formato TSV v1 + constantes de paths (`~/.claude/skills/.cstk-manifest`, `./.claude/skills/.cstk-manifest`)
+- [x] 2.1.2 Implementar `read_manifest` (awk -F'\t', skip header comment, yield skill\tversion\tsha\tinstalled_at)
+- [x] 2.1.3 Implementar `write_manifest` com atomic replace (`mktemp` + `mv`)
+- [x] 2.1.4 Implementar `upsert_entry <skill> <version> <sha> <iso-ts>` (idempotente)
+- [x] 2.1.5 Implementar `remove_entry <skill>` (para --prune e doctor --fix)
+- [x] 2.1.6 Implementar `detect_schema_version` — abortar com mensagem clara se header != v1 (preparacao para evolucao futura)
+- [x] 2.1.7 Escrever `tests/cstk/test_manifest.sh`: fixtures para novo, upsert, remove, manifest corrompido, schema desconhecido
+  → Adicional: implementadas tambem `manifest_default_path <scope>` (centraliza paths global/project) e `lookup_entry <path> <skill>` (essencial para update.sh em F4). 19 cenarios de teste no total.
 
 ### 2.2 Resolvedor de profiles `[A]`
 
 Ref: `data-model.md` §Profile, `spec.md` §FR-009/009a/009b
 
-- [ ] 2.2.1 `cli/lib/profiles.sh`: parser de `catalog/profiles.txt` (linhas `profile:member`)
-- [ ] 2.2.2 Implementar `resolve_profile <name>` com expansao recursiva (profile pode referenciar outro profile)
-- [ ] 2.2.3 Deteccao de ciclo na expansao; abortar com exit 1 se tarball publicar catalog com ciclo
-- [ ] 2.2.4 Implementar `list_profiles` para uso no `--help` e modo interativo
-- [ ] 2.2.5 Escrever `tests/cstk/test_profiles.sh`: default `sdd`, cherry-pick union com profile, `all`, ciclo (fixture maliciosa)
+- [x] 2.2.1 `cli/lib/profiles.sh`: parser de `catalog/profiles.txt` (linhas `profile:member`)
+- [x] 2.2.2 Implementar `resolve_profile <name>` com expansao recursiva (profile pode referenciar outro profile)
+- [x] 2.2.3 Deteccao de ciclo na expansao; abortar com exit 1 se tarball publicar catalog com ciclo
+- [x] 2.2.4 Implementar `list_profiles` para uso no `--help` e modo interativo
+- [x] 2.2.5 Escrever `tests/cstk/test_profiles.sh`: default `sdd`, cherry-pick union com profile, `all`, ciclo (fixture maliciosa)
+  → DFS de cycle detection implementada em awk (3-coloring) ja que recursao em POSIX sh puro vaza variaveis entre frames. Cobertura: 13 cenarios (parse, list_profiles, resolve sdd/all, union cherry-pick, ciclos direto/indireto, diamante sem ciclo, profile/arquivo inexistentes, args invalidos).
 
 ---
 
