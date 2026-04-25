@@ -216,21 +216,23 @@ Bonus: removido `scenario_lib_ausente_reporta_erro` de `test_cstk-main.sh` — a
 
 Ref: `spec.md` §FR-009d, `plan.md` §Constitution Exception, `quickstart.md` Scenarios 4, 5
 
-- [ ] 7.1.1 `cli/lib/hooks.sh`: implementar `detect_jq()` via `command -v jq`
-- [ ] 7.1.2 Com `jq`: implementar `merge_settings <target-json> <source-json>` preservando chaves pre-existentes nao-conflitantes (jq recursivo)
-- [ ] 7.1.3 Sem `jq`: imprimir em stderr bloco formatado `# Hooks to merge manually into <path>:` + conteudo JSON + instrucao operacional
-- [ ] 7.1.4 Contrato defensivo: `merge_settings` NUNCA executa sem `jq`; NUNCA sobrescreve arquivo existente com `>` simples — guardas com `test -f`
-- [ ] 7.1.5 Escrever `tests/cstk/test_hooks.sh` cobrindo Scenarios 4 (jq presente) e 5 (jq ausente, settings.json pre-existente intocado)
+- [x] 7.1.1 `cli/lib/hooks.sh`: implementar `detect_jq()` via `command -v jq`
+- [x] 7.1.2 Com `jq`: implementar `merge_settings <target-json> <source-json>` preservando chaves pre-existentes nao-conflitantes (jq recursivo)
+- [x] 7.1.3 Sem `jq`: imprimir em stderr bloco formatado `# Hooks to merge manually into <path>:` + conteudo JSON + instrucao operacional
+- [x] 7.1.4 Contrato defensivo: `merge_settings` NUNCA executa sem `jq`; NUNCA sobrescreve arquivo existente com `>` simples — guardas com `test -f`
+- [x] 7.1.5 Escrever `tests/cstk/test_hooks.sh` cobrindo Scenarios 4 (jq presente) e 5 (jq ausente, settings.json pre-existente intocado)
+  → Confinamento jq formalizado em comentario no topo do arquivo (condicao b do carve-out 1.1.0). Merge via `jq -s '.[0] * .[1]' source target` — target vence em conflitos preservando customizacao do usuario. Backup `.bak` antes de qualquer mv. Atomic via mktemp+mv. Caso target ausente = cp simples (sem jq necessario para criar de zero, mas jq exigido para detect_jq retornar 0 antes mesmo de chegar aqui — funcao mantem assertiva). 10 cenarios, ambiente sem-jq simulado via shim PATH (filtra dirs com jq).
 
 ### 7.2 Integracao hooks com install `[A]`
 
 Ref: `spec.md` §FR-009b/009c/009d, `contracts/cli-commands.md` §install passo 6
 
-- [ ] 7.2.1 Em `install.sh`, detectar quando perfil resolvido inclui `language-*` E `--scope=project`: invocar fluxo de hooks
-- [ ] 7.2.2 Quando `--scope=global` com perfil `language-*`: skip hooks + reportar "omitted (global scope)" no summary (FR-009c)
-- [ ] 7.2.3 Copiar apenas `hooks/` de language-related — `settings.json` da linguagem e passado a `merge_settings`, nao copiado cru
-- [ ] 7.2.4 Summary reflete estado dos hooks: `merged` (jq), `paste-instructed` (sem jq), `omitted` (scope global)
-- [ ] 7.2.5 Escrever `tests/cstk/test_hooks-integration.sh` cobrindo project vs global com perfil language-*
+- [x] 7.2.1 Em `install.sh`, detectar quando perfil resolvido inclui `language-*` E `--scope=project`: invocar fluxo de hooks
+- [x] 7.2.2 Quando `--scope=global` com perfil `language-*`: skip hooks + reportar "omitted (global scope)" no summary (FR-009c)
+- [x] 7.2.3 Copiar apenas `hooks/` de language-related — `settings.json` da linguagem e passado a `merge_settings`, nao copiado cru
+- [x] 7.2.4 Summary reflete estado dos hooks: `merged` (jq), `paste-instructed` (sem jq), `omitted` (scope global)
+- [x] 7.2.5 Escrever `tests/cstk/test_hooks-integration.sh` cobrindo project vs global com perfil language-*
+  → `_install_apply_hooks_if_needed` chamado apos o loop de skills. Detecta `_install_profile = language-*`; com scope=project copia `catalog/language/<lang>/hooks/` para `./.claude/hooks/` e mescla settings via `merge_settings` (jq) ou `print_paste_block` (sem jq). Estado em `_install_hook_state` (merged/paste-instructed/omitted/hooks-only/not-applicable/error) reportado no summary so quando profile e language-*. Ambiente sem-jq nos testes via shim PATH com symlinks para sh/mktemp/tar/etc. excluindo jq (necessario porque /usr/bin contem ambos no macOS). 6 cenarios incluindo dry-run zero-writes e profile sdd nao-language sem linha hooks no summary.
 
 ---
 

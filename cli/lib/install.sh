@@ -54,6 +54,8 @@ _CSTK_INSTALL_LOADED=1
 . "${CSTK_LIB}/manifest.sh"
 # shellcheck source=/dev/null
 . "${CSTK_LIB}/profiles.sh"
+# shellcheck source=/dev/null
+. "${CSTK_LIB}/hooks.sh"
 
 _install_print_help() {
   cat >&2 <<'HELP'
@@ -176,6 +178,9 @@ install_main() {
   done
   IFS=$_install_old_ifs
 
+  # FASE 7.2: integracao de hooks language-* (FR-009b/c/d)
+  _install_apply_hooks_if_needed
+
   _install_emit_summary
   return 0
 }
@@ -200,6 +205,7 @@ _install_reset_state() {
   _install_selection=""
   _install_manifest_path=""
   _install_now=""
+  _install_hook_state=""
   _install_count_installed=0
   _install_count_updated=0
   _install_count_preserved=0
@@ -494,6 +500,95 @@ _install_apply() {
   return 0
 }
 
+# _install_apply_hooks_if_needed: integra hooks de language-* (FR-009b/c/d).
+#
+# Decisao por scope:
+#   --scope=project + profile=language-X  -> instala hooks/ + merge settings
+#   --scope=global  + profile=language-X  -> skip hooks (FR-009c) + warn omitted
+#   profile != language-*                  -> nada a fazer (hook_state vazio)
+#
+# Sub-passos quando aplicavel:
+#   1. Localiza catalog/language/<lang>/{hooks/,settings.json}
+#   2. Copia hooks/ para $scope_dir/../hooks/  (i.e. ./.claude/hooks/)
+#   3. Settings: merge_settings se jq disponivel, senao print_paste_block
+#
+# Em --dry-run: reporta plano via log_info, nao escreve.
+_install_apply_hooks_if_needed() {
+  case "$_install_profile" in
+    language-*) ;;
+    *) return 0 ;;
+  esac
+
+  if [ "$_install_scope" = global ]; then
+    log_warn "install: hooks de $_install_profile omitidos em scope=global (FR-009c)"
+    _install_hook_state="omitted"
+    return 0
+  fi
+
+  _ahin_lang=${_install_profile#language-}
+  _ahin_lang_dir="$_install_catalog_dir/language/$_ahin_lang"
+  if [ ! -d "$_ahin_lang_dir" ]; then
+    log_warn "install: catalog/language/$_ahin_lang ausente — hooks skipped"
+    _install_hook_state="not-applicable"
+    return 0
+  fi
+
+  _ahin_hooks_src="$_ahin_lang_dir/hooks"
+  _ahin_settings_src="$_ahin_lang_dir/settings.json"
+  # claude_root = scope_dir/.. (ex: ./.claude/skills/.. = ./.claude/)
+  _ahin_claude_root="${_install_scope_dir%/skills}"
+  _ahin_hooks_dst="$_ahin_claude_root/hooks"
+  _ahin_settings_dst="$_ahin_claude_root/settings.json"
+
+  # Copia hooks/ se existir
+  if [ -d "$_ahin_hooks_src" ]; then
+    if [ "$_install_dry_run" = 1 ]; then
+      log_info "[dry-run] hooks: copiaria $_ahin_hooks_src → $_ahin_hooks_dst"
+    else
+      if ! mkdir -p -- "$_ahin_hooks_dst" 2>/dev/null; then
+        log_error "install: nao consegui criar $_ahin_hooks_dst"
+        _install_hook_state="error"
+        return 0
+      fi
+      cp -R -- "$_ahin_hooks_src"/. "$_ahin_hooks_dst"/ || {
+        log_error "install: cp -R hooks falhou"
+        _install_hook_state="error"
+        return 0
+      }
+    fi
+  fi
+
+  # Settings.json: merge ou paste
+  if [ ! -f "$_ahin_settings_src" ]; then
+    log_info "install: $_ahin_settings_src ausente — sem settings.json para integrar"
+    _install_hook_state="hooks-only"
+    return 0
+  fi
+
+  if [ "$_install_dry_run" = 1 ]; then
+    if detect_jq; then
+      log_info "[dry-run] settings: mesclaria $_ahin_settings_src → $_ahin_settings_dst (jq)"
+      _install_hook_state="merged"
+    else
+      log_info "[dry-run] settings: imprimiria paste-block (jq ausente)"
+      _install_hook_state="paste-instructed"
+    fi
+    return 0
+  fi
+
+  if detect_jq; then
+    if merge_settings "$_ahin_settings_dst" "$_ahin_settings_src"; then
+      _install_hook_state="merged"
+    else
+      _install_hook_state="error"
+    fi
+  else
+    print_paste_block "$_ahin_settings_dst" "$_ahin_settings_src"
+    _install_hook_state="paste-instructed"
+  fi
+  return 0
+}
+
 # _install_emit_summary: bloco em stderr conforme contract §install.
 _install_emit_summary() {
   _ies_prefix=""
@@ -508,5 +603,8 @@ _install_emit_summary() {
     printf '  missing from catalog: %d\n' "$_install_count_missing"
     printf '  scope: %s\n' "$_install_scope"
     printf '  toolkit version: %s\n' "${_install_release_version:-?}"
+    if [ -n "$_install_hook_state" ]; then
+      printf '  hooks: %s\n' "$_install_hook_state"
+    fi
   } >&2
 }
