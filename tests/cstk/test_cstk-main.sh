@@ -121,10 +121,10 @@ scenario_flag_desconhecida() {
 
 scenario_lib_ausente_reporta_erro() {
   # Verifica que o dispatcher reporta "nao implementado" quando a lib do
-  # subcomando ainda nao existe. Usa um comando da fase em curso ainda nao
-  # entregue. Atualizar quando a lib correspondente for adicionada.
-  # Atualmente: self-update (FASE 5), doctor/list (FASE 6), hooks (FASE 7).
-  capture sh "$CSTK" self-update
+  # subcomando ainda nao existe. Usa um comando ainda nao entregue.
+  # Atualizar quando a lib correspondente for adicionada (self-update=FASE 5,
+  # list/doctor=FASE 6).
+  capture sh "$CSTK" doctor
   if [ "$_CAPTURED_EXIT" != "1" ]; then
     _fail "scenario_lib_ausente_reporta_erro" \
       "exit esperado 1 (lib ausente), obtido $_CAPTURED_EXIT"

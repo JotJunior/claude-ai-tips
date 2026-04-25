@@ -160,22 +160,23 @@ Ref: `contracts/cli-commands.md` §update, `spec.md` §FR-003/008, `quickstart.m
 
 Ref: `contracts/cli-commands.md` §self-update, `spec.md` §FR-005/005a/006/006a/010a, `research.md` Decision 4, `quickstart.md` Scenarios 6, 7
 
-- [ ] 5.1.1 `cli/lib/self-update.sh`: parse argv (`--check`, `--dry-run`, `--yes`); explicitamente NAO aceita `--scope`
-- [ ] 5.1.2 Implementar `--check`: consulta latest release API, imprime `latest:<tag> current:<tag>` em stdout, exit 0 se iguais, exit 10 se update disponivel, exit 1 erro de rede
-- [ ] 5.1.3 Detectar paths de instalacao: `$CSTK_BIN` ou `~/.local/bin/cstk`; `$CSTK_LIB` ou `~/.local/share/cstk/lib/`; validar que existem (senao mensagem clara apontando bootstrap — FR-005a)
-- [ ] 5.1.4 Adquirir lock exclusivo de self-update em `<$CSTK_LIB>/../.self-update.lock` via `mkdir` (FR-006, previne dois self-updates concorrentes); exit 3 com mensagem clara se ja detido
-- [ ] 5.1.5 Download tarball + `.sha256`; validar SHA-256 (FR-010a); abort sem escrita em mismatch
-- [ ] 5.1.6 Stage novos arquivos em `$CSTK_LIB.new/` e `$CSTK_BIN.new` (dirs irmaos, mesmo filesystem) — sem tocar nos destinos ainda
-- [ ] 5.1.6a Executar sequencia stage-and-rename coordenada (research Decision 4): (a) mover `$CSTK_LIB` → `$CSTK_LIB.old`; (b) mover `$CSTK_LIB.new` → `$CSTK_LIB`; (c) **commit point**: `mv -f $CSTK_BIN.new $CSTK_BIN`; (d) `rm -rf $CSTK_LIB.old`. Passos (a)-(c) sao renames atomicos POSIX.
-- [ ] 5.1.6b Implementar rollback explicito: se (b) falha apos (a), restaurar `$CSTK_LIB.old` → `$CSTK_LIB`; se (c) falha apos (b), mover lib nova para lado + restaurar lib antiga para `$CSTK_LIB`. Abortar com mensagem que nenhum estado observavel mudou.
-- [ ] 5.1.6c Implementar check bin-lib-match no boot de `cstk`: comparar VERSION embutido no script com `$CSTK_LIB/../VERSION`; se divergem, abortar com mensagem "self-update em progresso, tente novamente" (blinda a janela curta entre rename de lib e rename de bin — FR-006)
-- [ ] 5.1.7 Atualizar `$CSTK_LIB/../VERSION` com a nova tag (escrita feita dentro do `$CSTK_LIB.new` antes do stage, para que surja atomicamente junto)
-- [ ] 5.1.8 Garantir por design que self-update NUNCA le nem escreve manifests de skills (FR-006a); nao montar nenhum path para manifest neste codigo
-- [ ] 5.1.9 Tratamento de erro: qualquer falha antes do passo (c) = zero impacto observavel na CLI instalada (FR-006, SC-004); liberar lock em todos os caminhos via `trap`
-- [ ] 5.1.10 Emitir summary `from: X → Y ... next: cstk update`
-- [ ] 5.1.11 Escrever `tests/cstk/test_self-update.sh` cobrindo Scenario 6 (happy), Scenario 7 (network drop mid-download), e cenario novo 7b (kill entre renames — ver quickstart)
-- [ ] 5.1.12 Escrever teste dedicado de invariante: `stat` mtime do manifest antes e depois do self-update deve ser identico (FR-006a)
-- [ ] 5.1.13 Escrever teste de invariante FR-006 (atomicidade par bin+lib): simular kill em cada um dos 4 pontos criticos (pos-download, pos-stage, entre rename lib e rename bin, pos-rename-bin); verificar que `cstk --version` retorna consistentemente ou versao antiga ou nova em cada caso, nunca output inconsistente
+- [x] 5.1.1 `cli/lib/self-update.sh`: parse argv (`--check`, `--dry-run`, `--yes`); explicitamente NAO aceita `--scope`
+- [x] 5.1.2 Implementar `--check`: consulta latest release API, imprime `latest:<tag> current:<tag>` em stdout, exit 0 se iguais, exit 10 se update disponivel, exit 1 erro de rede
+- [x] 5.1.3 Detectar paths de instalacao: `$CSTK_BIN` ou `~/.local/bin/cstk`; `$CSTK_LIB` ou `~/.local/share/cstk/lib/`; validar que existem (senao mensagem clara apontando bootstrap — FR-005a)
+- [x] 5.1.4 Adquirir lock exclusivo de self-update em `<$CSTK_LIB>/../.self-update.lock` via `mkdir` (FR-006, previne dois self-updates concorrentes); exit 3 com mensagem clara se ja detido
+- [x] 5.1.5 Download tarball + `.sha256`; validar SHA-256 (FR-010a); abort sem escrita em mismatch
+- [x] 5.1.6 Stage novos arquivos em `$CSTK_LIB.new/` e `$CSTK_BIN.new` (dirs irmaos, mesmo filesystem) — sem tocar nos destinos ainda
+- [x] 5.1.6a Executar sequencia stage-and-rename coordenada (research Decision 4): (a) mover `$CSTK_LIB` → `$CSTK_LIB.old`; (b) mover `$CSTK_LIB.new` → `$CSTK_LIB`; (c) **commit point**: `mv -f $CSTK_BIN.new $CSTK_BIN`; (d) `rm -rf $CSTK_LIB.old`. Passos (a)-(c) sao renames atomicos POSIX.
+- [x] 5.1.6b Implementar rollback explicito: se (b) falha apos (a), restaurar `$CSTK_LIB.old` → `$CSTK_LIB`; se (c) falha apos (b), mover lib nova para lado + restaurar lib antiga para `$CSTK_LIB`. Abortar com mensagem que nenhum estado observavel mudou.
+- [x] 5.1.6c Implementar check bin-lib-match no boot de `cstk`: comparar VERSION embutido no script com `$CSTK_LIB/../VERSION`; se divergem, abortar com mensagem "self-update em progresso, tente novamente" (blinda a janela curta entre rename de lib e rename de bin — FR-006)
+- [x] 5.1.7 Atualizar `$CSTK_LIB/../VERSION` com a nova tag (escrita feita dentro do `$CSTK_LIB.new` antes do stage, para que surja atomicamente junto)
+- [x] 5.1.8 Garantir por design que self-update NUNCA le nem escreve manifests de skills (FR-006a); nao montar nenhum path para manifest neste codigo
+- [x] 5.1.9 Tratamento de erro: qualquer falha antes do passo (c) = zero impacto observavel na CLI instalada (FR-006, SC-004); liberar lock em todos os caminhos via `trap`
+- [x] 5.1.10 Emitir summary `from: X → Y ... next: cstk update`
+- [x] 5.1.11 Escrever `tests/cstk/test_self-update.sh` cobrindo Scenario 6 (happy), Scenario 7 (network drop mid-download), e cenario novo 7b (kill entre renames — ver quickstart)
+- [x] 5.1.12 Escrever teste dedicado de invariante: `stat` mtime do manifest antes e depois do self-update deve ser identico (FR-006a)
+- [x] 5.1.13 Escrever teste de invariante FR-006 (atomicidade par bin+lib): simular kill em cada um dos 4 pontos criticos (pos-download, pos-stage, entre rename lib e rename bin, pos-rename-bin); verificar que `cstk --version` retorna consistentemente ou versao antiga ou nova em cada caso, nunca output inconsistente
+  → Decisao tecnica chave: VERSION agora vive em DUAS posicoes — `$CSTK_LIB/VERSION` (atomic-com-lib, usado pelo boot-check) e `$CSTK_LIB/../VERSION` (legado/display). Bootstrap escreve ambas; self-update mantem em sync. Boot-check em `cli/cstk` compara `CSTK_EMBEDDED_VERSION` (sed'd no bin pelo bootstrap+self-update) com `$CSTK_LIB/VERSION` — mismatch = exit 1 com mensagem "self-update em progresso, tente novamente". Bypass do boot-check para o proprio comando `self-update` permite recovery. Bypass tambem em builds dev (CSTK_EMBEDDED_VERSION termina em -dev). Recovery do estado transiente: self-update detecta `_su_current_bin != _su_current_lib` e completa o swap mesmo se lib ja for igual a latest. Test hooks `CSTK_TEST_SU_ABORT_AT={after-download,after-stage,between-lib-bin,after-bin}` validam invariantes em cada um dos 4 pontos criticos. 13 cenarios.
 
 ---
 

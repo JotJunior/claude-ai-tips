@@ -16,6 +16,15 @@
 
 set -eu
 
+# ==== Versao embutida (atomicidade par bin+lib — FR-006) ====
+#
+# Esta string e substituida por `cstk self-update` (sed na copia .new) e pelo
+# pipeline de release (FASE 9.1) ao construir o tarball para uma tag SemVer.
+# Em dev (rodando do repo), fica como "0.0.0-dev" e o boot-check abaixo
+# trata isso como bypass — comparar com VERSION do lib so faz sentido apos
+# instalacao via bootstrap.
+CSTK_EMBEDDED_VERSION="0.0.0-dev"
+
 # ==== Exit codes (contract: docs/specs/cstk-cli/contracts/cli-commands.md) ====
 
 CSTK_EXIT_OK=0
@@ -49,14 +58,52 @@ _resolve_lib_dir() {
   exit "$CSTK_EXIT_ERROR"
 }
 
-# Resolve o arquivo VERSION. Fica em $CSTK_LIB/../VERSION por convencao.
-# Override via $CSTK_VERSION_FILE (util para testes).
+# Resolve o arquivo VERSION. Prioridade:
+#   1. $CSTK_VERSION_FILE override (testes)
+#   2. $CSTK_LIB/VERSION (canonico, atomic-com-lib desde FASE 5; usado pelo boot-check)
+#   3. $CSTK_LIB/../VERSION (legado/dev: cli/VERSION na arvore do repo)
 _resolve_version_file() {
   if [ -n "${CSTK_VERSION_FILE:-}" ]; then
     printf '%s\n' "$CSTK_VERSION_FILE"
     return 0
   fi
+  if [ -f "$CSTK_LIB/VERSION" ]; then
+    printf '%s\n' "$CSTK_LIB/VERSION"
+    return 0
+  fi
   printf '%s\n' "$CSTK_LIB/../VERSION"
+}
+
+# Boot-check: detecta a janela transiente entre rename de lib e rename de bin
+# durante self-update (FR-006c). Compara CSTK_EMBEDDED_VERSION (no bin) com
+# $CSTK_LIB/VERSION (atomic-com-lib). Mismatch = aborta com mensagem clara
+# pedindo recovery via "cstk self-update".
+#
+# Bypass quando:
+#   - CSTK_EMBEDDED_VERSION termina em -dev (rodando do repo)
+#   - $CSTK_LIB/VERSION ausente (instalacao pre-FASE-5 via bootstrap antigo)
+#   - flag CSTK_SKIP_BIN_LIB_CHECK=1 (escape hatch para depuracao)
+_check_bin_lib_match() {
+  if [ "${CSTK_SKIP_BIN_LIB_CHECK:-0}" = 1 ]; then
+    return 0
+  fi
+  case "$CSTK_EMBEDDED_VERSION" in
+    *-dev|"") return 0 ;;
+  esac
+  if [ ! -f "$CSTK_LIB/VERSION" ]; then
+    return 0
+  fi
+  _libv=$(head -n 1 -- "$CSTK_LIB/VERSION" 2>/dev/null | tr -d '[:space:]')
+  if [ -z "$_libv" ]; then
+    return 0
+  fi
+  if [ "$_libv" != "$CSTK_EMBEDDED_VERSION" ]; then
+    printf 'cstk: bin/lib version mismatch (bin=%s lib=%s)\n' \
+      "$CSTK_EMBEDDED_VERSION" "$_libv" >&2
+    printf 'cstk: self-update parece estar em progresso ou interrompido.\n' >&2
+    printf 'cstk: re-execute "cstk self-update" para completar a recuperacao.\n' >&2
+    exit "$CSTK_EXIT_ERROR"
+  fi
 }
 
 # ==== Comandos internos (nao vivem em cli/lib/) ====
@@ -140,6 +187,12 @@ _dispatch() {
       _cmd_version
       ;;
     install|update|self-update|list|doctor)
+      # Boot-check para todos exceto self-update (que e o caminho de recovery
+      # da janela transiente — bloquea-lo aqui causaria deadlock).
+      case "$_cmd" in
+        self-update) ;;
+        *) _check_bin_lib_match ;;
+      esac
       _lib_file="$CSTK_LIB/${_cmd}.sh"
       if [ ! -f "$_lib_file" ]; then
         printf 'cstk %s: nao implementado ainda (cli/lib/%s.sh ausente)\n' \
