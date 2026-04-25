@@ -118,21 +118,12 @@ scenario_flag_desconhecida() {
 }
 
 # ==== 1.1.6.f comando valido mas lib ausente → exit 1 (scaffold-stage) ====
-
-scenario_lib_ausente_reporta_erro() {
-  # Verifica que o dispatcher reporta "nao implementado" quando a lib do
-  # subcomando ainda nao existe. Usa um comando ainda nao entregue.
-  # Atualizar quando a lib correspondente for adicionada (self-update=FASE 5,
-  # list/doctor=FASE 6).
-  capture sh "$CSTK" doctor
-  if [ "$_CAPTURED_EXIT" != "1" ]; then
-    _fail "scenario_lib_ausente_reporta_erro" \
-      "exit esperado 1 (lib ausente), obtido $_CAPTURED_EXIT"
-    return 1
-  fi
-  assert_stderr_contains "nao implementado" || return 1
-  assert_stderr_contains "FASE" || return 1
-}
+#
+# Removido apos FASE 6: todos os comandos roteados (install/update/self-update/
+# list/doctor) tem suas libs em cli/lib/. O caminho "lib ausente" ainda e
+# coberto por scenario_cstk_lib_override abaixo (override de CSTK_LIB para
+# fakelib vazio). Re-adicionar aqui se um novo comando for registrado no
+# dispatcher antes da lib correspondente.
 
 # ==== 1.1.6.g $CSTK_VERSION_FILE override funciona ====
 

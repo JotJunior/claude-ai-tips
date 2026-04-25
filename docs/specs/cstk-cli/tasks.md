@@ -186,23 +186,27 @@ Ref: `contracts/cli-commands.md` §self-update, `spec.md` §FR-005/005a/006/006a
 
 Ref: `contracts/cli-commands.md` §list
 
-- [ ] 6.1.1 `cli/lib/list.sh`: parse argv (`--scope`, `--format tsv|pretty`, `--available`)
-- [ ] 6.1.2 Detectar TTY para default format (pretty em TTY, tsv em pipe)
-- [ ] 6.1.3 Implementar listagem local: le manifest + calcula status por skill (clean/edited/missing-from-catalog)
-- [ ] 6.1.4 Implementar `--available`: baixa catalog da ultima release (sem lock, sem escrita) e lista skills disponiveis
-- [ ] 6.1.5 Formatador pretty (colunas alinhadas) e tsv (tab-separated)
-- [ ] 6.1.6 Escrever `tests/cstk/test_list.sh`: TTY vs pipe, --available, --scope, output format
+- [x] 6.1.1 `cli/lib/list.sh`: parse argv (`--scope`, `--format tsv|pretty`, `--available`)
+- [x] 6.1.2 Detectar TTY para default format (pretty em TTY, tsv em pipe)
+- [x] 6.1.3 Implementar listagem local: le manifest + calcula status por skill (clean/edited/missing-from-catalog)
+- [x] 6.1.4 Implementar `--available`: baixa catalog da ultima release (sem lock, sem escrita) e lista skills disponiveis
+- [x] 6.1.5 Formatador pretty (colunas alinhadas) e tsv (tab-separated)
+- [x] 6.1.6 Escrever `tests/cstk/test_list.sh`: TTY vs pipe, --available, --scope, output format
+  → Status local = clean/edited/missing (manifest + disco). Status `missing-from-catalog` mencionado em 6.1.3 fica para `doctor` que tem semantica mais clara — `list` nao baixa catalog em modo default (rede so com `--available`). 10 cenarios.
 
 ### 6.2 Comando `cstk doctor` `[M]`
 
 Ref: `contracts/cli-commands.md` §doctor, `spec.md` §SC-007, `quickstart.md` Scenario 10
 
-- [ ] 6.2.1 `cli/lib/doctor.sh`: parse argv (`--scope`, `--fix`)
-- [ ] 6.2.2 Walk: para cada entry do manifest, verificar dir existe + hash; para cada dir em disco, verificar entry
-- [ ] 6.2.3 Classificar: `OK`, `EDITED`, `MISSING` (entry sem dir), `ORPHAN` (dir sem entry)
-- [ ] 6.2.4 Exit 1 em qualquer drift sem `--fix`; exit 0 se todo OK
-- [ ] 6.2.5 Modo `--fix`: remover entries MISSING; recalcular source_sha256 de clean; NAO modificar conteudo de skills
-- [ ] 6.2.6 Escrever `tests/cstk/test_doctor.sh` cobrindo Scenario 10 (os 4 tipos simultaneos de drift — SC-007)
+- [x] 6.2.1 `cli/lib/doctor.sh`: parse argv (`--scope`, `--fix`)
+- [x] 6.2.2 Walk: para cada entry do manifest, verificar dir existe + hash; para cada dir em disco, verificar entry
+- [x] 6.2.3 Classificar: `OK`, `EDITED`, `MISSING` (entry sem dir), `ORPHAN` (dir sem entry)
+- [x] 6.2.4 Exit 1 em qualquer drift sem `--fix`; exit 0 se todo OK
+- [x] 6.2.5 Modo `--fix`: remover entries MISSING; recalcular source_sha256 de clean; NAO modificar conteudo de skills
+- [x] 6.2.6 Escrever `tests/cstk/test_doctor.sh` cobrindo Scenario 10 (os 4 tipos simultaneos de drift — SC-007)
+  → SC-007 validado: cenario `doctor_4_tipos_drift` cria os 4 estados simultaneos (foo EDITED, bar MISSING, baz OK, my-custom ORPHAN) e verifica classificacao + exit 1. `--fix` remove apenas MISSING e refresca hash de OK; preserva EDITED/ORPHAN (FR-007 third-party + trabalho do usuario). Exit 0 sempre apos `--fix` (best-effort reconciliation; itens nao-fixados ficam para o usuario via `cstk update --force` ou aceitar third-party). 8 cenarios.
+
+Bonus: removido `scenario_lib_ausente_reporta_erro` de `test_cstk-main.sh` — apos FASE 6 todos os comandos roteados tem libs; o caminho "lib ausente" continua coberto por `scenario_cstk_lib_override` (override de CSTK_LIB para fakelib vazio).
 
 ---
 
