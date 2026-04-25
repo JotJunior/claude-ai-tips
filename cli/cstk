@@ -1,0 +1,174 @@
+#!/bin/sh
+# cstk — Claude Specs Toolkit CLI
+#
+# Ponto de entrada do CLI que instala, atualiza e audita skills do toolkit
+# em escopo global (~/.claude/skills/) ou de projeto (./.claude/skills/),
+# alem de atualizar seu proprio binario.
+#
+# Esta implementacao cobre FASE 1.1 do backlog em
+# docs/specs/cstk-cli/tasks.md: scaffold + dispatch + --version + --help.
+# Subcomandos (install/update/self-update/list/doctor) sao implementados em
+# cli/lib/*.sh em fases subsequentes; ate la, dispatch para eles reporta
+# "nao implementado" com exit 1.
+#
+# POSIX sh puro conforme Constitution 1.1.0 §Principio II.
+# Deps: shell POSIX + find, grep, sed, dirname, cd, printf, cat.
+
+set -eu
+
+# ==== Exit codes (contract: docs/specs/cstk-cli/contracts/cli-commands.md) ====
+
+CSTK_EXIT_OK=0
+CSTK_EXIT_ERROR=1
+CSTK_EXIT_USAGE=2
+CSTK_EXIT_LOCK=3
+CSTK_EXIT_LOCAL_EDIT=4
+CSTK_EXIT_CHECK_AVAILABLE=10
+
+# ==== Resolucao de paths ====
+
+# Resolve o diretorio da biblioteca (cli/lib/).
+# Prioridade: $CSTK_LIB override > layout instalado > layout de dev.
+_resolve_lib_dir() {
+  if [ -n "${CSTK_LIB:-}" ]; then
+    printf '%s\n' "$CSTK_LIB"
+    return 0
+  fi
+  _script_dir=$(cd -- "$(dirname -- "$0")" && pwd)
+  # Layout instalado: bin em ~/.local/bin/cstk, lib em ~/.local/share/cstk/lib
+  if [ -d "$_script_dir/../share/cstk/lib" ]; then
+    (cd -- "$_script_dir/../share/cstk/lib" && pwd)
+    return 0
+  fi
+  # Layout de dev: lib adjacente ao cstk (repo: cli/cstk + cli/lib/)
+  if [ -d "$_script_dir/lib" ]; then
+    printf '%s\n' "$_script_dir/lib"
+    return 0
+  fi
+  printf 'cstk: nao consegui localizar cli/lib/ (defina $CSTK_LIB ou reinstale via bootstrap)\n' >&2
+  exit "$CSTK_EXIT_ERROR"
+}
+
+# Resolve o arquivo VERSION. Fica em $CSTK_LIB/../VERSION por convencao.
+# Override via $CSTK_VERSION_FILE (util para testes).
+_resolve_version_file() {
+  if [ -n "${CSTK_VERSION_FILE:-}" ]; then
+    printf '%s\n' "$CSTK_VERSION_FILE"
+    return 0
+  fi
+  printf '%s\n' "$CSTK_LIB/../VERSION"
+}
+
+# ==== Comandos internos (nao vivem em cli/lib/) ====
+
+_cmd_version() {
+  _vf=$(_resolve_version_file)
+  if [ -f "$_vf" ]; then
+    _v=$(head -n 1 -- "$_vf" 2>/dev/null) || _v=""
+    if [ -n "$_v" ]; then
+      printf 'cstk %s\n' "$_v"
+    else
+      printf 'cstk unknown (VERSION vazio em %s)\n' "$_vf"
+    fi
+  else
+    printf 'cstk unknown (VERSION nao encontrado em %s)\n' "$_vf"
+  fi
+  exit "$CSTK_EXIT_OK"
+}
+
+_cmd_help() {
+  _sub="${1:-}"
+  if [ -z "$_sub" ]; then
+    cat <<'HELP'
+cstk — Claude Specs Toolkit CLI
+
+USO:
+  cstk <comando> [opcoes]
+
+COMANDOS:
+  install       Instala skills do toolkit em escopo global ou de projeto
+  update        Atualiza skills ja instaladas
+  self-update   Atualiza o proprio binario cstk
+  list          Lista skills instaladas
+  doctor        Verifica integridade da instalacao e manifests
+
+UTILITARIOS:
+  help [CMD]    Ajuda geral ou de um comando especifico
+  --version     Imprime versao instalada
+
+FLAGS GLOBAIS (aceitas pelos comandos principais):
+  --scope <global|project>   Default global; project usa ./.claude/skills/
+  --dry-run                  Mostra plano sem escrever
+  --yes                      Pula confirmacoes interativas
+  --verbose                  Log verboso em stderr
+
+Documentacao completa: docs/specs/cstk-cli/contracts/cli-commands.md
+HELP
+    exit "$CSTK_EXIT_OK"
+  fi
+  case "$_sub" in
+    install|update|self-update|list|doctor)
+      printf 'cstk help %s: consulte docs/specs/cstk-cli/contracts/cli-commands.md §%s\n' \
+        "$_sub" "$_sub"
+      exit "$CSTK_EXIT_OK"
+      ;;
+    help|--help|-h)
+      _cmd_help ""
+      ;;
+    *)
+      printf 'cstk: comando desconhecido para help: %s\n' "$_sub" >&2
+      printf 'Comandos validos: install, update, self-update, list, doctor\n' >&2
+      exit "$CSTK_EXIT_USAGE"
+      ;;
+  esac
+}
+
+# ==== Dispatch principal ====
+
+_dispatch() {
+  _cmd="${1:-}"
+  [ "$#" -ge 1 ] && shift || :
+
+  case "$_cmd" in
+    ''|-h|--help)
+      _cmd_help ""
+      ;;
+    help)
+      _cmd_help "$@"
+      ;;
+    -V|--version|version)
+      _cmd_version
+      ;;
+    install|update|self-update|list|doctor)
+      _lib_file="$CSTK_LIB/${_cmd}.sh"
+      if [ ! -f "$_lib_file" ]; then
+        printf 'cstk %s: nao implementado ainda (cli/lib/%s.sh ausente)\n' \
+          "$_cmd" "$_cmd" >&2
+        printf 'FASE 1.1 fornece apenas scaffold + dispatch; comandos sao adicionados em FASES 3-7.\n' >&2
+        exit "$CSTK_EXIT_ERROR"
+      fi
+      # shellcheck source=/dev/null
+      . "$_lib_file"
+      # Convencao: cada lib define <cmd>_main; hifens viram underscores.
+      _main_fn="$(printf '%s' "$_cmd" | sed 's/-/_/g')_main"
+      if ! command -v "$_main_fn" >/dev/null 2>&1; then
+        printf 'cstk: %s nao define funcao %s\n' "$_lib_file" "$_main_fn" >&2
+        exit "$CSTK_EXIT_ERROR"
+      fi
+      "$_main_fn" "$@"
+      ;;
+    -*)
+      printf 'cstk: flag desconhecida: %s\n' "$_cmd" >&2
+      printf 'Tente: cstk --help\n' >&2
+      exit "$CSTK_EXIT_USAGE"
+      ;;
+    *)
+      printf 'cstk: comando desconhecido: %s\n' "$_cmd" >&2
+      printf 'Comandos validos: install, update, self-update, list, doctor, help, --version\n' >&2
+      exit "$CSTK_EXIT_USAGE"
+      ;;
+  esac
+}
+
+CSTK_LIB=$(_resolve_lib_dir)
+_dispatch "$@"

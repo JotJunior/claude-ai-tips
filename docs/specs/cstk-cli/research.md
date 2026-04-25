@@ -50,24 +50,32 @@ Localizacao: `~/.claude/skills/.cstk-manifest` (global) e `./.claude/skills/.cst
 - **Diretorio `.cstk/` com um arquivo por skill** — mais granular mas inflaciona
   I/O (N skills = N reads) sem beneficio claro; plain text single-file e mais simples.
 
-## Decision 3: Deteccao de edicoes locais
+## Decision 3: Deteccao de edicoes locais (hash_dir via manifest canonico)
 
-**Decision**: Hash SHA-256 de um tar determinista da arvore da skill (criado com
-`tar --sort=name --owner=0 --group=0 --numeric-owner --mtime=@0`) armazenado no
-manifest. Update compara hash atual com hash registrado; divergencia = edicao local
-OU drift.
+**Decision**: Hash SHA-256 de um **manifest canonico ordenado** da arvore da skill:
+para cada arquivo regular sob o diretorio, calcula-se SHA-256 individual, produz-se
+uma linha `<sha256>  <relpath>`, ordena-se por path, e o SHA-256 desse manifest e
+o hash final. Armazenado no manifest da CLI. Update compara hash atual com hash
+registrado; divergencia = edicao local OU drift.
 
 **Rationale**:
 - SHA-256 disponivel via `sha256sum` (linux) ou `shasum -a 256` (macOS) — CLI detecta
-  qual existe e usa.
-- Tar determinista garante que o mesmo conteudo produz o mesmo hash, independente de
-  mtime, owner ou ordem do filesystem.
+  qual existe e usa (cli/lib/compat.sh).
+- Manifest canonico ordenado garante determinismo 100% portavel: `find -type f` +
+  `sort` existem em qualquer sistema POSIX, sem depender de flags que variam.
+- Mesmas propriedades desejadas: mesmo conteudo + mesmo path = mesmo hash;
+  insensivel a mtime/permissoes/ordem de criacao.
 - Hash e forma mais confiavel que mtime (que muda com `cp -p`, `rsync`, etc.).
 - Skills sao pequenas (KB a baixas dezenas de KB) — overhead de hashing e desprezivel.
 
 **Alternatives considered**:
+- **`tar --sort=name --owner=0 --group=0 --numeric-owner --mtime=@0`** (plano
+  original) — REJEITADO apos implementacao: essas flags sao GNU-only; BSD tar do
+  macOS nao suporta `--sort`. Testar em mac revelou incompatibilidade. Manifest
+  canonico entrega o mesmo observavel sem depender de nenhuma feature especifica
+  de tar.
 - **mtime comparison** — simples mas facil de quebrar (touch, rsync sem -a, checkout
-  git). Rejeitado como frágil demais para decisao de `--force` vs abort.
+  git). Rejeitado como fragil demais para decisao de `--force` vs abort.
 - **Hash por arquivo em vez de por skill** — mais granular, permitiria mergeflows
   avancados. Rejeitado: complexidade alta, usuario casual nao precisa dessa
   granularidade, e politica definida no spec e "skill-level abort/force/keep".

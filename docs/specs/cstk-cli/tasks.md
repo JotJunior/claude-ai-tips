@@ -51,24 +51,24 @@ Ref: `plan.md` §Complexity Tracking, `docs/constitution.md` §Principio II
 
 Ref: `plan.md` §Project Structure, `research.md` Decision 1
 
-- [ ] 1.1.1 Criar estrutura `cli/cstk` (executavel principal) + `cli/lib/` + `cli/README.md` (dev-facing)
-- [ ] 1.1.2 Adicionar shebang `#!/bin/sh` + `set -eu` + constantes de exit codes (0..5) em `cstk`
-- [ ] 1.1.3 Implementar dispatch de subcommand (`install`, `update`, `self-update`, `list`, `doctor`, `help`, `--version`)
-- [ ] 1.1.4 Implementar `cstk --version` (le `~/.local/share/cstk/VERSION` ou `$CSTK_LIB/../VERSION`)
-- [ ] 1.1.5 Implementar `cstk --help` + `cstk help <command>` com texto curto apontando para docs completos
-- [ ] 1.1.6 Escrever `tests/cstk/test_cstk-main.sh` cobrindo dispatch, help, version, exit codes invalidos
+- [x] 1.1.1 Criar estrutura `cli/cstk` (executavel principal) + `cli/lib/` + `cli/README.md` (dev-facing)
+- [x] 1.1.2 Adicionar shebang `#!/bin/sh` + `set -eu` + constantes de exit codes (0..5) em `cstk`
+- [x] 1.1.3 Implementar dispatch de subcommand (`install`, `update`, `self-update`, `list`, `doctor`, `help`, `--version`)
+- [x] 1.1.4 Implementar `cstk --version` (le `~/.local/share/cstk/VERSION` ou `$CSTK_LIB/../VERSION`)
+- [x] 1.1.5 Implementar `cstk --help` + `cstk help <command>` com texto curto apontando para docs completos
+- [x] 1.1.6 Escrever `tests/cstk/test_cstk-main.sh` cobrindo dispatch, help, version, exit codes invalidos
 
 ### 1.2 Biblioteca utilitaria transversal `[A]`
 
 Ref: `plan.md` §Project Structure, `research.md` Decisions 3, 7, 10
 
-- [ ] 1.2.1 `cli/lib/common.sh`: funcoes `log_info`/`log_warn`/`log_error` (stderr), detect TTY/color, sentinelas de exit code
-- [ ] 1.2.2 `cli/lib/compat.sh`: detecta `sha256sum` vs `shasum -a 256`; wrap `date -u +%Y-%m-%dT%H:%M:%SZ` portable
-- [ ] 1.2.3 `cli/lib/http.sh`: wrappers `curl` (-fsSL) com mapping de erros (timeout, offline, 404, 5xx)
-- [ ] 1.2.4 `cli/lib/lock.sh`: `mkdir` lock + `trap '... EXIT INT TERM'` cleanup + mensagem instrutiva para stale lock
-- [ ] 1.2.5 `cli/lib/tarball.sh`: download + extract em tempdir; integra `http.sh` + `sha256sum` via `compat.sh`
-- [ ] 1.2.6 `cli/lib/hash.sh`: `hash_dir()` usando `tar --sort=name --owner=0 --group=0 --numeric-owner --mtime=@0 | sha256sum` para hash determinista de diretorio
-- [ ] 1.2.7 Escrever `tests/cstk/test_common.sh`, `test_compat.sh`, `test_http.sh`, `test_lock.sh`, `test_tarball.sh`, `test_hash.sh` (um por lib)
+- [x] 1.2.1 `cli/lib/common.sh`: funcoes `log_info`/`log_warn`/`log_error` (stderr), detect TTY/color, sentinelas de exit code
+- [x] 1.2.2 `cli/lib/compat.sh`: detecta `sha256sum` vs `shasum -a 256`; wrap `date -u +%Y-%m-%dT%H:%M:%SZ` portable
+- [x] 1.2.3 `cli/lib/http.sh`: wrappers `curl` (-fsSL) com mapping de erros (timeout, offline, 404, 5xx)
+- [x] 1.2.4 `cli/lib/lock.sh`: `mkdir` lock + `trap '... EXIT INT TERM'` cleanup + mensagem instrutiva para stale lock
+- [x] 1.2.5 `cli/lib/tarball.sh`: download + extract em tempdir; integra `http.sh` + `sha256sum` via `compat.sh`
+- [x] 1.2.6 `cli/lib/hash.sh`: `hash_dir()` via manifest canonico ordenado (research Decision 3 atualizada — `tar --sort` descartado por incompat. com BSD tar do macOS; manifest canonico e portavel)
+- [x] 1.2.7 Escrever `tests/cstk/test_common.sh`, `test_compat.sh`, `test_http.sh`, `test_lock.sh`, `test_tarball.sh`, `test_hash.sh` (um por lib)
 
 ---
 
