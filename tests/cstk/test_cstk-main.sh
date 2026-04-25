@@ -120,9 +120,11 @@ scenario_flag_desconhecida() {
 # ==== 1.1.6.f comando valido mas lib ausente → exit 1 (scaffold-stage) ====
 
 scenario_lib_ausente_reporta_erro() {
-  # Em FASE 1.1 nenhuma lib de subcomando existe ainda. Invocar install
-  # deve retornar exit 1 com mensagem "nao implementado".
-  capture sh "$CSTK" install --profile sdd
+  # Verifica que o dispatcher reporta "nao implementado" quando a lib do
+  # subcomando ainda nao existe. Usa um comando da fase em curso ainda nao
+  # entregue. Atualizar quando a lib correspondente for adicionada.
+  # Atualmente: self-update (FASE 5), doctor/list (FASE 6), hooks (FASE 7).
+  capture sh "$CSTK" self-update
   if [ "$_CAPTURED_EXIT" != "1" ]; then
     _fail "scenario_lib_ausente_reporta_erro" \
       "exit esperado 1 (lib ausente), obtido $_CAPTURED_EXIT"

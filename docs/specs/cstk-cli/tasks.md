@@ -139,17 +139,18 @@ Ref: `spec.md` §FR-005a, `quickstart.md` Scenario 1 (parte inicial)
 
 Ref: `contracts/cli-commands.md` §update, `spec.md` §FR-003/008, `quickstart.md` Scenarios 2, 3
 
-- [ ] 4.1.1 `cli/lib/update.sh`: parse argv (SKILL..., `--force`, `--keep`, `--prune`, `--from`, `--dry-run`, `--yes`)
-- [ ] 4.1.2 Adquirir lock; reutilizar helper de `install.sh`
-- [ ] 4.1.3 Download tarball + checksum da release alvo
-- [ ] 4.1.4 Para cada skill do manifest (ou subset args): calcular hash atual via `hash_dir`
-- [ ] 4.1.5 Comparar com `source_sha256` armazenado: iguais = clean; diferentes = edicao local
-- [ ] 4.1.6 Politica em edicao local: sem flag = skip + collect para summary; `--force` = sobrescrever + upsert; `--keep` = skip silent
-- [ ] 4.1.7 Para skills clean: se versao ou conteudo da release difere, atualizar; se nao, zero writes (SC-002)
-- [ ] 4.1.8 Implementar `--prune`: detectar skills no manifest ausentes do catalog da release; listar + pedir confirmacao (a menos de `--yes`); remover dir + entry
-- [ ] 4.1.9 Emitir summary com contagens + `next:` apontando `--force` se houver skip por edit
-- [ ] 4.1.10 Exit 4 quando houver skip por edit local sem `--force`/`--keep` (sinal pra CI)
-- [ ] 4.1.11 Escrever `tests/cstk/test_update.sh` cobrindo Scenario 2 (idempotencia SC-002), Scenario 3 (--force), --prune, detecao de renomeada-no-fonte
+- [x] 4.1.1 `cli/lib/update.sh`: parse argv (SKILL..., `--force`, `--keep`, `--prune`, `--from`, `--dry-run`, `--yes`)
+- [x] 4.1.2 Adquirir lock; reutilizar helper de `install.sh`
+- [x] 4.1.3 Download tarball + checksum da release alvo
+- [x] 4.1.4 Para cada skill do manifest (ou subset args): calcular hash atual via `hash_dir`
+- [x] 4.1.5 Comparar com `source_sha256` armazenado: iguais = clean; diferentes = edicao local
+- [x] 4.1.6 Politica em edicao local: sem flag = skip + collect para summary; `--force` = sobrescrever + upsert; `--keep` = skip silent
+- [x] 4.1.7 Para skills clean: se versao ou conteudo da release difere, atualizar; se nao, zero writes (SC-002)
+- [x] 4.1.8 Implementar `--prune`: detectar skills no manifest ausentes do catalog da release; listar + pedir confirmacao (a menos de `--yes`); remover dir + entry
+- [x] 4.1.9 Emitir summary com contagens + `next:` apontando `--force` se houver skip por edit
+- [x] 4.1.10 Exit 4 quando houver skip por edit local sem `--force`/`--keep` (sinal pra CI)
+- [x] 4.1.11 Escrever `tests/cstk/test_update.sh` cobrindo Scenario 2 (idempotencia SC-002), Scenario 3 (--force), --prune, detecao de renomeada-no-fonte
+  → Idempotencia (SC-002) verificada via `stat` mtime de manifest+skill: zero writes quando release_hash == stored_sha. `--force`+`--keep` mutuamente exclusivos (exit 2). Skill renomeada na release vira orfa no manifest (warn + sugere `--prune`). 12 cenarios. Reutilizacao de helpers feita por sourcing comum de `lock.sh`/`tarball.sh`/`hash.sh`/`manifest.sh` — install/update sao independentes mas usam mesma stack utilitaria. Bonus: corrigido `test_cstk-main.sh::scenario_lib_ausente_reporta_erro` que passou a falhar com a nova `update.sh` no disco — agora aponta para `self-update` (proximo no backlog FASE 5).
 
 ---
 
