@@ -266,12 +266,77 @@ Skills em `language-related/dotnet/skills/` para projetos .NET:
 
 ## Instalação
 
-Copie os diretórios desejados para o seu projeto ou instalação global do Claude Code:
+### Via cstk CLI (recomendado)
+
+A partir da versão `0.1.0`, o toolkit é instalado via `cstk` —
+CLI POSIX shell que baixa, valida (SHA-256), instala e atualiza skills sem
+exigir clone do repositório.
+
+**One-liner de bootstrap** (instala `cstk` em `~/.local/bin/`):
 
 ```bash
-# Skills globais — copiar para o projeto
-cp -r global/skills/ seu-projeto/.claude/skills/
+curl -fsSL https://github.com/JotJunior/claude-ai-tips/releases/latest/download/install.sh | sh
+```
 
+Depois disso, comandos típicos:
+
+```bash
+cstk --version                       # confirma instalação
+cstk install                         # instala perfil 'sdd' em ~/.claude/skills/
+cstk install --profile all           # instala TODAS as 35 skills (inclui language-*)
+cstk install advisor bugfix          # cherry-pick por nome
+cstk update                          # aplica novas releases preservando edits locais
+cstk update --force                  # sobrescreve skills com edição local
+cstk list                            # lista skills instaladas + status
+cstk doctor                          # detecta drift entre manifest e disco
+cstk self-update                     # atualiza o próprio binário cstk
+```
+
+**Perfis disponíveis:**
+
+| Perfil | Conteúdo | Uso típico |
+|--------|----------|------------|
+| `sdd` | 10 skills do pipeline Spec-Driven Development (briefing → review-task) | Instalação global default |
+| `complementary` | 9 skills independentes (advisor, bugfix, owasp-security, etc.) | Complementa o pipeline SDD |
+| `all` | Todas as 35 skills (sdd + complementary + language-*) | Instalação completa |
+| `language-go` | Skills + hooks específicos para Go | Apenas em projetos Go |
+| `language-dotnet` | Skills específicos para .NET | Apenas em projetos .NET |
+
+Profile padrão quando nada é informado: `sdd`.
+
+**Escopo de projeto** (`./.claude/skills/` no CWD em vez de `~/.claude/skills/`):
+
+```bash
+# Em um projeto Go: instala skills + hooks + merge de settings.json
+cd ~/projetos/meu-app-go
+cstk install --scope project --profile language-go
+
+# Cherry-pick em escopo de projeto
+cstk install --scope project create-use-case advisor
+
+# Hooks de language-* SÃO instalados apenas em --scope project
+# (em --scope global, hooks são omitidos com aviso no summary — FR-009c)
+```
+
+**Modo interativo** (seletor numerado em TTY):
+
+```bash
+cstk install --interactive   # lista perfis + skills numerados; seleção via toggle
+cstk update --interactive    # mesmo, mas sobre skills do manifest
+```
+
+**Dry-run** (mostra plano sem escrever):
+
+```bash
+cstk install --dry-run --profile all
+cstk update --dry-run
+```
+
+### Instalação manual (deprecated, ainda suportada)
+
+Se preferir não usar o `cstk`, copia direta dos diretórios continua funcionando:
+
+```bash
 # Skills globais — instalação global
 cp -r global/skills/ ~/.claude/skills/
 
@@ -279,24 +344,33 @@ cp -r global/skills/ ~/.claude/skills/
 cp -r language-related/go/skills/ seu-projeto/.claude/skills/
 cp -r language-related/go/hooks/ seu-projeto/.claude/hooks/
 cp language-related/go/settings.json seu-projeto/.claude/settings.json
-
-# Skills de .NET — copiar para projeto .NET
-cp -r language-related/dotnet/skills/ seu-projeto/.claude/skills/
 ```
+
+Esta abordagem **não rastreia versões nem detecta drift** — você acaba
+recorrentemente com uma cópia instalada divergente do source. Se for usar,
+mantenha disciplina manual de `diff -r` (ver [`CLAUDE.md`](./CLAUDE.md)
+§"Installed vs Source Drift"). O `cstk` resolve isso via manifest +
+hash_dir.
 
 ### Estrutura de Destino
 
 ```
 ~/.claude/                  # Instalação global
-├── skills/
-└── insights/               # (opcional, gerado pelo /insights nativo ou curado manualmente)
+├── skills/                 # (gerenciado por cstk: contém .cstk-manifest)
+└── insights/               # (opcional, gerado pelo /insights nativo)
 
 seu-projeto/
 └── .claude/                # Instalação por projeto
-    ├── skills/
+    ├── skills/             # (gerenciado por cstk: --scope project)
     ├── hooks/              # (opcional, para hooks de linguagem)
-    └── insights/           # (opcional, gerado pelo /insights nativo ou curado manualmente)
+    ├── settings.json       # (mesclado por cstk quando jq disponível)
+    └── insights/           # (opcional)
 ```
+
+### Documentação completa do cstk
+
+- [`cli/README.md`](./cli/README.md) — visão técnica, convenções, processo de release
+- [`docs/specs/cstk-cli/`](./docs/specs/cstk-cli/) — spec, plan, contracts, quickstart
 
 ## Convenções de Nomenclatura
 

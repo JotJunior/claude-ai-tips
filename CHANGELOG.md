@@ -7,6 +7,58 @@ este projeto adere a [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ## [Unreleased]
 
+### Added
+
+- **`cstk` CLI (POSIX shell)** — toolkit de instalação, atualização e
+  auditoria de skills. Substitui o `cp -r` manual documentado em
+  `CLAUDE.md` por um fluxo rastreável: manifest por escopo (versão +
+  `source_sha256` + ISO timestamp), lock concorrente via `mkdir`,
+  verificação SHA-256 obrigatória em todo download (FR-010a),
+  preservação de skills de terceiros (FR-007), políticas explícitas de
+  conflito em update (`--force` / `--keep`, exit 4 quando edit local
+  detectado sem flag — FR-008).
+
+  **Comandos**: `install`, `update`, `self-update`, `list`, `doctor`.
+
+  **Profiles**: `sdd` (default — pipeline SDD com 10 skills),
+  `complementary` (9 skills independentes), `all` (todos os 35 skills),
+  `language-go`, `language-dotnet`. Cherry-pick por nome também
+  suportado; modo interativo via `--interactive` (seletor numerado em
+  TTY).
+
+  **Escopos**: `--scope global` (`~/.claude/skills/`, default) e
+  `--scope project` (`./.claude/skills/`). Hooks de `language-*` são
+  instalados APENAS em escopo de projeto (FR-009c) com merge automático
+  de `settings.json` quando `jq` disponível, ou paste-block instrucional
+  quando ausente (FR-009d).
+
+  **Self-update atômico** (FR-006): par `bin + lib` tratado como unidade
+  indivisível via stage-and-rename coordenado + boot-check de versão
+  embutida vs versão da lib. Nunca toca o manifest de skills (FR-006a;
+  verificável: mtime do `.cstk-manifest` preservado).
+
+  **Pipeline de release** em `.github/workflows/release.yml` —
+  triggered por `push tag v*`, valida testes (`tests/run.sh` + cstk
+  suite), gera tarball determinístico via `scripts/build-release.sh`
+  e publica via `gh release create` com `cstk-X.Y.Z.tar.gz`,
+  `.sha256` e `install.sh` (asset standalone para o one-liner
+  `curl <url> | sh`).
+
+  **Observabilidade**: `cstk list` (TSV/pretty) + `cstk doctor`
+  (4 estados de drift: OK, EDITED, MISSING, ORPHAN — SC-007).
+
+  **Determinismo do tarball** (`scripts/build-release.sh`): mtime
+  normalizado, `gzip -n`, ordenação `LC_ALL=C sort`, detecção
+  GNU-vs-BSD tar para paths portáveis. Verificado: 2 builds
+  consecutivos produzem o mesmo SHA-256.
+
+  **Cobertura de testes**: 242 cenários (`tests/run.sh` global), zero
+  falhas. Gap real único (Scenario 13 SC-003 byte-a-byte) coberto por
+  `tests/cstk/test_quickstart-e2e.sh`.
+
+  Spec completa em [`docs/specs/cstk-cli/`](./docs/specs/cstk-cli/);
+  documentação user-facing em [`README.md`](./README.md) §Instalação.
+
 ### Governance
 
 - **Constitution 1.0.0 → 1.1.0 (MINOR amendment)**: nova subseção "Optional
