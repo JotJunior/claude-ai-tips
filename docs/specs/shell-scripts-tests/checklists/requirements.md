@@ -9,8 +9,15 @@
 - [x] CHK001 - O conjunto de scripts sob teste esta listado exaustivamente e e inequivoco? [Completude, Spec §Contexto]
 - [ ] CHK002 - Existe requisito que cubra o que acontece quando um script e renomeado ou removido? [Gap, Spec §User Story 5]
 - [ ] CHK003 - Requisitos cobrem tanto execucao completa da suite quanto execucao parcial (subconjunto)? [Completude, Spec §FR-002, Quickstart §7]
-- [ ] CHK004 - Ha requisito sobre o que acontece quando o test runner em si falha (ex: `mktemp` indisponivel, permissoes)? [Gap]
-- [ ] CHK005 - A governanca (FR-009) cobre script adicionado SEM teste E script removido COM teste orfao? [Completude, Spec §FR-009]
+- [x] CHK004 - Ha requisito sobre o que acontece quando o test runner em si falha (ex: `mktemp` indisponivel, permissoes)? [Gap]
+  → Resolvido: Clarifications Q5 + FR-003 introduziram status ERROR distinto
+  de FAIL — "harness ou ambiente impediu a avaliacao (ex: ferramenta POSIX
+  ausente, falha ao criar tmpdir, setup do teste crashou)". Exit code 0 exige
+  zero FAILs E zero ERRORs.
+- [x] CHK005 - A governanca (FR-009) cobre script adicionado SEM teste E script removido COM teste orfao? [Completude, Spec §FR-009]
+  → Resolvido: FR-009 reescrito cobre os dois lados explicitamente — "Remocao
+  de um script com teste orfao (teste apontando para arquivo inexistente)
+  tambem DEVE ser reportada nos dois modos".
 
 ## Clareza e Mensurabilidade
 
@@ -18,15 +25,31 @@
 - [ ] CHK007 - E "ambiente padrao de um dev do projeto" (FR-002) definido em algum lugar (ex: macOS + /bin/sh? Linux? ambos?)? [Ambiguity, Spec §FR-002]
 - [ ] CHK008 - E "maquina de desenvolvimento tipica" (SC-003) qualificado com baseline (ex: CPU, RAM) ou assumido como "qualquer laptop moderno"? [Clareza, Spec §SC-003]
 - [ ] CHK009 - Pode SC-004 ("95% das vezes a mensagem e suficiente para reproduzir") ser objetivamente medida, ou depende de julgamento subjetivo? [Mensurabilidade, Spec §SC-004]
-- [ ] CHK010 - SC-005 ("zero bugs da mesma classe em 6 meses") tem criterio claro de o que constitui "mesma classe"? [Ambiguity, Spec §SC-005]
-- [ ] CHK011 - FR-011 lista os campos minimos da mensagem de falha (script, cenario, comando, stdout, stderr, expectativa) — falta algum campo obviamente util (ex: exit code, tmpdir preservado para inspecao)? [Completude, Spec §FR-011]
-- [ ] CHK012 - E "determinista" (FR-007) definido como "mesmo veredito" ou "mesmo byte-a-byte na saida"? [Ambiguity, Spec §FR-007]
+- [x] CHK010 - SC-005 ("zero bugs da mesma classe em 6 meses") tem criterio claro de o que constitui "mesma classe"? [Ambiguity, Spec §SC-005]
+  → Resolvido: SC-005 reformulado enumera classes especificas — (a) mau
+  tratamento de saida de `grep -c` sem matches, (b) ausencia de argumento
+  obrigatorio sem mensagem de uso clara. "Mesma classe" agora e referencia
+  fechada, nao subjetiva.
+- [x] CHK011 - FR-011 lista os campos minimos da mensagem de falha (script, cenario, comando, stdout, stderr, expectativa) — falta algum campo obviamente util (ex: exit code, tmpdir preservado para inspecao)? [Completude, Spec §FR-011]
+  → Resolvido: FR-011 atualizado inclui "exit code observado" e ainda exige,
+  para status ERROR, "a causa do erro de ambiente (ex: 'mktemp nao encontrado
+  no PATH')".
+- [x] CHK012 - E "determinista" (FR-007) definido como "mesmo veredito" ou "mesmo byte-a-byte na saida"? [Ambiguity, Spec §FR-007]
+  → Resolvido: FR-007 explicitamente diz "produzem exatamente o mesmo
+  veredito" — granularidade fixada em veredito (PASS/FAIL/ERROR por cenario),
+  nao saida byte-a-byte.
 
 ## Consistencia
 
 - [x] CHK013 - User Story 1 promete "status por script" — isso bate com FR-003 que pede granularidade "por cenario"? [Consistency, Spec §US1, §FR-003]
-- [ ] CHK014 - Edge case "Ctrl+C nao deixa tmpdir pendurado" esta refletido em algum FR, ou so vive na secao Edge Cases? [Gap, Spec §Edge Cases]
-- [ ] CHK015 - Edge case "scripts rodam em bash/dash/zsh — falha vs warning" tem decisao refletida em FR, ou fica em aberto? [Ambiguity, Spec §Edge Cases]
+- [x] CHK014 - Edge case "Ctrl+C nao deixa tmpdir pendurado" esta refletido em algum FR, ou so vive na secao Edge Cases? [Gap, Spec §Edge Cases]
+  → Resolvido: FR-005 reescrito enumera explicitamente "(c) interrupcao
+  externa (Ctrl+C / SIGINT, SIGTERM)" como condicao em que o tmpdir nao pode
+  permanecer.
+- [x] CHK015 - Edge case "scripts rodam em bash/dash/zsh — falha vs warning" tem decisao refletida em FR, ou fica em aberto? [Ambiguity, Spec §Edge Cases]
+  → Resolvido: FR-013 (novo) fixa iteracao 1 em `sh <script>` apenas e declara
+  matriz multi-shell explicitamente fora de escopo, com extensao futura via
+  variavel de configuracao. Tambem coberto em Clarifications Q4.
 - [ ] CHK016 - Edge case "dois testes em paralelo colidem em tmpdir" esta coberto por FR-005, ou paralelismo e explicitamente fora de escopo? [Conflict, Spec §FR-005, §Edge Cases]
 - [x] CHK017 - Diretiva "execucao local-only nesta iteracao" (FR-012) esta consistente com a ausencia de requisito que proiba side effects de rede (hoje implicito)? [Consistency, Spec §FR-012]
 
@@ -40,19 +63,34 @@
 ## Requisitos Nao-Funcionais
 
 - [ ] CHK022 - Performance (SC-003, <30s) esta expressa como target por execucao E permanece valida conforme mais scripts sao adicionados? [Cobertura, Spec §SC-003]
-- [ ] CHK023 - Determinismo (FR-007) aplica-se a stdout/stderr/exit code, ou tambem a ordem de execucao dos cenarios? [Ambiguity, Spec §FR-007]
-- [ ] CHK024 - Isolamento (FR-005) cobre explicitamente falha do teste (limpeza via trap) E interrupcao externa (Ctrl+C)? [Completude, Spec §FR-005]
+- [x] CHK023 - Determinismo (FR-007) aplica-se a stdout/stderr/exit code, ou tambem a ordem de execucao dos cenarios? [Ambiguity, Spec §FR-007]
+  → Resolvido (junto com CHK012): FR-007 declara "exatamente o mesmo
+  veredito" — granularidade fixada em veredito por cenario.
+- [x] CHK024 - Isolamento (FR-005) cobre explicitamente falha do teste (limpeza via trap) E interrupcao externa (Ctrl+C)? [Completude, Spec §FR-005]
+  → Resolvido: FR-005 enumera as 3 condicoes — (a) execucao bem-sucedida,
+  (b) falha natural do teste, (c) interrupcao externa (Ctrl+C/SIGINT,
+  SIGTERM) — em todas o tmpdir nao pode permanecer.
 
 ## Premissas e Dependencias
 
 - [ ] CHK025 - Esta documentado que a suite depende de ferramentas POSIX disponiveis (`find`, `grep`, `awk`, `mktemp`) — ou isso e premissa implicita? [Assumption]
 - [ ] CHK026 - Esta claro que a feature NAO altera contrato dos scripts existentes (so observa comportamento)? [Assumption]
-- [ ] CHK027 - Esta claro se o mantenedor deve rodar a suite manualmente (sem hook) ou se uma recomendacao de uso (ex: entrada no README, alias em Makefile) faz parte do escopo? [Gap, Spec §FR-012]
+- [x] CHK027 - Esta claro se o mantenedor deve rodar a suite manualmente (sem hook) ou se uma recomendacao de uso (ex: entrada no README, alias em Makefile) faz parte do escopo? [Gap, Spec §FR-012]
+  → Resolvido: FR-012 declara "rodada manualmente pelo mantenedor antes de
+  commitar. Nao ha integracao automatica com CI remoto ou hooks de Git nesta
+  iteracao" — fluxo manual fica explicito.
 
 ## Ambiguidades e Gaps Residuais
 
-- [ ] CHK028 - SC-005 ("6 meses sem bug da mesma classe") e claramente nao-verificavel antes da implementacao — deveria ser reformulado como "a suite contem teste especifico que capturaria esta classe de bug"? [Mensurabilidade, Spec §SC-005]
-- [ ] CHK029 - O contrato de orfao na User Story 5 diz "ausencia e detectavel" — isso exige modo explicito (`--check-coverage`) ou deve aparecer tambem na execucao normal? A spec nao decide. [Ambiguity, Spec §US5, §FR-009]
+- [x] CHK028 - SC-005 ("6 meses sem bug da mesma classe") e claramente nao-verificavel antes da implementacao — deveria ser reformulado como "a suite contem teste especifico que capturaria esta classe de bug"? [Mensurabilidade, Spec §SC-005]
+  → Resolvido: Clarifications Q1 + SC-005 reformulado — agora exige presenca
+  de testes nomeados que exercitariam cada classe de bug ja conhecida,
+  verificavel imediatamente via `tests/run.sh --list`. Metrica retrospectiva
+  substituida por verificacao de presenca.
+- [x] CHK029 - O contrato de orfao na User Story 5 diz "ausencia e detectavel" — isso exige modo explicito (`--check-coverage`) ou deve aparecer tambem na execucao normal? A spec nao decide. [Ambiguity, Spec §US5, §FR-009]
+  → Resolvido: Clarifications Q2 + FR-009 reescrito definem dois niveis —
+  (a) execucao normal mostra orfaos como `ORPHANS: N` warning sem alterar
+  exit code; (b) `--check-coverage` e gate estrito com exit !=0.
 - [x] CHK030 - FR-012 fala em "compativel com CI futuro" sem definir criterio — que propriedades concretas a suite precisa preservar para ser CI-ready (ex: exit code fiel, sem TTY assumido, sem dependencia de editor)? [Ambiguity, Spec §FR-012]
 
 ## Notes

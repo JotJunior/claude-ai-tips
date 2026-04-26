@@ -40,13 +40,20 @@ for English" — cada item testa qualidade do REQUISITO escrito, nao da implemen
 
 ### SC-004 (self-update interrompido = CLI antigo funcional em 100% dos testes)
 
-- [ ] CHK011 - O "conjunto de teste" e definido em tamanho e composicao (ex: N
+- [x] CHK011 - O "conjunto de teste" e definido em tamanho e composicao (ex: N
   cenarios cobrindo kill em cada etapa do self-update)? [Gap, Spec §SC-004]
+  → Resolvido: SC-004 agora ancora explicitamente no Scenario 7b de
+  `quickstart.md`, que enumera 4 pontos de kill ao longo da sequencia
+  stage-and-rename (pos-download, pos-stage, janela transiente, pos-commit).
 - [ ] CHK012 - "CLI anterior 100% funcional" e verificavel — lista de comandos que
   devem funcionar pos-interrupcao esta especificada? [Clareza, Spec §SC-004]
-- [ ] CHK013 - O requisito especifica em qual momento do self-update a interrupcao
+- [x] CHK013 - O requisito especifica em qual momento do self-update a interrupcao
   pode ocorrer (antes do download, durante, apos checksum, durante mv)? Todos os
   momentos? [Gap, Spec §SC-004]
+  → Resolvido: SC-004 lista os 4 pontos canonicos de kill — (1) pos-download
+  pre-stage, (2) pos-stage pre-rename, (3) entre rename de lib e rename de bin
+  (janela transiente, agora coberta pelo estado retry-required de FR-006), e
+  (4) pos-commit antes do cleanup.
 - [ ] CHK014 - "100% das ocorrencias de teste" e mensuravel — ha definicao de
   quantas execucoes constituem o conjunto estatistico valido? [Mensurabilidade, Spec §SC-004]
 
@@ -54,8 +61,10 @@ for English" — cada item testa qualidade do REQUISITO escrito, nao da implemen
 
 - [ ] CHK015 - "Novo usuario" e caracterizado com persona especifica (ja usa Claude
   Code? sabe shell? tem `curl` instalado?) para o teste ser replicavel? [Clareza, Spec §SC-005]
-- [ ] CHK016 - "Sem assistencia externa" inclui acesso ao stack-overflow/LLM ou exige
+- [x] CHK016 - "Sem assistencia externa" inclui acesso ao stack-overflow/LLM ou exige
   apenas README + --help? [Ambiguity, Spec §SC-005]
+  → Resolvido: SC-005 ja restringe explicitamente a "lendo apenas o `--help`
+  da CLI e o README", o que exclui assistencia externa (StackOverflow/LLM).
 - [ ] CHK017 - A metrica de 5 minutos comeca do zero absoluto (ainda sem cstk
   instalado) ou apos o CLI ja estar instalado? [Clareza, Spec §SC-005]
 
@@ -69,13 +78,18 @@ for English" — cada item testa qualidade do REQUISITO escrito, nao da implemen
 
 ### SC-007 (doctor detecta 100% em conjunto de teste)
 
-- [ ] CHK020 - O "conjunto de teste" esta enumerado exaustivamente — os 4 casos
+- [x] CHK020 - O "conjunto de teste" esta enumerado exaustivamente — os 4 casos
   listados (deletado/editado/renomeado/removido) sao a unica cobertura obrigatoria
   ou ha mais? [Clareza, Spec §SC-007]
+  → Resolvido: SC-007 declara explicitamente que o conjunto canonico e
+  "fechado e contem exatamente quatro casos" — cobertura obrigatoria.
 - [ ] CHK021 - O requisito define o que constitui "detectar" — apenas flagear? ou
   propor fix correto? (contratos mencionam --fix.) [Clareza, Spec §SC-007]
-- [ ] CHK022 - O criterio cobre ordem/interacao de drifts (ex: skill editada E
+- [x] CHK022 - O criterio cobre ordem/interacao de drifts (ex: skill editada E
   removida do catalog simultaneamente) ou apenas casos isolados? [Cobertura, Spec §SC-007]
+  → Resolvido: SC-007 declara casos compostos/adicionais (permissoes,
+  symlinks, interacoes) como "fora do escopo deste SC" — apenas casos
+  isolados sao obrigatorios. Ambiguidade fechada por exclusao explicita.
 
 ## Clareza dos FRs relacionados a self-update
 
@@ -109,9 +123,12 @@ for English" — cada item testa qualidade do REQUISITO escrito, nao da implemen
   "atomicidade"? [Ambiguity, Spec §FR-006]
   → Resolvido via reescrita de FR-006: substituicao parcial e VIOLACAO;
   sistema so pode estar 100% antigo ou 100% novo como estado observavel.
-- [ ] CHK029 - O FR especifica que o CLI-em-execucao atual nao pode ser afetado
+- [x] CHK029 - O FR especifica que o CLI-em-execucao atual nao pode ser afetado
   por self-update disparado por outro processo (caso teorico de dois self-update
   simultaneos)? [Gap, Spec §FR-006]
+  → Resolvido junto com CHK033: lock exclusivo de self-update em
+  `$CSTK_LIB/../.self-update.lock` (research Decision 4, contracts self-update
+  passo 1, tasks 5.1.4) impede dois self-update simultaneos.
 
 ### FRs correlatos que impactam self-update
 
@@ -134,9 +151,14 @@ for English" — cada item testa qualidade do REQUISITO escrito, nao da implemen
 
 ## Consistencia cross-requirement
 
-- [ ] CHK034 - SC-004 (self-update interrompido = CLI antigo funcional) e consistente
+- [x] CHK034 - SC-004 (self-update interrompido = CLI antigo funcional) e consistente
   com a politica de FR-006 (atomico)? Se atomico, interrompido deveria significar
   "NADA foi substituido" — e isso esta escrito inequivocamente? [Consistencia, Spec §SC-004, §FR-006]
+  → Resolvido: FR-006 reescrito enumera 3 estados observaveis pos-interrupcao
+  (100% antigo, 100% novo, retry-required) e proibe substituicao parcial com
+  output incorreto. SC-004 ancora no Scenario 7b (4 kill points) e o estado
+  retry-required cobre exatamente a janela transiente em que "NADA foi
+  substituido" nao e literalmente verdade — alinhamento explicito.
 - [x] CHK035 - SC-005 (novo usuario em 5min) depende da existencia de install
   via one-liner/bootstrap. Esse bootstrap e requisito funcional explicito ou apenas
   detalhe do plan? [Gap, Spec §SC-005]
@@ -157,8 +179,11 @@ for English" — cada item testa qualidade do REQUISITO escrito, nao da implemen
   [Gap, Spec §FR-005]
   → Resolvido em Clarifications 2026-04-22 (follow-up): self-update NUNCA toca
   manifests; invariante verificada por mtime inalterado. FR-006a adicionado.
-- [ ] CHK039 - Self-update exige conexao com GitHub. Ha requisito explicito sobre
+- [x] CHK039 - Self-update exige conexao com GitHub. Ha requisito explicito sobre
   comportamento offline alem do Edge Case listado? [Gap, Spec §FR-005, §Edge Cases]
+  → Resolvido via FR-010: "A CLI MUST falhar com mensagem clara quando offline
+  ou quando a release alvo nao existir" — aplica-se a todos os fluxos de
+  download, inclusive self-update.
 - [ ] CHK040 - Ha requisito de observabilidade minima para self-update (log em
   arquivo, rollback trace) ou toda informacao vive apenas em stderr daquele run?
   [Gap, Spec §FR-005]

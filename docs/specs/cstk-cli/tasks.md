@@ -242,12 +242,13 @@ Ref: `spec.md` §FR-009b/009c/009d, `contracts/cli-commands.md` §install passo 
 
 Ref: `spec.md` §FR-009 (modo interativo), `research.md` Decision 8, `quickstart.md` Scenarios 11, 12
 
-- [ ] 8.1.1 `cli/lib/ui.sh`: implementar `require_tty()`; abortar com exit 2 e mensagem clara se nao-TTY (Scenario 12)
-- [ ] 8.1.2 Listar perfis numerados + skills numeradas com offset; mostrar descricao curta de cada
-- [ ] 8.1.3 Parser de input: numeros separados por espaco; re-digitar numero = toggle (remove do set)
-- [ ] 8.1.4 Tela de confirmacao exibindo set final resolvido + `[y/N]`; qualquer entrada != `y`/`Y` aborta
-- [ ] 8.1.5 Integrar com `install` (flag `--interactive`/`-i`) e `update` (mesma flag, lista somente itens do manifest)
-- [ ] 8.1.6 Escrever `tests/cstk/test_ui.sh` cobrindo Scenario 11 (TTY + toggles) e Scenario 12 (pipe aborta)
+- [x] 8.1.1 `cli/lib/ui.sh`: implementar `require_tty()`; abortar com exit 2 e mensagem clara se nao-TTY (Scenario 12)
+- [x] 8.1.2 Listar perfis numerados + skills numeradas com offset; mostrar descricao curta de cada
+- [x] 8.1.3 Parser de input: numeros separados por espaco; re-digitar numero = toggle (remove do set)
+- [x] 8.1.4 Tela de confirmacao exibindo set final resolvido + `[y/N]`; qualquer entrada != `y`/`Y` aborta
+- [x] 8.1.5 Integrar com `install` (flag `--interactive`/`-i`) e `update` (mesma flag, lista somente itens do manifest)
+- [x] 8.1.6 Escrever `tests/cstk/test_ui.sh` cobrindo Scenario 11 (TTY + toggles) e Scenario 12 (pipe aborta)
+  → Bypass de TTY check via `CSTK_FORCE_INTERACTIVE=1` para Scenario 11 (impossivel simular pty real em POSIX puro). Helpers puros (`_ui_apply_toggle`, `_ui_resolve_skills`, `_ui_build_index`) testaveis em isolamento — XOR set, expansao de profile, validacao de input. update mode passa `profiles_path=""` pra ui_select_interactive (lista so manifest, sem secao "Profiles:"). Numeracao do menu: profiles primeiro (sort -u), depois skills mantendo ordem da `skills_list` recebida — install passa lista sorted via `_install_list_catalog_skills`, update passa lista do manifest na ordem de instalacao. Total 19 cenarios, todos passando + zero regressao em install/update/cstk-main/hooks-integration.
 
 ---
 
@@ -257,30 +258,42 @@ Ref: `spec.md` §FR-009 (modo interativo), `research.md` Decision 8, `quickstart
 
 Ref: `research.md` Decisions 5, 6, 10
 
-- [ ] 9.1.1 Criar `scripts/build-release.sh` (POSIX sh) na raiz do repo; aceita `<version>` como arg
-- [ ] 9.1.2 Montar diretorio `cstk-<version>/` em tempdir com layout `cli/` + `catalog/` + `CHANGELOG.md` conforme `research.md` Decision 6
-- [ ] 9.1.3 Gerar `catalog/skills/` (espelho de `global/skills/`) e `catalog/language/{go,dotnet}/`; gerar `catalog/VERSION` e `catalog/profiles.txt` a partir de convencao de pastas
-- [ ] 9.1.4 Empacotar com `tar --sort=name --owner=0 --group=0 --numeric-owner --mtime=@0 -czf cstk-<version>.tar.gz`
-- [ ] 9.1.5 Gerar `cstk-<version>.tar.gz.sha256` com `sha256sum`
-- [ ] 9.1.6 Escrever `tests/cstk/test_build-release.sh`: rodar o script duas vezes em sequencia; hashes dos tarballs devem ser identicos (determinismo verificavel)
+- [x] 9.1.1 Criar `scripts/build-release.sh` (POSIX sh) na raiz do repo; aceita `<version>` como arg
+- [x] 9.1.2 Montar diretorio `cstk-<version>/` em tempdir com layout `cli/` + `catalog/` + `CHANGELOG.md` conforme `research.md` Decision 6
+  → **Layout ajustado**: Decision 6 mostrava `cstk-X/cstk` (binary at root) mas a implementacao de bootstrap (FASE 3.2) e self-update (FASE 5) ja consomem `cstk-X/cli/cstk` via `find -path '*/cli/cstk'`. Build emite `cstk-<v>/cli/cstk` para alinhar com codigo deployado — research.md Decision 6 esta tecnicamente desatualizada nesse ponto.
+- [x] 9.1.3 Gerar `catalog/skills/` (espelho de `global/skills/`) e `catalog/language/{go,dotnet}/`; gerar `catalog/VERSION` e `catalog/profiles.txt` a partir de convencao de pastas
+  → `catalog/profiles.txt` e composto de duas fontes: (1) `scripts/profiles.txt.in` versionado define manualmente os profiles `sdd` (10 skills) e `complementary` (9 skills) — a "convencao de pastas" pura nao basta porque CLAUDE.md classifica skills em SDD vs complementary sem refletir isso na arvore; (2) build script anexa auto-derivado `all:*` (todas as 35 skills) e `language-{go,dotnet}:*` enumerando subdirs.
+- [x] 9.1.4 Empacotar com `tar --sort=name --owner=0 --group=0 --numeric-owner --mtime=@0 -czf cstk-<version>.tar.gz`
+  → **Flags GNU-only nao funcionam em macOS bsdtar** (mesmo problema documentado em research Decision 3 para `hash_dir`). Build detecta tar flavor: GNU usa as flags nativas; BSD usa `find | LC_ALL=C sort | tar --no-recursion -T -` com `--uid 0 --gid 0 --uname '' --gname ''`, mtimes pre-normalizados via `find -exec touch -t 198001010000.00 {} +`, `gzip -n` para suprimir filename+mtime do header gzip. `--no-recursion` e essencial — sem ela bsdtar expande dirs do listfile e duplica entries quebrando determinismo.
+- [x] 9.1.5 Gerar `cstk-<version>.tar.gz.sha256` com `sha256sum`
+  → Helper detecta `sha256sum` (Linux) vs `shasum -a 256` (macOS). Formato compativel com `sha256sum -c`/`shasum -a 256 -c` (hash + 2 espacos + filename), o mesmo que `download_and_verify` em `cli/lib/tarball.sh` ja consome.
+- [x] 9.1.6 Escrever `tests/cstk/test_build-release.sh`: rodar o script duas vezes em sequencia; hashes dos tarballs devem ser identicos (determinismo verificavel)
+  → 10 cenarios. Determinismo verificado via SHA-256 + `diff -q` byte-a-byte. Estrutura validada (cli/cstk + cli/lib/{install,self-update,ui}.sh + catalog/{VERSION,profiles.txt} + CHANGELOG.md). Layout consumivel por bootstrap/self-update validado via `find -type f -path '*/cli/cstk'` retornando exatamente 1 hit. profiles.txt parseado via `resolve_profile sdd` retornando os 10 esperados. Erros de uso (sem version, version invalida com chars proibidos, flag desconhecida) cobertos com exit 2. Sanitizacao de `.DS_Store`/`._*` (artefatos macOS) testada com fixture sintetica via `REPO_ROOT=` override.
 
 ### 9.2 Workflow GitHub Actions para release `[A]`
 
 Ref: FR-010
 
-- [ ] 9.2.1 Criar `.github/workflows/release.yml` triggered em `push tags 'v*'`
-- [ ] 9.2.2 Job roda `./tests/run.sh` (toda a suite) como pre-requisito
-- [ ] 9.2.3 Job roda `./scripts/build-release.sh <tag>` para gerar artefatos
-- [ ] 9.2.4 Criar release GitHub via `gh release create` com upload de `cstk-<version>.tar.gz`, `.sha256` e `cli/install.sh` (como asset standalone para one-liner)
-- [ ] 9.2.5 Documentar processo de release (tag → workflow → artefatos publicados) em `cli/README.md`
+- [x] 9.2.1 Criar `.github/workflows/release.yml` triggered em `push tags 'v*'`
+- [x] 9.2.2 Job roda `./tests/run.sh` (toda a suite) como pre-requisito
+  → Como FASE 9.3 (integracao de `tests/cstk/` no runner) ainda nao foi feita, o workflow tem DUAS etapas: `./tests/run.sh` (suite global, 45 cenarios) + loop iterando cada `tests/cstk/test_*.sh` individualmente (18 arquivos, ~120 cenarios). Quando 9.3 entregar a integracao, o segundo step pode ser removido ou virar redundante.
+- [x] 9.2.3 Job roda `./scripts/build-release.sh <tag>` para gerar artefatos
+  → Tag passada via `${{ github.ref_name }}` (build script aceita prefixo `v` ou bare). Step "Verify build artifacts" valida presenca dos 3 paths antes de publicar.
+- [x] 9.2.4 Criar release GitHub via `gh release create` com upload de `cstk-<version>.tar.gz`, `.sha256` e `cli/install.sh` (como asset standalone para one-liner)
+  → Usa `--generate-notes` para gerar release notes automaticas (lista PRs/commits desde a ultima tag). `cli/install.sh` e versionado no repo (FASE 3.2) e uploaded como asset top-level — habilita o one-liner `curl https://github.com/.../releases/latest/download/install.sh | sh`. Step final "Summary" emite SHA-256 + tamanho do tarball no `$GITHUB_STEP_SUMMARY` para visibilidade no GH UI.
+- [x] 9.2.5 Documentar processo de release (tag → workflow → artefatos publicados) em `cli/README.md`
+  → Atualizado o status (de "FASE 1.1" para "FASES 0-9.2 concluidas"), substituida secao placeholder "Instalacao (quando release estiver pronta)" pelo one-liner real apontando para `releases/latest/download/install.sh`, e adicionada nova secao "Processo de release" com `git tag -a` + descricao das 5 etapas da pipeline + caveat sobre re-rodar release ja publicada falhar.
 
 ### 9.3 Cobertura de `cli/lib/*.sh` na suite existente `[M]`
 
 Ref: CLAUDE.md §Como testar scripts shell
 
-- [ ] 9.3.1 Ajustar `tests/run.sh --check-coverage` para incluir `cli/lib/**/*.sh` no sweep (adicional a `global/skills/**/scripts/*.sh`)
-- [ ] 9.3.2 Atualizar CLAUDE.md documentando que a regra "um `.sh` = um `test_<nome>.sh`" agora cobre `cli/lib/` tambem
-- [ ] 9.3.3 Rodar `tests/run.sh --check-coverage` localmente; corrigir orfaos se aparecerem
+- [x] 9.3.1 Ajustar `tests/run.sh --check-coverage` para incluir `cli/lib/**/*.sh` no sweep (adicional a `global/skills/**/scripts/*.sh`)
+  → Extensao em 4 pontos do `tests/run.sh`: (a) `_find_test_files` agora cobre `tests/cstk/test_*.sh` alem de `tests/test_*.sh`; (b) `_find_scripts` adiciona `cli/lib/*.sh`; (c) nova funcao `_expected_test_for_script` que roteia por categoria — global/skills → `tests/test_<n>.sh`, cli/lib → `tests/cstk/test_<n>.sh`; (d) lookup de orphan-test ampliado para casar tanto `/scripts/<n>.sh` quanto `/cli/lib/<n>.sh`. Bonus: `mode_run` passou a executar tambem os 18 arquivos de `tests/cstk/`, ampliando a suite de 45 → 237 cenarios.
+- [x] 9.3.2 Atualizar CLAUDE.md documentando que a regra "um `.sh` = um `test_<nome>.sh`" agora cobre `cli/lib/` tambem
+  → Secao "Como testar scripts shell" reescrita com tabela de mapeamento por categoria, exemplo do tempo atualizado (~30-40s para 237 cenarios) e nota explicativa sobre os 4 testes "internos" de cstk (bootstrap/cstk-main/build-release/hooks-integration) que cobrem scripts FORA de cli/lib/ — listados em `_is_internal_test` para nao falsearem o orphan check.
+- [x] 9.3.3 Rodar `tests/run.sh --check-coverage` localmente; corrigir orfaos se aparecerem
+  → Zero orfaos. 15 scripts em cli/lib/ (common, compat, doctor, hash, hooks, http, install, list, lock, manifest, profiles, self-update, tarball, ui, update) todos com test correspondente em tests/cstk/. Detecao de orfao validada injetando fake `cli/lib/_fakelib.sh` — `--check-coverage` corretamente retornou exit 1 com a entry no relatorio. Suite full passa: 237 PASS / 0 FAIL / 0 ERROR / 0 ORPHANS.
 
 ---
 
@@ -290,29 +303,55 @@ Ref: CLAUDE.md §Como testar scripts shell
 
 Ref: `plan.md` §Testabilidade de self-update em CI, `quickstart.md` Scenarios 6, 7
 
-- [ ] 10.1.1 Criar diretorio `tests/cstk/fixtures/releases/` com 2 releases mock versionadas (ex: `v0.1.0/`, `v0.2.0/`) contendo tarball, `.sha256` e `install.sh`
-- [ ] 10.1.2 Implementar override `CSTK_RELEASE_URL=file://...` para apontar CLI para fixture local em testes
-- [ ] 10.1.3 Documentar format das fixtures em `tests/cstk/fixtures/README.md` para reprodutibilidade
-- [ ] 10.1.4 Script helper `tests/cstk/fixtures/regen.sh` que reconstroi fixtures a partir de `catalog/` atual
+- [x] 10.1.1 Criar diretorio `tests/cstk/fixtures/releases/` com 2 releases mock versionadas (ex: `v0.1.0/`, `v0.2.0/`) contendo tarball, `.sha256` e `install.sh`
+  → Tarballs NAO sao commitados (binarios ~200KB cada inflacionam o git). `.gitignore` filtra `*.tar.gz`/`*.sha256`/`install.sh` no subdir; `.gitkeep` mantem a estrutura. `regen.sh` produz fixtures sob demanda. CI corre `regen.sh` antes dos tests; tests do e2e tem `_ensure_fixtures` que regenera se ausente.
+- [x] 10.1.2 Implementar override `CSTK_RELEASE_URL=file://...` para apontar CLI para fixture local em testes
+  → Mecanismo ja existia desde FASE 3.1 (`_install_resolve_urls` em `cli/lib/install.sh` e equivalente em update.sh — fallback para `$CSTK_RELEASE_URL` quando `--from` ausente; ambos aceitam `file://` URL). FASE 10.1.2 e a CONFIRMACAO de uso documentada (README.md `tests/cstk/fixtures/`), nao introducao do mecanismo.
+- [x] 10.1.3 Documentar format das fixtures em `tests/cstk/fixtures/README.md` para reprodutibilidade
+  → Layout, contrato (gerado sob demanda, nao versionado), tabela v0.1.0 vs v0.2.0 (sentinel marker em specify diferencia as versoes), exemplos de uso via `--from` e `$CSTK_RELEASE_URL`.
+- [x] 10.1.4 Script helper `tests/cstk/fixtures/regen.sh` que reconstroi fixtures a partir de `catalog/` atual
+  → Idempotente (verificado 2x: SHAs identicos). v0.1.0 = build padrao via `scripts/build-release.sh`. v0.2.0 = catalog modificado via stage em tempdir (cp -R + sentinel HTML comment em `global/skills/specify/SKILL.md`) + build com `REPO_ROOT` override. install.sh (bootstrap) e copia de `cli/install.sh` em ambas as versoes.
 
 ### 10.2 Scenarios end-to-end do quickstart `[A]`
 
 Ref: `quickstart.md` Scenarios 1-12, `spec.md` §SC-001..007
 
-- [ ] 10.2.1 Scenario 1 (fresh global install — P1 baseline; SC-001 pode ser medido aqui)
-- [ ] 10.2.2 Scenario 2 (idempotent update — zero writes; SC-002)
-- [ ] 10.2.3 Scenario 3 (update com edit local — FR-008)
-- [ ] 10.2.4 Scenario 4 (install project com jq)
-- [ ] 10.2.5 Scenario 5 (install project sem jq — fallback)
-- [ ] 10.2.6 Scenario 6 (self-update happy path; SC-004 baseline)
-- [ ] 10.2.7 Scenario 7 (self-update com queda de rede; SC-004 deve passar)
-- [ ] 10.2.7a Scenario 7b (kill em 4 pontos criticos; FR-006 atomicidade estrita)
-- [ ] 10.2.8 Scenario 8 (lock concorrente)
-- [ ] 10.2.9 Scenario 9 (dry-run fiel a execucao real — SC-006)
-- [ ] 10.2.10 Scenario 10 (doctor detecta 4 tipos de drift — SC-007)
-- [ ] 10.2.11 Scenario 11 (modo interativo com TTY)
-- [ ] 10.2.12 Scenario 12 (interativo sem TTY — exit 2)
-- [ ] 10.2.13 Verificacao byte-a-byte SC-003: apos `install` e apos `update` bem-sucedidos, rodar `diff -r <catalog-staged>/<skill> <installed>/<skill>` para cada skill com status clean (hash igual a source_sha256); falhar se qualquer diff for nao-vazio. Teste cobre arquivos texto; para binarios, usar `cmp`.
+**Estrategia para 10.2**: a maioria dos Scenarios 1-12 ja tem cobertura
+unitaria por per-lib test que usa fixtures sinteticas (3-skill mock inline).
+FASE 10.2 ADICIONA `tests/cstk/test_quickstart-e2e.sh` que cobre o GAP real
+(Scenario 13 SC-003 byte-a-byte) + um lifecycle smoke test que valida a
+COMPOSICAO das libs (install -> list -> doctor; install v0.1.0 -> update v0.2.0)
+usando os fixtures reais de FASE 10.1 (~200KB tarballs). Para Scenarios 1-12,
+documentamos o test que ja os cobre; nao recriamos para evitar redundancia.
+
+- [x] 10.2.1 Scenario 1 (fresh global install — P1 baseline; SC-001 pode ser medido aqui)
+  → Coberto por `tests/cstk/test_install.sh::scenario_install_fresh_global_default_profile`. SC-001 (< 30s) nao esta sob teste automatizado — fixtures sao file:// (zero rede), nao representativo do tempo de download real. Sera medido manualmente em FASE 11.2.5.
+- [x] 10.2.2 Scenario 2 (idempotent update — zero writes; SC-002)
+  → Coberto por `tests/cstk/test_update.sh` (cenario `scenario_update_idempotente_zero_writes` ou similar) E reforcado por `test_quickstart-e2e.sh::scenario_e2e_install_2x_idempotent_no_writes` que valida via mtime do manifest com fixtures reais (vs synthetic 3-skill).
+- [x] 10.2.3 Scenario 3 (update com edit local — FR-008)
+  → Coberto por `tests/cstk/test_update.sh` (scenarios de --force / --keep / skip+exit 4).
+- [x] 10.2.4 Scenario 4 (install project com jq)
+  → Coberto por `tests/cstk/test_hooks-integration.sh` (project scope + perfil language-* + jq presente).
+- [x] 10.2.5 Scenario 5 (install project sem jq — fallback)
+  → Coberto por `tests/cstk/test_hooks-integration.sh` (mesmo, ambiente sem-jq via shim PATH).
+- [x] 10.2.6 Scenario 6 (self-update happy path; SC-004 baseline)
+  → Coberto por `tests/cstk/test_self-update.sh` (cenario happy + manifest mtime preservado FR-006a).
+- [x] 10.2.7 Scenario 7 (self-update com queda de rede; SC-004 deve passar)
+  → Coberto por `tests/cstk/test_self-update.sh` (cenario de download fail / checksum mismatch — bin antigo permanece).
+- [x] 10.2.7a Scenario 7b (kill em 4 pontos criticos; FR-006 atomicidade estrita)
+  → Coberto por `tests/cstk/test_self-update.sh` via test hooks `CSTK_TEST_SU_ABORT_AT={after-download,after-stage,between-lib-bin,after-bin}` que simulam kill em cada um dos 4 pontos.
+- [x] 10.2.8 Scenario 8 (lock concorrente)
+  → Coberto por `tests/cstk/test_install.sh::scenario_install_lock_detido_exit_3`.
+- [x] 10.2.9 Scenario 9 (dry-run fiel a execucao real — SC-006)
+  → Coberto por `tests/cstk/test_install.sh::scenario_install_dry_run_e_real_concordam` (compara summary linha-a-linha entre dry-run e real).
+- [x] 10.2.10 Scenario 10 (doctor detecta 4 tipos de drift — SC-007)
+  → Coberto por `tests/cstk/test_doctor.sh::scenario_doctor_4_tipos_drift` (foo EDITED, bar MISSING, baz OK, my-custom ORPHAN simultaneos). Reforcado por `test_quickstart-e2e.sh::scenario_e2e_install_list_doctor_composition` (smoke do EDITED com fixtures reais).
+- [x] 10.2.11 Scenario 11 (modo interativo com TTY)
+  → Coberto por `tests/cstk/test_ui.sh::scenario_ui_select_happy_path_via_force` (via `CSTK_FORCE_INTERACTIVE=1` bypass — TTY real nao simulavel em POSIX puro).
+- [x] 10.2.12 Scenario 12 (interativo sem TTY — exit 2)
+  → Coberto por `tests/cstk/test_ui.sh::scenario_ui_require_tty_pipe_aborta`.
+- [x] 10.2.13 Verificacao byte-a-byte SC-003
+  → **NOVO em FASE 10.2** — implementado em `tests/cstk/test_quickstart-e2e.sh::scenario_e2e_install_byte_a_byte_match_catalog`. Apos install via fixture v0.1.0, extrai o tarball para staging e roda `diff -r` literal entre `staged/cstk-0.1.0/catalog/skills/<sk>` e `~/.claude/skills/<sk>` para CADA skill instalada. Cobre tanto skills de `catalog/skills/` quanto `catalog/language/*/skills/`. Falha com lista detalhada de diffs se qualquer skill divergir bit-a-bit. Tests unitarios per-lib comparam apenas via hash; este e o unico que diff -r literal — cobertura essencial do SC-003 que estava no gap real ate aqui.
 
 ---
 
@@ -322,22 +361,57 @@ Ref: `quickstart.md` Scenarios 1-12, `spec.md` §SC-001..007
 
 Ref: `spec.md` §SC-005 (novo usuario em 5min)
 
-- [ ] 11.1.1 Adicionar secao "Instalacao via cstk" no `README.md` com one-liner de bootstrap e exemplos de `install`/`update`/`self-update`
-- [ ] 11.1.2 Documentar perfis disponiveis e exemplos de `--scope project` no README
-- [ ] 11.1.3 Adicionar entrada no `CHANGELOG.md` para a versao inicial do cstk (MINOR bump se alinhado com versao atual do toolkit; sincronizar com FASE 9 antes de gerar tag)
-- [ ] 11.1.4 Atualizar `CLAUDE.md` §"Installed vs Source Drift": substituir guidance de `cp -r global/skills/ ~/.claude/skills/` por `cstk install` + `cstk update`; marcar o `cp -r` manual como deprecated
-- [ ] 11.1.5 Atualizar `CLAUDE.md` §"Como testar scripts shell" apontando tambem para `tests/cstk/`
+- [x] 11.1.1 Adicionar secao "Instalacao via cstk" no `README.md` com one-liner de bootstrap e exemplos de `install`/`update`/`self-update`
+  → Substituida secao `## Instalação` inteira. One-liner do `releases/latest/download/install.sh` no topo, seguido de exemplos completos: install (default sdd), `--profile all`, cherry-pick, update/--force, list, doctor, self-update. Tambem `--interactive` e `--dry-run`. Antiga abordagem `cp -r` mantida em "Instalação manual (deprecated, ainda suportada)" com aviso de drift sem rastreio.
+- [x] 11.1.2 Documentar perfis disponiveis e exemplos de `--scope project` no README
+  → Tabela "Perfis disponíveis" com `sdd`/`complementary`/`all`/`language-go`/`language-dotnet` + uso típico de cada. Bloco "Escopo de projeto" com 2 exemplos: `cstk install --scope project --profile language-go` (com hooks/settings.json merge) e cherry-pick em scope project. Esclarece que hooks de language-* são instalados APENAS em `--scope project` (FR-009c).
+- [x] 11.1.3 Adicionar entrada no `CHANGELOG.md` para a versao inicial do cstk (MINOR bump se alinhado com versao atual do toolkit; sincronizar com FASE 9 antes de gerar tag)
+  → Entry `### Added` em `[Unreleased]` documenta o `cstk` CLI completo: comandos, profiles, escopos, self-update atomico (FR-006), pipeline de release, observabilidade (list+doctor com 4 estados de drift), determinismo do tarball, cobertura de testes (242 cenarios). MINOR vs MAJOR bump fica para FASE 11.2.3 decidir conforme versao alvo da tag.
+- [x] 11.1.4 Atualizar `CLAUDE.md` §"Installed vs Source Drift": substituir guidance de `cp -r global/skills/ ~/.claude/skills/` por `cstk install` + `cstk update`; marcar o `cp -r` manual como deprecated
+  → Reescrita completa. Bloco principal mostra fluxo cstk: install via one-liner, depois `cstk update` + `cstk doctor` para detectar drift. Inclui caminho de DEV (build local + `--from file://`). Bloco "Caminho deprecated" reduzido a 4 linhas, mantendo o `cp -r` como referencia historica + comando de validacao manual `diff -r`.
+- [x] 11.1.5 Atualizar `CLAUDE.md` §"Como testar scripts shell" apontando tambem para `tests/cstk/`
+  → **Ja feito em 9.3.2** (verificado: tabela de mapeamento por categoria + nota explicativa sobre testes "internos" ja contem referencias explicitas a `tests/cstk/`). Sem mudancas adicionais necessarias.
 
 ### 11.2 Primeira release publica `[A]`
 
 Ref: `spec.md` §FR-005a, `quickstart.md` Scenario 1
 
+**Acoes do usuario (nao automatizaveis nesta sessao):** 11.2.1, 11.2.3-6
+exigem invocacao manual (skill `/analyze`), acoes destrutivas/visiveis
+publicamente (push de tag), ou validacao em maquina limpa. Marcadas como
+pendentes ate execucao explicita.
+
 - [ ] 11.2.1 Rodar `/analyze` para validar consistencia spec ↔ plan ↔ tasks (pre-release gate)
-- [ ] 11.2.2 Verificar que toda subtarefa de tests/ passa em `tests/run.sh` local
+  → **Pendente acao do usuario**: invocar `/analyze` numa proxima sessao Claude Code. A skill e read-only (nao modifica artefatos), so reporta gaps. Recomendado antes de empurrar a tag em 11.2.3.
+- [x] 11.2.2 Verificar que toda subtarefa de tests/ passa em `tests/run.sh` local
+  → **PASS: 242 / FAIL: 0 / ERROR: 0 / ORPHANS: 0** em 41s. `--check-coverage` retorna "Cobertura completa: zero orfaos". Pre-release gate aprovado.
 - [ ] 11.2.3 Criar e pushar tag SemVer (ex: `v3.2.0`) disparando workflow da FASE 9
+  → **Pendente acao do usuario** — push de tag e acao destrutiva visivel publicamente (dispara CI + cria release no GH); requer autorizacao explicita do usuario. Comandos:
+  ```bash
+  # Decidir versao (alinhada com CHANGELOG): toolkit esta em 3.1.1, cstk e novo feature -> MINOR bump
+  git tag -a v3.2.0 -m "cstk CLI + amendment 1.1.0"
+  git push origin v3.2.0
+  ```
+  Workflow `.github/workflows/release.yml` (FASE 9.2) dispara automaticamente apos push.
 - [ ] 11.2.4 Validar artefatos publicados: tarball + `.sha256` + `install.sh` acessiveis via URL da release
+  → **Pendente** — depende de 11.2.3. Apos a release ser publicada, validar:
+  ```bash
+  curl -fsSL https://github.com/JotJunior/claude-ai-tips/releases/download/v3.2.0/cstk-3.2.0.tar.gz | wc -c
+  curl -fsSL https://github.com/JotJunior/claude-ai-tips/releases/download/v3.2.0/cstk-3.2.0.tar.gz.sha256
+  curl -fsSL https://github.com/JotJunior/claude-ai-tips/releases/latest/download/install.sh | head -5
+  ```
 - [ ] 11.2.5 Em maquina limpa (ou VM/container), executar one-liner de bootstrap; validar SC-005 (< 5min ate ter skill instalada)
+  → **Pendente** — depende de 11.2.3-4. Em VM/container limpo (sem `~/.local/bin/cstk` previo), cronometrar:
+  ```bash
+  time sh -c '
+    curl -fsSL https://github.com/JotJunior/claude-ai-tips/releases/latest/download/install.sh | sh
+    ~/.local/bin/cstk install
+    ls ~/.claude/skills/
+  '
+  ```
+  SC-005 = total < 5 minutos sem assistencia externa.
 - [ ] 11.2.6 Adicionar link para "latest release" no README; atualizar README com nota de versao
+  → **Pendente** — apos 11.2.3 publicar a release, atualizar `README.md` com badge de versao + nota de release notes apontando para a publicacao no GH.
 
 ---
 
