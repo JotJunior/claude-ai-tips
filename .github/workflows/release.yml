@@ -1,0 +1,128 @@
+# release.yml — pipeline automatizado de release do cstk.
+#
+# Ref: docs/specs/cstk-cli/tasks.md FASE 9.2
+#      docs/specs/cstk-cli/spec.md FR-010 (GitHub Releases como canal)
+#      docs/specs/cstk-cli/research.md Decision 5 (versionamento unificado)
+#
+# Disparo: push de tag SemVer (`v*`).
+#
+# Etapas:
+#   1. Checkout do tag
+#   2. Validacao do formato da tag (vX.Y.Z[-suffix])
+#   3. Suite de testes do toolkit (`tests/run.sh` + `tests/cstk/test_*.sh`)
+#      como pre-requisito — release falha se qualquer teste falhar
+#   4. Build deterministico do tarball via `scripts/build-release.sh <tag>`
+#   5. Criacao do GitHub Release com upload de:
+#        - cstk-<bare-version>.tar.gz
+#        - cstk-<bare-version>.tar.gz.sha256
+#        - cli/install.sh        (asset standalone para one-liner FR-005a)
+#
+# Ambiente: ubuntu-latest. GNU tar do runner garante determinismo via
+# --sort=name + --mtime=@0 (caminho preferencial em scripts/build-release.sh).
+
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write   # necessario para `gh release create`
+
+jobs:
+  release:
+    name: Build & Publish Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # tags + commits para gerar release notes
+
+      - name: Validate tag format
+        id: tag
+        run: |
+          set -eu
+          TAG="${GITHUB_REF_NAME}"
+          # Aceita v0.1.0, v1.2.3-rc.1, v0.0.0-test, etc.
+          case "$TAG" in
+            v[0-9]*) ;;
+            *)
+              echo "::error::tag invalida: $TAG (esperado vX.Y.Z[-suffix])"
+              exit 1
+              ;;
+          esac
+          BARE="${TAG#v}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "bare=$BARE" >> "$GITHUB_OUTPUT"
+          echo "Resolved tag: $TAG (bare: $BARE)"
+
+      - name: Run main test suite
+        run: ./tests/run.sh
+
+      - name: Run cstk test suite
+        # tests/cstk/ ainda nao esta integrado em tests/run.sh (pendente
+        # FASE 9.3). Iteramos manualmente cada test_*.sh ate la, falhando
+        # o job se qualquer suite individual falhar.
+        run: |
+          set -eu
+          failures=0
+          for t in tests/cstk/test_*.sh; do
+            echo "::group::$t"
+            if ! sh "$t"; then
+              failures=$((failures + 1))
+              echo "::error::$t falhou"
+            fi
+            echo "::endgroup::"
+          done
+          if [ "$failures" -gt 0 ]; then
+            echo "::error::$failures cstk test file(s) falharam — release abortado"
+            exit 1
+          fi
+
+      - name: Build release tarball
+        run: ./scripts/build-release.sh "${{ steps.tag.outputs.tag }}"
+
+      - name: Verify build artifacts
+        run: |
+          set -eu
+          BARE="${{ steps.tag.outputs.bare }}"
+          test -f "dist/cstk-${BARE}.tar.gz" || { echo "::error::tarball ausente"; exit 1; }
+          test -f "dist/cstk-${BARE}.tar.gz.sha256" || { echo "::error::sha256 ausente"; exit 1; }
+          test -f "cli/install.sh" || { echo "::error::cli/install.sh ausente"; exit 1; }
+          echo "Artifacts:"
+          ls -la "dist/cstk-${BARE}.tar.gz" "dist/cstk-${BARE}.tar.gz.sha256" cli/install.sh
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          TAG="${{ steps.tag.outputs.tag }}"
+          BARE="${{ steps.tag.outputs.bare }}"
+          gh release create "$TAG" \
+            --title "cstk $TAG" \
+            --generate-notes \
+            "dist/cstk-${BARE}.tar.gz" \
+            "dist/cstk-${BARE}.tar.gz.sha256" \
+            "cli/install.sh"
+
+      - name: Summary
+        run: |
+          BARE="${{ steps.tag.outputs.bare }}"
+          {
+            echo "# cstk ${{ steps.tag.outputs.tag }} released"
+            echo ""
+            echo "## Artifacts"
+            echo "- \`cstk-${BARE}.tar.gz\` ($(stat -c %s dist/cstk-${BARE}.tar.gz) bytes)"
+            echo "- \`cstk-${BARE}.tar.gz.sha256\`"
+            echo "- \`install.sh\` (bootstrap one-liner)"
+            echo ""
+            echo "## SHA-256"
+            echo '```'
+            cat "dist/cstk-${BARE}.tar.gz.sha256"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

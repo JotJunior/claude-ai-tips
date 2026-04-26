@@ -4,9 +4,11 @@ CLI em POSIX sh para instalar, atualizar e auditar skills do toolkit. Este
 diretorio contem o codigo fonte do CLI; a documentacao de design completa
 vive em [`../docs/specs/cstk-cli/`](../docs/specs/cstk-cli/).
 
-**Status atual**: FASE 1.1 do backlog — scaffold + dispatch funcionais.
-Subcomandos `install`, `update`, `self-update`, `list`, `doctor` ainda nao
-implementados; tentativas de invoca-los retornam exit 1 com mensagem clara.
+**Status atual**: FASES 0-9.2 do backlog concluidas — todos os subcomandos
+(`install`, `update`, `self-update`, `list`, `doctor`) implementados e
+testados, com pipeline de release automatizado. Pendentes: FASES 9.3
+(coverage check), 10 (testes de integracao end-to-end) e 11 (docs +
+primeira release publica).
 
 ## Layout
 
@@ -27,10 +29,54 @@ cli/
 ./cli/cstk help install     # aponta para o contrato
 ```
 
-## Instalacao (quando release estiver pronta)
+## Instalacao via one-liner
 
-O one-liner de bootstrap sera documentado em `README.md` na raiz do repo
-apos FASE 3.2 do backlog (`cli/install.sh`).
+Apos uma release publica estar disponivel, instalar o `cstk` em uma maquina
+nova com:
+
+```sh
+curl -fsSL https://github.com/JotJunior/claude-ai-tips/releases/latest/download/install.sh | sh
+```
+
+O bootstrap baixa o tarball da ultima release, valida o SHA-256 (FR-010a),
+copia `cstk` para `~/.local/bin/` e `cli/lib/` para `~/.local/share/cstk/lib/`.
+Depois disso:
+
+```sh
+cstk --version           # confirma instalacao
+cstk install             # instala perfil sdd em ~/.claude/skills/
+cstk self-update         # atualiza o proprio binario quando houver release nova
+```
+
+## Processo de release
+
+A pipeline em [`.github/workflows/release.yml`](../.github/workflows/release.yml)
+publica releases automaticamente quando uma tag SemVer e empurrada.
+
+```sh
+# Local: criar e empurrar a tag
+git tag -a v0.1.0 -m "cstk v0.1.0"
+git push origin v0.1.0
+```
+
+A pipeline (em `ubuntu-latest`):
+
+1. Valida o formato da tag (`vX.Y.Z[-suffix]`)
+2. Roda `./tests/run.sh` (suite global) — falha aborta o release
+3. Roda cada `tests/cstk/test_*.sh` — falha aborta o release
+4. Executa `./scripts/build-release.sh <tag>` (build deterministico —
+   ver [scripts/build-release.sh](../scripts/build-release.sh))
+5. Cria o GitHub Release via `gh release create` com upload de:
+   - `cstk-<bare-version>.tar.gz`
+   - `cstk-<bare-version>.tar.gz.sha256`
+   - `cli/install.sh` (asset standalone para o one-liner)
+
+Release notes sao geradas automaticamente pelo `gh release create
+--generate-notes` (lista de PRs/commits desde a ultima tag).
+
+**Re-rodar uma release ja publicada falha** — `gh release create` nao
+sobrescreve. Para corrigir, deletar o release no GitHub UI e re-empurrar
+a tag (ou usar uma nova tag, preferencial).
 
 ## Convencoes
 
