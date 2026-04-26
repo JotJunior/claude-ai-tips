@@ -56,6 +56,8 @@ _CSTK_INSTALL_LOADED=1
 . "${CSTK_LIB}/profiles.sh"
 # shellcheck source=/dev/null
 . "${CSTK_LIB}/hooks.sh"
+# shellcheck source=/dev/null
+. "${CSTK_LIB}/ui.sh"
 
 _install_print_help() {
   cat >&2 <<'HELP'
@@ -101,9 +103,9 @@ install_main() {
   fi
 
   if [ "$_install_interactive" = 1 ]; then
-    log_error "install: --interactive nao implementado nesta fase (vem em FASE 8)"
-    log_error "         use --profile NAME ou cherry-pick SKILL... por enquanto"
-    return 2
+    if ! require_tty; then
+      return 2
+    fi
   fi
 
   if ! _install_resolve_scope_dir; then
@@ -133,8 +135,14 @@ install_main() {
     return 1
   fi
 
-  if ! _install_resolve_selection; then
-    return 2
+  if [ "$_install_interactive" = 1 ]; then
+    if ! _install_resolve_selection_interactive; then
+      return 2
+    fi
+  else
+    if ! _install_resolve_selection; then
+      return 2
+    fi
   fi
 
   if [ -z "$_install_selection" ]; then
@@ -416,6 +424,40 @@ _install_resolve_selection() {
       [ -n "$_install_resolved_profile" ] && printf '%s\n' "$_install_resolved_profile"
     } | awk 'NF>0' | sort -u
   )
+  return 0
+}
+
+# _install_list_catalog_skills: enumera skills disponiveis no catalog.
+# Inclui: catalog/skills/* + catalog/language/*/skills/*.
+# Stdout: nomes de skills, uma por linha, sort -u.
+_install_list_catalog_skills() {
+  {
+    if [ -d "$_install_catalog_dir/skills" ]; then
+      find "$_install_catalog_dir/skills" -mindepth 1 -maxdepth 1 -type d 2>/dev/null \
+        | while IFS= read -r _ilcs_d; do basename "$_ilcs_d"; done
+    fi
+    if [ -d "$_install_catalog_dir/language" ]; then
+      for _ilcs_lang in "$_install_catalog_dir/language"/*; do
+        [ -d "$_ilcs_lang/skills" ] || continue
+        find "$_ilcs_lang/skills" -mindepth 1 -maxdepth 1 -type d 2>/dev/null \
+          | while IFS= read -r _ilcs_d; do basename "$_ilcs_d"; done
+      done
+    fi
+  } | sort -u
+}
+
+# _install_resolve_selection_interactive: alternativa a _install_resolve_selection
+# quando --interactive esta ativo. Renderiza menu via ui.sh, le input do usuario,
+# resolve para set de skills e popula $_install_selection.
+_install_resolve_selection_interactive() {
+  _irsi_skills_list=$(_install_list_catalog_skills)
+  if [ -z "$_irsi_skills_list" ]; then
+    log_error "install: catalog vazio (nenhuma skill em $_install_catalog_dir/{skills,language})"
+    return 1
+  fi
+  _irsi_resolved=$(ui_select_interactive \
+    "$_install_catalog_dir/profiles.txt" "$_irsi_skills_list" install) || return 1
+  _install_selection=$(printf '%s\n' "$_irsi_resolved" | awk 'NF>0' | sort -u)
   return 0
 }
 

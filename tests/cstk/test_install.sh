@@ -203,13 +203,14 @@ scenario_install_help_exit_zero() {
   assert_stderr_contains "cstk install" || return 1
 }
 
-scenario_install_interactive_nao_implementado() {
+scenario_install_interactive_sem_tty_aborta() {
+  # FASE 8: --interactive exige TTY. Sem TTY (test pipe), exit 2 com msg clara.
   _run_install "$TMPDIR_TEST/h" --interactive
   if [ "$_CAPTURED_EXIT" != 2 ]; then
-    _fail "interactive exit" "esperado 2, obtido $_CAPTURED_EXIT"
+    _fail "interactive sem TTY exit" "esperado 2, obtido $_CAPTURED_EXIT"
     return 1
   fi
-  assert_stderr_contains "FASE 8" || return 1
+  assert_stderr_contains "requires a TTY" || return 1
 }
 
 scenario_install_flag_desconhecida() {

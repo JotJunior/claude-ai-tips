@@ -49,6 +49,8 @@ _CSTK_UPDATE_LOADED=1
 . "${CSTK_LIB}/hash.sh"
 # shellcheck source=/dev/null
 . "${CSTK_LIB}/manifest.sh"
+# shellcheck source=/dev/null
+. "${CSTK_LIB}/ui.sh"
 
 _update_print_help() {
   cat >&2 <<'HELP'
@@ -56,7 +58,7 @@ cstk update — atualiza skills ja instaladas para a release alvo.
 
 USO:
   cstk update [SKILL...] [--scope global|project] [--force] [--keep] [--prune]
-              [--from URL] [--dry-run] [--yes]
+              [--from URL] [--dry-run] [--yes] [--interactive]
 
 ARGS:
   SKILL...       Restringe update a este subset (default: tudo no manifest).
@@ -69,6 +71,7 @@ OPCOES:
   --from URL     URL do tarball (.tar.gz). Default: $CSTK_RELEASE_URL.
   --dry-run      Mostra plano sem escrever.
   --yes          Pula confirmacao do --prune.
+  --interactive  Seletor numerado em TTY (lista skills do manifest).
 
 EXIT CODES:
   4  Pelo menos uma skill foi pulada por edicao local (sem --force/--keep).
@@ -95,6 +98,12 @@ update_main() {
   if [ "$_update_force" = 1 ] && [ "$_update_keep" = 1 ]; then
     log_error "update: --force e --keep sao mutuamente exclusivos"
     return 2
+  fi
+
+  if [ "$_update_interactive" = 1 ]; then
+    if ! require_tty; then
+      return 2
+    fi
   fi
 
   if ! _update_resolve_scope_dir; then
@@ -181,6 +190,7 @@ _update_reset_state() {
   _update_force=0
   _update_keep=0
   _update_prune=0
+  _update_interactive=0
   _update_scope=global
   _update_explicit_skills=""
   _update_from=""
@@ -223,6 +233,7 @@ _update_parse_args() {
       --force) _update_force=1; shift ;;
       --keep) _update_keep=1; shift ;;
       --prune) _update_prune=1; shift ;;
+      --interactive|-i) _update_interactive=1; shift ;;
       --scope)
         if [ "$#" -lt 2 ]; then
           log_error "update: --scope exige valor (global|project)"
@@ -332,9 +343,22 @@ _update_locate_catalog() {
 
 # _update_resolve_targets: define lista de skills a processar.
 # Sem args = todas do manifest. Com args = subset; valida que cada uma esta
-# instalada (senao exit 2 com lista clara).
+# instalada (senao exit 2 com lista clara). Com --interactive, abre seletor
+# numerado sobre as skills do manifest.
 _update_resolve_targets() {
   _all=$(read_manifest "$_update_manifest_path" | awk -F'\t' 'NF>=1 {print $1}')
+
+  if [ "$_update_interactive" = 1 ]; then
+    if [ -z "$_all" ]; then
+      log_warn "update --interactive: manifest vazio em $_update_manifest_path"
+      _update_targets=""
+      return 0
+    fi
+    _urt_resolved=$(ui_select_interactive "" "$_all" update) || return 1
+    _update_targets=$(printf '%s\n' "$_urt_resolved" | awk 'NF>0' | sort -u)
+    return 0
+  fi
+
   if [ -z "$_update_explicit_skills" ]; then
     _update_targets=$_all
     return 0
