@@ -18,6 +18,7 @@
 #   test_bootstrap.sh                        — cobre cli/install.sh (nao lib)
 #   test_build-release.sh                    — cobre scripts/build-release.sh
 #   test_hooks-integration.sh                — integration test (nao 1:1)
+#   test_quickstart-e2e.sh                   — e2e quickstart (composicao das libs)
 #
 # POSIX sh puro. Sem Bash-isms. Deps: find, grep, sort, basename, dirname,
 # mktemp, date, sh, printf.
@@ -152,7 +153,7 @@ _is_internal_test() {
   _name=$(basename "$1")
   case "$_name" in
     test_smoke.sh|test_harness.sh) return 0 ;;
-    test_cstk-main.sh|test_bootstrap.sh|test_build-release.sh|test_hooks-integration.sh)
+    test_cstk-main.sh|test_bootstrap.sh|test_build-release.sh|test_hooks-integration.sh|test_quickstart-e2e.sh)
       return 0 ;;
     *) return 1 ;;
   esac

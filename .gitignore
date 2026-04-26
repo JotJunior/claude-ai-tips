@@ -6,3 +6,8 @@ docs/artigo.md
 
 # Build artifacts (scripts/build-release.sh output)
 dist/
+
+# Test fixtures generated on demand by tests/cstk/fixtures/regen.sh
+tests/cstk/fixtures/releases/**/*.tar.gz
+tests/cstk/fixtures/releases/**/*.sha256
+tests/cstk/fixtures/releases/**/install.sh
