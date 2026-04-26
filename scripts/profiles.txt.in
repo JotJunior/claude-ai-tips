@@ -1,0 +1,34 @@
+# profiles.txt.in — definicao manual de profiles do catalog.
+#
+# Esta e a fonte de verdade para os profiles `sdd` e `complementary`. O script
+# scripts/build-release.sh copia este arquivo para catalog/profiles.txt no
+# tarball e anexa entradas auto-derivadas (`all:*` e `language-*:*`) a partir
+# das pastas em global/skills/ e language-related/.
+#
+# Formato: <profile>:<skill-or-profile>  (lido por cli/lib/profiles.sh)
+#
+# Quando adicionar uma nova skill em global/skills/, decidir aqui se ela
+# pertence a `sdd` ou `complementary`. O entry `all:*` e gerado automatico.
+
+# Spec-Driven Development pipeline (sequencial)
+sdd:briefing
+sdd:constitution
+sdd:specify
+sdd:clarify
+sdd:plan
+sdd:checklist
+sdd:create-tasks
+sdd:analyze
+sdd:execute-task
+sdd:review-task
+
+# Skills complementares (uso pontual, sem sequencia)
+complementary:advisor
+complementary:bugfix
+complementary:create-use-case
+complementary:image-generation
+complementary:apply-insights
+complementary:owasp-security
+complementary:validate-documentation
+complementary:validate-docs-rendered
+complementary:initialize-docs

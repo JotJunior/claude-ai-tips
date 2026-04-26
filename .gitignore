@@ -3,3 +3,6 @@
 .claude
 CLAUDE.md
 docs/artigo.md
+
+# Build artifacts (scripts/build-release.sh output)
+dist/
