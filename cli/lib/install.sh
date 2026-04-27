@@ -83,7 +83,22 @@ OPCOES:
   --interactive  Seletor numerado em TTY (FASE 8 — nao implementado ainda).
   --help         Imprime esta mensagem.
 
+PROFILES DISPONIVEIS:
+  sdd            (default) Pipeline Spec-Driven Development sequencial:
+                 briefing, constitution, specify, clarify, plan, checklist,
+                 create-tasks, analyze, execute-task, review-task.
+  complementary  Skills de uso pontual (sem sequencia): advisor, bugfix,
+                 create-use-case, image-generation, apply-insights,
+                 owasp-security, validate-documentation,
+                 validate-docs-rendered, initialize-docs.
+  all            Todas as skills do catalog (uniao de sdd + complementary
+                 + qualquer skill nova em global/skills/).
+
 EXEMPLOS:
+  cstk install                                # profile sdd (default)
+  cstk install --profile complementary        # so as complementares
+  cstk install --profile all                  # tudo
+  cstk install advisor bugfix                 # cherry-pick por nome
   cstk install --from file:///tmp/release/cstk-v0.1.0.tar.gz
   cstk install specify plan --profile sdd --dry-run
   cstk install --scope project --from URL

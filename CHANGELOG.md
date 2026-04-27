@@ -7,6 +7,26 @@ este projeto adere a [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ## [Unreleased]
 
+## [3.2.3] - 2026-04-27
+
+### Changed
+
+- **`cstk install --help` agora lista os profiles disponiveis** (`sdd`,
+  `complementary`, `all`) com o conteudo de cada um e marca `sdd` como
+  default. Antes, o usuario via apenas "Default: sdd" e nao tinha como
+  descobrir que existiam outros profiles nem o que cada um continha — a
+  unica fonte era `scripts/profiles.txt.in` no repo, fora do alcance de
+  quem instalou via tarball.
+
+  Reportado por usuario: apos `cstk install` (default `sdd`), faltavam
+  skills complementares (advisor, bugfix, owasp-security, etc.) e nao
+  havia pista no help de como instala-las. Solucao: profile
+  `complementary` instala as 9 skills de uso pontual; profile `all`
+  instala tudo. Exemplos no help cobrem os 3 profiles + cherry-pick.
+
+  Test atualizado: `scenario_install_help_exit_zero` verifica que os
+  tres nomes de profile aparecem na saida.
+
 ## [3.2.2] - 2026-04-27
 
 ### Fixed

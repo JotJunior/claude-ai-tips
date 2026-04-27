@@ -201,6 +201,11 @@ scenario_install_help_exit_zero() {
     return 1
   fi
   assert_stderr_contains "cstk install" || return 1
+  # Profiles disponiveis devem aparecer no help (discoverability).
+  assert_stderr_contains "PROFILES DISPONIVEIS" || return 1
+  assert_stderr_contains "sdd" || return 1
+  assert_stderr_contains "complementary" || return 1
+  assert_stderr_contains "all" || return 1
 }
 
 scenario_install_interactive_sem_tty_aborta() {
