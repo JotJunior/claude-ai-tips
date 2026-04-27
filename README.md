@@ -1,10 +1,18 @@
 # Claude Code Toolkit
 
+[![Latest Release](https://img.shields.io/github/v/release/JotJunior/claude-ai-tips?label=latest%20release&color=blue)](https://github.com/JotJunior/claude-ai-tips/releases/latest)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](#licença)
+[![SemVer](https://img.shields.io/badge/SemVer-3.x-orange.svg)](./CHANGELOG.md)
+
 Conjunto de ferramentas para aumentar a produtividade no desenvolvimento do dia a dia com
 o [Claude Code](https://claude.ai/code).
 
 Este repositorio contém **skills** e **hooks** que estendem as capacidades do Claude Code
 para tarefas de documentação, desenvolvimento, segurança e qualidade de código.
+
+> **Versão atual:** consulte a [release mais recente no GitHub](https://github.com/JotJunior/claude-ai-tips/releases/latest)
+> para baixar o tarball ou acompanhar mudanças no [CHANGELOG.md](./CHANGELOG.md).
+> A instalação recomendada é via `cstk` CLI (ver [seção Instalação](#instalação)).
 
 ## Estrutura
 

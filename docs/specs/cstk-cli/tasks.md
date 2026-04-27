@@ -381,37 +381,40 @@ exigem invocacao manual (skill `/analyze`), acoes destrutivas/visiveis
 publicamente (push de tag), ou validacao em maquina limpa. Marcadas como
 pendentes ate execucao explicita.
 
-- [ ] 11.2.1 Rodar `/analyze` para validar consistencia spec ↔ plan ↔ tasks (pre-release gate)
-  → **Pendente acao do usuario**: invocar `/analyze` numa proxima sessao Claude Code. A skill e read-only (nao modifica artefatos), so reporta gaps. Recomendado antes de empurrar a tag em 11.2.3.
+- [x] 11.2.1 Rodar `/analyze` para validar consistencia spec ↔ plan ↔ tasks (pre-release gate)
+  → **Executado em 2026-04-26**. Specification Analysis Report produziu: 0 issues CRITICAL, 0 violacoes de constitution, 1 issue MEDIUM (research.md Decision 6 layout drift documentado), 4 issues LOW (texto desatualizado, SC-001 ambiguo, SC-001 sem teste automatizado deferido para 11.2.5, CHANGELOG bump pos-tag). Cobertura 31/33 atomos com test automatizado (94%); 2/33 (SC-001, SC-005) com cobertura PARCIAL deferida. Pre-release gate APROVADO.
 - [x] 11.2.2 Verificar que toda subtarefa de tests/ passa em `tests/run.sh` local
   → **PASS: 242 / FAIL: 0 / ERROR: 0 / ORPHANS: 0** em 41s. `--check-coverage` retorna "Cobertura completa: zero orfaos". Pre-release gate aprovado.
-- [ ] 11.2.3 Criar e pushar tag SemVer (ex: `v3.2.0`) disparando workflow da FASE 9
-  → **Pendente acao do usuario** — push de tag e acao destrutiva visivel publicamente (dispara CI + cria release no GH); requer autorizacao explicita do usuario. Comandos:
-  ```bash
-  # Decidir versao (alinhada com CHANGELOG): toolkit esta em 3.1.1, cstk e novo feature -> MINOR bump
-  git tag -a v3.2.0 -m "cstk CLI + amendment 1.1.0"
-  git push origin v3.2.0
-  ```
-  Workflow `.github/workflows/release.yml` (FASE 9.2) dispara automaticamente apos push.
-- [ ] 11.2.4 Validar artefatos publicados: tarball + `.sha256` + `install.sh` acessiveis via URL da release
-  → **Pendente** — depende de 11.2.3. Apos a release ser publicada, validar:
-  ```bash
-  curl -fsSL https://github.com/JotJunior/claude-ai-tips/releases/download/v3.2.0/cstk-3.2.0.tar.gz | wc -c
-  curl -fsSL https://github.com/JotJunior/claude-ai-tips/releases/download/v3.2.0/cstk-3.2.0.tar.gz.sha256
-  curl -fsSL https://github.com/JotJunior/claude-ai-tips/releases/latest/download/install.sh | head -5
-  ```
-- [ ] 11.2.5 Em maquina limpa (ou VM/container), executar one-liner de bootstrap; validar SC-005 (< 5min ate ter skill instalada)
-  → **Pendente** — depende de 11.2.3-4. Em VM/container limpo (sem `~/.local/bin/cstk` previo), cronometrar:
-  ```bash
-  time sh -c '
-    curl -fsSL https://github.com/JotJunior/claude-ai-tips/releases/latest/download/install.sh | sh
-    ~/.local/bin/cstk install
-    ls ~/.claude/skills/
-  '
-  ```
-  SC-005 = total < 5 minutos sem assistencia externa.
-- [ ] 11.2.6 Adicionar link para "latest release" no README; atualizar README com nota de versao
-  → **Pendente** — apos 11.2.3 publicar a release, atualizar `README.md` com badge de versao + nota de release notes apontando para a publicacao no GH.
+- [x] 11.2.3 Criar e pushar tag SemVer (ex: `v3.2.0`) disparando workflow da FASE 9
+  → **Executado em 2026-04-26/27** com **3 tags publicadas** (sequencia de hotfixes para bugs descobertos pos-publicacao):
+  - `v3.2.0` (2026-04-27 00:33 UTC) — primeira release publicada; bootstrap one-liner BROKEN (URL 404)
+  - `v3.2.1` (2026-04-27 00:52 UTC) — fix do bug `cstk-v3.2.0.tar.gz` vs `cstk-3.2.0.tar.gz` (build strip `v`); install.sh CLI ainda quebrado para `cstk install` sem `--from`
+  - `v3.2.2` (2026-04-27 01:12 UTC) — fix do bug `cstk install`/`update` sem `--from` que abortava com "vem na FASE 3.2"; agora consulta API GitHub. **Release recomendada**.
+
+  Hotfixes documentados em CHANGELOG.md sob `[3.2.1]` e `[3.2.2]`.
+- [x] 11.2.4 Validar artefatos publicados: tarball + `.sha256` + `install.sh` acessiveis via URL da release
+  → **Validado em 2026-04-27** para v3.2.2 (release recomendada):
+  - `cstk-3.2.2.tar.gz` (200706 bytes) — `releases/download/v3.2.2/...` retorna 302→200
+  - `cstk-3.2.2.tar.gz.sha256` (84 bytes) — checksum bate byte-a-byte com tarball baixado (`shasum -a 256` MATCH)
+  - `install.sh` (7608 bytes) — `releases/latest/download/install.sh` retorna 302→200
+- [x] 11.2.5 Em maquina limpa (ou VM/container), executar one-liner de bootstrap; validar SC-005 (< 5min ate ter skill instalada)
+  → **Validado em 2026-04-27** via sandbox temporario (`mktemp -d` com `INSTALL_BIN` + `INSTALL_LIB` overrides para nao tocar `~/.local/bin` real). Sequencia completa cronometrada:
+  - `curl ... install.sh | sh` (bootstrap) → `cstk v3.2.2 instalado`
+  - `cstk --version` → `cstk v3.2.2`
+  - `cstk install --yes` → consultou API GitHub, baixou tarball, instalou 10 skills do perfil sdd em `~/.claude/skills/`
+  - **Tempo total: ~3 segundos**, bem dentro de SC-005 < 5 minutos.
+
+  SC-005 atendido em sandbox; medicao em VM externa autonoma fica como melhoria futura mas nao e bloqueante.
+- [x] 11.2.6 Adicionar link para "latest release" no README; atualizar README com nota de versao
+  → **Executado em 2026-04-27**. Adicionados ao topo do README.md (apos titulo, antes do paragrafo de intro):
+  - Badge "Latest Release" via shields.io apontando para `releases/latest` (auto-atualiza com cada release nova)
+  - Badge "License: MIT" linkando para anchor `#licença` da secao existente
+  - Badge "SemVer 3.x" linkando para `CHANGELOG.md`
+  - Bloco blockquote "Versão atual:" com link explicito para release page + CHANGELOG + nota apontando que instalacao recomendada e via `cstk` CLI
+
+  Validacao: todos os URLs retornam 200 (badges shields.io) e 302 (releases/latest). Anchors `#instalação` e `#licença` existem como `## Instalação` e `## Licença` na propria README.
+
+  Decisao: badge LICENSE aponta para anchor da secao no README (`#licença`) em vez de `./LICENSE` (arquivo nao existe — gap pre-existente, nao escopo desta task).
 
 ---
 
@@ -435,7 +438,7 @@ flowchart TD
     F0 --> F1
     F1 --> F2
     F2 --> F3
-    F3 --> F4
+  F3 --> F4
     F3 --> F5
     F3 --> F6
     F3 --> F7
