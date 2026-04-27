@@ -41,9 +41,12 @@ _path_sem_jq() {
 _make_shim_path() {
   _shim="$TMPDIR_TEST/shimbin"
   mkdir -p "$_shim"
-  for _cmd in sh mktemp tar curl shasum sha256sum cat awk sed grep find head \
-              printf cp mv rm mkdir chmod ls dirname basename tr cut wc \
-              env command sort uniq date; do
+  # gzip/gunzip/xz/bzip2: tar -xzf invoca um descompressor externo (no Linux
+  # geralmente gzip). Sem ele no PATH, "tar: falha ao extrair" mesmo com
+  # tar presente. xz/bzip2 incluidos defensivamente para outros formatos.
+  for _cmd in sh mktemp tar gzip gunzip xz bzip2 curl shasum sha256sum cat \
+              awk sed grep find head printf cp mv rm mkdir chmod ls dirname \
+              basename tr cut wc env command sort uniq date; do
     _src=$(command -v "$_cmd" 2>/dev/null) || continue
     [ -n "$_src" ] || continue
     ln -sf "$_src" "$_shim/$_cmd" 2>/dev/null || :

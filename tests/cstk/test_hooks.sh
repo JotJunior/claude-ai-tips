@@ -19,20 +19,22 @@ _has_jq() {
   command -v jq >/dev/null 2>&1
 }
 
-# _path_sem_jq: retorna PATH minimo que preserva sh/awk/cat/etc mas exclui
-# jq. Strategia: filtra dirs do PATH atual removendo aqueles que tem jq.
-_path_sem_jq() {
-  _orig=$PATH
-  _new=""
-  IFS=:
-  for _d in $_orig; do
-    [ -n "$_d" ] || continue
-    if [ ! -x "$_d/jq" ]; then
-      if [ -z "$_new" ]; then _new=$_d; else _new="$_new:$_d"; fi
-    fi
+# _make_shim_path: cria dir em $TMPDIR_TEST/shimbin com symlinks para
+# binarios POSIX essenciais (sh, mktemp, awk, etc.) EXCETO jq. Resolve
+# o problema do approach antigo (filtrar dirs do PATH) que em ambientes
+# CI Linux remove /usr/bin junto com jq, perdendo sh/awk/etc. Tambem
+# usado em test_hooks-integration.sh — manter listas de binarios em sync.
+_make_shim_path() {
+  _shim="$TMPDIR_TEST/shimbin"
+  mkdir -p "$_shim"
+  for _cmd in sh mktemp awk sed grep find head printf cp mv rm mkdir \
+              chmod ls dirname basename tr cut wc env command sort \
+              uniq date cat tar gzip gunzip xz bzip2 curl shasum sha256sum; do
+    _src=$(command -v "$_cmd" 2>/dev/null) || continue
+    [ -n "$_src" ] || continue
+    ln -sf "$_src" "$_shim/$_cmd" 2>/dev/null || :
   done
-  unset IFS
-  printf '%s' "$_new"
+  printf '%s' "$_shim"
 }
 
 # ==== detect_jq ====
@@ -50,7 +52,7 @@ scenario_detect_jq_presente() {
 }
 
 scenario_detect_jq_ausente() {
-  _path_clean=$(_path_sem_jq)
+  _path_clean=$(_make_shim_path)
   capture env -i PATH="$_path_clean" CSTK_LIB="$CSTK_LIB" sh -c '
     . "$CSTK_LIB/hooks.sh" && detect_jq
   '
@@ -115,7 +117,7 @@ scenario_merge_source_invalido_aborta() {
 scenario_merge_sem_jq_aborta() {
   printf '{"x":1}\n' > "$TMPDIR_TEST/target.json"
   printf '{"y":2}\n' > "$TMPDIR_TEST/source.json"
-  _path_clean=$(_path_sem_jq)
+  _path_clean=$(_make_shim_path)
   capture env -i PATH="$_path_clean" CSTK_LIB="$CSTK_LIB" sh -c '
     . "$CSTK_LIB/hooks.sh"
     merge_settings "$1" "$2"

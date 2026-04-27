@@ -171,7 +171,7 @@ scenario_e2e_install_2x_idempotent_no_writes() {
   # Snapshot de mtime do manifest
   _mf="$_h/.claude/skills/.cstk-manifest"
   if command -v stat >/dev/null 2>&1; then
-    _mtime_before=$(stat -f %m "$_mf" 2>/dev/null || stat -c %Y "$_mf")
+    _mtime_before=$(stat -c %Y "$_mf" 2>/dev/null || stat -f %m "$_mf")
   else
     _mtime_before=$(ls -l "$_mf" | awk '{print $6, $7, $8}')
   fi
@@ -182,7 +182,7 @@ scenario_e2e_install_2x_idempotent_no_writes() {
   [ "$_CAPTURED_EXIT" = 0 ] || { _fail "update idempotente" "$_CAPTURED_STDERR"; return 1; }
 
   if command -v stat >/dev/null 2>&1; then
-    _mtime_after=$(stat -f %m "$_mf" 2>/dev/null || stat -c %Y "$_mf")
+    _mtime_after=$(stat -c %Y "$_mf" 2>/dev/null || stat -f %m "$_mf")
   else
     _mtime_after=$(ls -l "$_mf" | awk '{print $6, $7, $8}')
   fi

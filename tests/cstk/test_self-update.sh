@@ -82,8 +82,12 @@ _installed_version() {
 }
 
 _mtime() {
-  if stat -f %m -- "$1" 2>/dev/null; then return 0; fi
-  stat -c %Y -- "$1" 2>/dev/null
+  # Linux/GNU stat (-c %Y) PRIMEIRO. Em macOS/BSD, -c falha com nao-zero
+  # e cai no fallback BSD (-f %m). Ordem inversa quebra no Linux: stat -f %m
+  # exit 0 mas imprime info do filesystem (Block size, Inodes, etc.) em vez
+  # de mtime do arquivo, mascarando o fallback correto.
+  if stat -c %Y -- "$1" 2>/dev/null; then return 0; fi
+  stat -f %m -- "$1" 2>/dev/null
 }
 
 # ==== Scenario 6: Happy path v1 → v2 ====
