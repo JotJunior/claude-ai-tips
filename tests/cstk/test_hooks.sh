@@ -53,8 +53,13 @@ scenario_detect_jq_presente() {
 
 scenario_detect_jq_ausente() {
   _path_clean=$(_make_shim_path)
+  # Normaliza exit via if/exit. Em dash + Ubuntu CI o pattern `cmd && detect_jq`
+  # ocasionalmente exit 127 (causa nao-clara — possivelmente lookup de
+  # `command` builtin via PATH sob env -i quando shim nao tem todos os
+  # binarios resolvidos). if/exit forca exit 0 ou 1 deterministicamente.
   capture env -i PATH="$_path_clean" CSTK_LIB="$CSTK_LIB" sh -c '
-    . "$CSTK_LIB/hooks.sh" && detect_jq
+    . "$CSTK_LIB/hooks.sh"
+    if detect_jq; then exit 0; else exit 1; fi
   '
   if [ "$_CAPTURED_EXIT" != 1 ]; then
     _fail "detect sem jq" "esperado 1, obtido $_CAPTURED_EXIT"
