@@ -7,6 +7,30 @@ este projeto adere a [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ## [Unreleased]
 
+## [3.2.1] - 2026-04-27
+
+### Fixed
+
+- **Bootstrap one-liner (`cli/install.sh`) e `cstk self-update` baixavam
+  URL com 404.** A construcao da URL do tarball usava o tag completo
+  (`cstk-v3.2.0.tar.gz`), mas `scripts/build-release.sh` strip o prefixo
+  `v` ao gerar o asset (`cstk-3.2.0.tar.gz`). Match falhava com 404.
+
+  Fix: ambos `cli/install.sh` e `cli/lib/self-update.sh` agora computam
+  `TAG_BARE=${TAG#v}` e usam essa variante ao construir o filename do
+  asset, mantendo o tag original (com `v`) no path do release. Comporta-
+  mento alinhado com `build-release.sh`.
+
+  **Impacto**: `releases/latest/download/install.sh` em v3.2.0 esta
+  quebrado — usuarios precisam usar v3.2.1 (que fixa o asset URL ao
+  baixar). v3.2.0 nao foi removida; tag continua presente para
+  rastreabilidade do incidente.
+
+  Descoberto por usuario reportando `curl: (22) ... 404` ao executar o
+  one-liner publicado no README.
+
+## [3.2.0] - 2026-04-26
+
 ### Added
 
 - **`cstk` CLI (POSIX shell)** — toolkit de instalação, atualização e

@@ -97,7 +97,10 @@ resolve_urls() {
     die "nao encontrei tag_name em $api_url"
   fi
 
-  TARBALL_URL="https://github.com/$CSTK_REPO/releases/download/$TAG/cstk-$TAG.tar.gz"
+  # build-release.sh strip o prefixo "v" do filename (TARBALL_NAME=cstk-${VERSION#v}).
+  # Tag remota mantem o "v"; o nome do asset NAO tem. Match obrigatorio.
+  TAG_BARE=${TAG#v}
+  TARBALL_URL="https://github.com/$CSTK_REPO/releases/download/$TAG/cstk-$TAG_BARE.tar.gz"
   SHA_URL="${TARBALL_URL}.sha256"
   log_info "ultima release: $TAG"
   return 0

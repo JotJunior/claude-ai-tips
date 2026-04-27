@@ -385,7 +385,9 @@ _su_resolve_latest() {
     log_error "self-update: nao encontrei tag_name em $_api"
     return 1
   fi
-  _su_tarball_url="https://github.com/$_su_repo/releases/download/$_su_latest/cstk-$_su_latest.tar.gz"
+  # build-release.sh strip o "v" do filename; tag remota mantem. Match.
+  _su_latest_bare=${_su_latest#v}
+  _su_tarball_url="https://github.com/$_su_repo/releases/download/$_su_latest/cstk-$_su_latest_bare.tar.gz"
   _su_sha256_url="${_su_tarball_url}.sha256"
   return 0
 }
