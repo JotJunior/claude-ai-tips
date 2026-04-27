@@ -222,17 +222,21 @@ scenario_install_flag_desconhecida() {
   assert_stderr_contains "flag desconhecida" || return 1
 }
 
-scenario_install_sem_from_e_sem_env_aborta() {
-  # Garante que CSTK_RELEASE_URL nao vaza do ambiente do desenvolvedor
-  capture env -i HOME="$TMPDIR_TEST/h" CSTK_LIB="$CSTK_LIB" PATH="$PATH" sh -c '
+scenario_install_sem_from_e_sem_env_consulta_api() {
+  # Sem --from + sem $CSTK_RELEASE_URL = consulta API GitHub. Para nao
+  # depender de rede em testes, apontamos CSTK_REPO para um repo
+  # invalido (404 garantido) — install deve falhar com msg de "falha ao
+  # consultar". Garante que CSTK_RELEASE_URL nao vaza do ambiente.
+  capture env -i HOME="$TMPDIR_TEST/h" CSTK_LIB="$CSTK_LIB" PATH="$PATH" \
+    CSTK_REPO="invalid-owner-cstk-test/nonexistent-repo" sh -c '
     . "$CSTK_LIB/install.sh"
     install_main
   '
   if [ "$_CAPTURED_EXIT" != 1 ]; then
-    _fail "sem URL exit" "esperado 1, obtido $_CAPTURED_EXIT"
+    _fail "API fail exit" "esperado 1, obtido $_CAPTURED_EXIT"
     return 1
   fi
-  assert_stderr_contains "CSTK_RELEASE_URL" || return 1
+  assert_stderr_contains "falha ao consultar" || return 1
 }
 
 scenario_install_from_nao_url_aborta() {

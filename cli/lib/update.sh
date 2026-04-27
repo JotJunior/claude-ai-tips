@@ -68,7 +68,8 @@ OPCOES:
   --force        Sobrescreve skills com edicao local (FR-008).
   --keep         Mantem edicoes locais sem warning por skill (FR-008).
   --prune        Remove skills do manifest ausentes do catalog (pede confirmacao).
-  --from URL     URL do tarball (.tar.gz). Default: $CSTK_RELEASE_URL.
+  --from URL     URL do tarball (.tar.gz). Default: $CSTK_RELEASE_URL ou,
+                 se ausente, consulta GitHub API /releases/latest.
   --dry-run      Mostra plano sem escrever.
   --yes          Pula confirmacao do --prune.
   --interactive  Seletor numerado em TTY (lista skills do manifest).
@@ -302,14 +303,38 @@ _update_resolve_scope_dir() {
   return 0
 }
 
+# _update_resolve_urls: define _update_tarball_url + _update_sha256_url.
+# Mesma prioridade de install: --from > $CSTK_RELEASE_URL > API GitHub.
 _update_resolve_urls() {
   if [ -z "$_update_from" ]; then
     _update_from=${CSTK_RELEASE_URL:-}
   fi
+
   if [ -z "$_update_from" ]; then
-    log_error "update: --from URL ausente e \$CSTK_RELEASE_URL nao setado"
-    return 1
+    _update_repo=${CSTK_REPO:-JotJunior/claude-ai-tips}
+    _update_api="https://api.github.com/repos/$_update_repo/releases/latest"
+    log_info "update: consultando ultima release de $_update_repo via API GitHub..."
+    _update_api_resp=$(curl -fsSL --connect-timeout 10 --max-time 60 \
+      "$_update_api" 2>/dev/null) || {
+      log_error "update: falha ao consultar $_update_api (offline?)"
+      log_error "        use --from <url> ou \$CSTK_RELEASE_URL como alternativa"
+      return 1
+    }
+    _update_tag=$(printf '%s\n' "$_update_api_resp" \
+      | grep -o '"tag_name":[[:space:]]*"[^"]*"' \
+      | head -n 1 \
+      | sed 's/.*"\([^"]*\)"$/\1/')
+    if [ -z "$_update_tag" ]; then
+      log_error "update: tag_name nao encontrado em $_update_api"
+      return 1
+    fi
+    _update_tag_bare=${_update_tag#v}
+    _update_tarball_url="https://github.com/$_update_repo/releases/download/$_update_tag/cstk-$_update_tag_bare.tar.gz"
+    _update_sha256_url="${_update_tarball_url}.sha256"
+    log_info "update: ultima release: $_update_tag"
+    return 0
   fi
+
   case "$_update_from" in
     http://*|https://*|file://*)
       _update_tarball_url=$_update_from
@@ -317,6 +342,7 @@ _update_resolve_urls() {
       ;;
     *)
       log_error "update: --from precisa ser URL: $_update_from"
+      log_error "        para usar a ultima release automaticamente, omita --from"
       return 1
       ;;
   esac

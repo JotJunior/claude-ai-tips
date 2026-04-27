@@ -7,6 +7,34 @@ este projeto adere a [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ## [Unreleased]
 
+## [3.2.2] - 2026-04-27
+
+### Fixed
+
+- **`cstk install` e `cstk update` sem `--from` agora consultam a API
+  GitHub** para descobrir a ultima release, em vez de abortar com
+  "vem na FASE 3.2 (bootstrap)" — mensagem misleading que sobreviveu
+  a entrega da FASE 3.2 (que entregou apenas o bootstrap standalone,
+  nao a resolucao no comando `cstk install`).
+
+  Comportamento novo:
+  - `--from URL` (explicit)             → usa a URL fornecida
+  - `$CSTK_RELEASE_URL` (env)           → usa a URL do env
+  - **(novo)** sem nada acima           → GitHub API /releases/latest
+
+  Honra `$CSTK_REPO` para forks (default `JotJunior/claude-ai-tips`).
+  Mesmo padrao ja em uso por `cstk self-update` desde FASE 5.
+
+  Reportado por usuario: `cstk install` apos bootstrap retornava
+  "[error] install: --from URL ausente e \$CSTK_RELEASE_URL nao setado"
+  — quebrava o fluxo "instalar via one-liner depois `cstk install`"
+  documentado no README.
+
+  Test atualizado: `scenario_install_sem_from_e_sem_env_consulta_api`
+  usa `CSTK_REPO=invalid/nonexistent` para forcar 404 da API e validar
+  que o erro reportado e "falha ao consultar" (em vez de mensagem
+  antiga sobre CSTK_RELEASE_URL nao setado).
+
 ## [3.2.1] - 2026-04-27
 
 ### Fixed

@@ -15,8 +15,9 @@
 #   - URL absoluta (http://, https://, file://) -> usada como tarball_url;
 #     sha256_url e tarball_url + ".sha256"
 #   - Sem --from: cai em $CSTK_RELEASE_URL (escape hatch para fixtures de teste);
-#     se ausente, aborta com mensagem apontando para o bootstrap (FASE 3.2 ainda
-#     vai entregar o resolver de "ultima release" via API do GitHub)
+#     se ausente, consulta GitHub API /releases/latest e monta a URL do asset
+#     conforme convencao de naming do build (cstk-<bare-version>.tar.gz).
+#     $CSTK_REPO override permite apontar para um fork.
 #
 # Hooks de language-* (FR-009b/c/d): integracao em FASE 7.2; install desta
 # fase apenas copia skills.
@@ -74,8 +75,9 @@ OPCOES:
   --profile N    Perfil declarado no catalog. Default: sdd.
   --scope S      global (~/.claude/skills/) ou project (./.claude/skills/).
                  Default: global.
-  --from URL     URL do tarball (.tar.gz). Default: $CSTK_RELEASE_URL ou erro
-                 (resolver de ultima release vem na FASE 3.2).
+  --from URL     URL do tarball (.tar.gz). Default: $CSTK_RELEASE_URL ou,
+                 se ausente, consulta GitHub API /releases/latest. $CSTK_REPO
+                 override aponta para um fork (default JotJunior/claude-ai-tips).
   --dry-run      Mostra plano sem escrever nada.
   --yes          Pula confirmacoes interativas.
   --interactive  Seletor numerado em TTY (FASE 8 — nao implementado ainda).
@@ -359,17 +361,44 @@ _install_validate_project_scope() {
   return 1
 }
 
-# _install_resolve_urls: mapeia --from / env para o par (tarball, sha256).
+# _install_resolve_urls: define _install_tarball_url + _install_sha256_url.
+# Prioridade:
+#   1. --from URL (http/https/file)            — uso explicito
+#   2. $CSTK_RELEASE_URL (env)                 — escape hatch p/ fixtures
+#   3. consulta API GitHub /releases/latest    — caso default
 _install_resolve_urls() {
   if [ -z "$_install_from" ]; then
     _install_from=${CSTK_RELEASE_URL:-}
   fi
+
+  # Caso 3: nada explicito -> consulta API
   if [ -z "$_install_from" ]; then
-    log_error "install: --from URL ausente e \$CSTK_RELEASE_URL nao setado"
-    log_error "         resolver de \"ultima release\" vem na FASE 3.2 (bootstrap)"
-    log_error "         use --from <url-do-tarball> por enquanto"
-    return 1
+    _install_repo=${CSTK_REPO:-JotJunior/claude-ai-tips}
+    _install_api="https://api.github.com/repos/$_install_repo/releases/latest"
+    log_info "install: consultando ultima release de $_install_repo via API GitHub..."
+    _install_api_resp=$(curl -fsSL --connect-timeout 10 --max-time 60 \
+      "$_install_api" 2>/dev/null) || {
+      log_error "install: falha ao consultar $_install_api (offline?)"
+      log_error "         use --from <url> ou \$CSTK_RELEASE_URL como alternativa"
+      return 1
+    }
+    _install_tag=$(printf '%s\n' "$_install_api_resp" \
+      | grep -o '"tag_name":[[:space:]]*"[^"]*"' \
+      | head -n 1 \
+      | sed 's/.*"\([^"]*\)"$/\1/')
+    if [ -z "$_install_tag" ]; then
+      log_error "install: tag_name nao encontrado em $_install_api"
+      return 1
+    fi
+    # build-release.sh strip o "v" do filename; tag mantem. Match.
+    _install_tag_bare=${_install_tag#v}
+    _install_tarball_url="https://github.com/$_install_repo/releases/download/$_install_tag/cstk-$_install_tag_bare.tar.gz"
+    _install_sha256_url="${_install_tarball_url}.sha256"
+    log_info "install: ultima release: $_install_tag"
+    return 0
   fi
+
+  # Casos 1 + 2: URL explicita
   case "$_install_from" in
     http://*|https://*|file://*)
       _install_tarball_url=$_install_from
@@ -377,7 +406,7 @@ _install_resolve_urls() {
       ;;
     *)
       log_error "install: --from precisa ser URL (http:// https:// file://); recebido: $_install_from"
-      log_error "         resolver de tag (--from v3.2.0) vem na FASE 3.2 + 9.2"
+      log_error "         para baixar a ultima release automaticamente, omita --from"
       return 1
       ;;
   esac
