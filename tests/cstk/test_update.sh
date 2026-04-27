@@ -55,8 +55,13 @@ _run_update() {
 }
 
 _mtime() {
-  if stat -f %m -- "$1" 2>/dev/null; then return 0; fi
-  stat -c %Y -- "$1" 2>/dev/null
+  # Linux/GNU stat (-c %Y) PRIMEIRO. Em macOS/BSD cai no fallback BSD (-f %m).
+  # Ordem inversa quebra racy no Linux: stat -f %m exit 0 mas imprime info
+  # do filesystem (Block size, Inodes Free, etc.) que varia entre chamadas
+  # devido a atividade FS de fundo — comparacao falha intermitentemente.
+  # Mesmo bug em test_self-update.sh + test_quickstart-e2e.sh.
+  if stat -c %Y -- "$1" 2>/dev/null; then return 0; fi
+  stat -f %m -- "$1" 2>/dev/null
 }
 
 # ==== Scenario 2: idempotencia (SC-002) — zero writes, mtime preservado ====

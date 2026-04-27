@@ -60,28 +60,10 @@ jobs:
           echo "bare=$BARE" >> "$GITHUB_OUTPUT"
           echo "Resolved tag: $TAG (bare: $BARE)"
 
-      - name: Run main test suite
+      - name: Run test suite (main + cstk integrados)
+        # FASE 9.3 integrou tests/cstk/ no runner principal; tests/run.sh
+        # agora cobre toda a suite (~242 cenarios incluindo cli/lib/).
         run: ./tests/run.sh
-
-      - name: Run cstk test suite
-        # tests/cstk/ ainda nao esta integrado em tests/run.sh (pendente
-        # FASE 9.3). Iteramos manualmente cada test_*.sh ate la, falhando
-        # o job se qualquer suite individual falhar.
-        run: |
-          set -eu
-          failures=0
-          for t in tests/cstk/test_*.sh; do
-            echo "::group::$t"
-            if ! sh "$t"; then
-              failures=$((failures + 1))
-              echo "::error::$t falhou"
-            fi
-            echo "::endgroup::"
-          done
-          if [ "$failures" -gt 0 ]; then
-            echo "::error::$failures cstk test file(s) falharam — release abortado"
-            exit 1
-          fi
 
       - name: Build release tarball
         run: ./scripts/build-release.sh "${{ steps.tag.outputs.tag }}"
