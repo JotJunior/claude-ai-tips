@@ -18,7 +18,7 @@ para tarefas de documentação, desenvolvimento, segurança e qualidade de códi
 
 ```
 ├── global/                     # Skills globais (independentes de linguagem)
-│   └── skills/                 # 19 skills globais (cada skill é uma pasta)
+│   └── skills/                 # 20 skills globais (cada skill é uma pasta)
 │       ├── advisor/
 │       ├── analyze/
 │       ├── apply-insights/
@@ -34,6 +34,7 @@ para tarefas de documentação, desenvolvimento, segurança e qualidade de códi
 │       ├── initialize-docs/
 │       ├── owasp-security/
 │       ├── plan/
+│       ├── review-features/
 │       ├── review-task/
 │       ├── specify/
 │       ├── validate-docs-rendered/
@@ -101,6 +102,7 @@ Skills independentes que podem ser usados em qualquer momento:
 | **initialize-docs** | "inicializar docs", "setup documentação" | Cria hierarquia padrão de documentação com 9 níveis |
 | **apply-insights** | "aplicar insights", "aplicar playbook", "melhorar claude.md" | Analisa o projeto e aplica insights de uso comprovados ao CLAUDE.md, hooks e workflows. Renomeada de `insights` na 2.0.0 para evitar colisão com o `/insights` nativo do Claude Code (que tem função diferente — analisa suas sessões) |
 | **owasp-security** | Ao revisar segurança | Revisão de segurança cobrindo OWASP Top 10:2025, ASVS 5.0 e segurança de IA Agêntica (2026) |
+| **review-features** | "review features", "status global", "comparar features", "quais features priorizar" | Relatório comparativo de TODAS as features (cross-feature) com tabela agregada e sugestão de arquivar/abandonar/priorizar/continuar por feature |
 | **validate-documentation** | "validar documentação", "verificar UC" | Valida documentos individuais contra padrões de qualidade estrutural |
 | **validate-docs-rendered** | "validar renderização", "verificar diagramas" | Valida que a documentação Markdown renderiza corretamente (Mermaid, links internos, frontmatter, tabelas) |
 

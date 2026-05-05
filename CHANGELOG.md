@@ -7,6 +7,28 @@ este projeto adere a [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ## [Unreleased]
 
+## [3.3.0] - 2026-05-05
+
+### Added
+
+- **Skill `review-features`**: relatorio comparativo de TODAS as features
+  do projeto (cross-feature), complementar a `review-task` (que olha UMA
+  feature). Saida: tabela com nome, descricao, % concluida, criticidade
+  pendente e sugestao de acao por feature (`ARQUIVAR` / `ABANDONAR` /
+  `PRIORIZAR` / `CONTINUAR` / `INDEFINIDO`).
+
+  Heuristica deterministica:
+  - `ARQUIVAR`: feature 100% concluida
+  - `ABANDONAR`: 0% concluida e sem modificacao ha mais de 90 dias
+  - `PRIORIZAR`: tem subtasks `[C]` pendentes e menos de 50% concluida
+  - `CONTINUAR`: caso geral em andamento
+  - `INDEFINIDO`: tasks.md vazio
+
+  Acompanha script POSIX `scripts/aggregate.sh` (saida markdown ou
+  JSON-lines via `--json`) com 16 cenarios de teste em
+  `tests/test_aggregate.sh`. A skill e read-only — sugestao e recomendacao,
+  nunca executa arquivar/deletar sem confirmacao do usuario.
+
 ## [3.2.3] - 2026-04-27
 
 ### Changed
