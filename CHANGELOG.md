@@ -7,6 +7,417 @@ este projeto adere a [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ## [Unreleased]
 
+### Changed
+
+- **`/agente-00c` faz warm-up de permissoes em batch ANTES de spawnar
+  o orquestrador (post-FASE 9 feedback)**: nova passo 0 invoca todas
+  as 10 skills da pipeline + 3 agentes custom + ScheduleWakeup + Bash
+  helpers + Read/Write em sequencia. Cada invocacao dispara o prompt
+  nativo de permissao do Claude Code uma vez, com o operador presente.
+  Apos confirmacao, o orquestrador roda autonomamente sem interrupcoes
+  (resolve o problema de fluxo travado quando permissoes "lazy" pediam
+  aprovacao em ondas posteriores onde o operador nao estava disponivel).
+  `/agente-00c-resume` e `/agente-00c-abort` NAO refazem warm-up
+  (resume = continuacao, abort = operacao curta com operador
+  presente). Orquestrador ganhou secao "Warm-up de permissoes
+  (pre-condicao)" documentando o contrato e instruindo deteccao de
+  permissao pendente no meio de uma onda como BloqueioHumano.
+
+### Added
+
+- **Validacao end-to-end (parcial) e licoes da implementacao do agente-00C (FASE 9)**:
+
+  - **`scripts/quickstart-shell-sim.sh`**: simula via Bash os 10 cenarios
+    do quickstart compondo as primitivas dos 14 scripts do
+    `agente-00c-runtime`. NAO invoca o agente Claude — exercita apenas
+    composicao shell-level. Resultado: **10/10 PASS** em ~5s. Detecta
+    regressao quando um script deixa de compor com outros (gate
+    complementar a `tests/run.sh` que testa cada script isoladamente).
+
+  - **`docs/specs/agente-00c/validation-runs/`** (novo diretorio): registro
+    de execucoes do agente-00C. README com template + tipos
+    (shell-simulation vs end-to-end-real). Primeiro registro:
+    `2026-05-06-end-to-end-shell-simulation.md` (10/10 PASS, SCs
+    validaveis em shell-level: SC-001, SC-002, SC-007, SC-008).
+
+  - **`docs/specs/agente-00c/lessons-from-implementation.md`**: 5 licoes
+    concretas da implementacao das 8 fases — bug jq em pipe (drift.sh),
+    dupla resolucao de symlinks no macOS (path-guard.sh), "skills
+    internas" como padrao (`agente-00c-runtime`), cobertura forçada
+    como ROI alto (3 bugs descobertos), estratificacao 3-camadas
+    (commands/agents/scripts). Cada licao com proposta concreta de FR
+    para skill especifica + avaliacao contra constitution do toolkit
+    (nenhuma requer amendment).
+
+  Subtarefas da FASE 9 atendidas autonomamente: 9.1.1-9.1.11 (10
+  cenarios shell-simulated + relatorio), 9.2.1-9.2.3 (bump MINOR
+  determinado, CHANGELOG/README atualizados), 9.4.1-9.4.3 (licoes da
+  implementacao + propostas FR + avaliacao constitution).
+
+  Subtarefas pendentes (exigem operador): 9.2.4 (cstk doctor pos-release
+  v3.4.0), 9.3.* (primeira execucao real do agente em projeto-alvo —
+  exige 1-3h wallclock + curadoria de relatorio), 9.4.4 (abertura real
+  de issues no toolkit — exige autorizacao + execucao com `gh`), 9.4.5
+  (atualizar threat-model com threats observados em runtime real).
+
+- **Relatorio e integracao com toolkit do agente-00C (FASE 8)**: 28
+  subtarefas implementadas em 3 novos scripts cobrindo geracao de
+  relatorio com 6 secoes auditaveis, registro de Sugestoes para skills
+  globais e abertura automatica de Issue no toolkit GitHub.
+
+  - `report.sh` (FR-011 + SC-001 + FR-012): subcomandos `generate` e
+    `validate`. `generate` renderiza 6 secoes obrigatorias (Resumo
+    Executivo com tabela de 15 campos + paragrafo, Linha do Tempo
+    com tabela de ondas, Decisoes agrupadas por agente + lista
+    detalhada, Bloqueios Humanos divididos em pendentes/respondidos/
+    sem, Sugestoes em 3 niveis de severidade, Licoes Aprendidas
+    cravado como placeholder em parcial e preenchivel via
+    `--licoes-aprendidas` + `--final`) + Apendice A com 5 paths.
+    `validate` checa as 6 secoes via `grep -qF` e reporta faltantes.
+    Caller deve aplicar `secrets-filter.sh scrub` em pipe (FR-030).
+
+  - `suggestions.sh` (FR-020): subcomandos `register`, `list`,
+    `count`, `next-id`, `mark-issue`, `render-md`. Sugestoes vivem
+    em DOIS lugares — `state.json .sugestoes[]` (ground truth JSON)
+    + agente-00c-suggestions.md (export human-readable regerado a
+    cada register/mark-issue). 3 severidades validadas:
+    informativa, aviso, impeditiva. Diagnostico exige >=50 chars
+    para forçar detalhamento acionavel. `mark-issue` atualiza
+    `.issue_aberta` + incrementa `metricas_acumuladas.issues_toolkit_abertas`.
+
+  - `issue.sh` (FR-021): subcomandos `create`, `check-duplicate`,
+    `hash`. Excecao escopada ao Principio V — apenas `gh issue
+    create --repo JotJunior/claude-ai-tips`. Hash de 8 chars do
+    diagnostico normalizado (lowercase + collapse whitespace + sha256
+    + cut) para dedup via `gh issue list --search`. Template do
+    `contracts/issue-template.md` aplicado via heredoc (Skill afetada,
+    Diagnostico, Reproducao com decisoes recentes, Por que e
+    impeditivo, Proposta de correcao, Anexos). Defense in depth:
+    `secrets-filter.sh scrub` aplicado 2x (no build do body + antes
+    do `gh create`). Labels `agente-00c,bug,skill-global` criadas
+    automaticamente se ausentes (`gh label create --force`). Falha
+    de `gh create` (sem internet, rate limit) propaga exit 1; corpo
+    truncado em ~4000 chars com pointer ao relatorio local. `--dry-run`
+    imprime template completo sem chamar `gh`.
+
+  Agente orquestrador atualizado (passo 12 do Loop principal) com
+  template operacional completo: pipe de `report.sh generate |
+  secrets-filter.sh scrub > <report.md>` + `report.sh validate`,
+  fluxo de Sugestao (impeditiva => `issue.sh create`), retentativa
+  + bloqueio humano em falha persistente.
+
+  27 cenarios de teste novos em
+  `tests/test_{report,suggestions,issue}.sh`. `test_issue.sh` cobre
+  apenas dry-run + hash (chamadas reais a `gh` evitadas para nao
+  gerar issues em produçao — validacao end-to-end na FASE 9.1.6).
+
+- **Continuacao cross-sessao do agente-00C (FASE 7)**: 20 subtarefas
+  cobrindo `ScheduleWakeup` para ondas curtas, `/agente-00c-resume`,
+  fallback `/schedule` Routines para pausas longas, e
+  `/agente-00c-abort`. Sem novos scripts — todas as primitivas
+  necessarias ja existem nas FASES 2-6 (state-rw, state-validate,
+  state-lock, bloqueios, sanitize, secrets-filter, state-ondas).
+
+  - **`global/agents/agente-00c-orchestrator.md`** — passo 11 expandido:
+    `ScheduleWakeup` invocado APENAS para ondas nao-terminais sem
+    bloqueios pendentes; tabela de calibracao de `delaySeconds`
+    respeitando cache Anthropic (5min TTL): 60-270s para continuacao
+    normal, 1200-1800s apos threshold proxy. Sentinela
+    `<<autonomous-loop-dynamic>>` documentada. Reason no formato
+    `agente-00c onda <NNN+1> apos <motivo>`. Passo 13 cravou formato do
+    sumario retornado ao operador.
+
+  - **`global/agents/agente-00c-orchestrator.md`** — nova secao "Pausas
+    longas e fallback `/schedule` Routines": template completo de
+    routine `/schedule criar "..." cron="..." prompt="/agente-00c-resume
+    --projeto-alvo-path <PAP>"`; orientacao para incluir no relatorio
+    parcial quando `aguardando_humano` + sinais de inatividade;
+    explicito "NAO criar routine automaticamente" (operador escolhe
+    cron especifico).
+
+  - **`global/commands/agente-00c-resume.md`** — substituido o esqueleto
+    da FASE 1 por fluxo operacional de 8 passos: parse de args, lock
+    acquire, validate + sha256-verify, branch por status (terminal /
+    em_andamento / aguardando_humano), apply de `--resposta-bloqueio`
+    com sanitizacao via `sanitize.sh limit-length --max 2000`, spawn
+    do orquestrador com prompt indicando "CONTINUACAO de execucao
+    existente" + `retomada_motivo`, lock release + sumario.
+
+  - **`global/commands/agente-00c-abort.md`** — substituido o esqueleto
+    por fluxo operacional de 8 passos: parse, validacao com fail-soft
+    para schema invalido (abort PROCEDE — pode ser o motivo do abort),
+    idempotencia explicita (status terminal = no-op), atualizacao via
+    `state-rw.sh set` (backup automatico), stub minimal de relatorio
+    com `secrets-filter.sh scrub` aplicado, commit local via
+    `state-ondas.sh git-commit` (fail-soft se nao e repo git, NUNCA
+    push), sumario com hash do commit.
+
+  - **`README.md`** — limitacao "Schedule mínimo de 5 min via /loop"
+    atualizada para refletir clamp [60, 3600s] do `ScheduleWakeup` +
+    fallback `/schedule` Routines.
+
+- **Seguranca do agente-00C (FASE 6 — todas as 9 sub-features sao [C])**:
+  56 subtarefas implementadas em 5 scripts focados no
+  `agente-00c-runtime`, cobrindo 8 FRs criticos (FR-017, FR-018, FR-024,
+  FR-025, FR-026, FR-027, FR-028, FR-029, FR-030, FR-031) e 5 threats
+  (T1, T2, T3, T4, T5).
+
+  - `path-guard.sh` (FR-024 + FR-017): subcomandos `validate-target`,
+    `check-write`, `resolve`. Resolve symlinks via `realpath`/`readlink -f`
+    com fallback portavel para paths inexistentes. Lista de zonas
+    proibidas cobre 20+ paths incluindo formas canonica (`/etc`) e
+    resolvida no macOS (`/private/etc`); explicitamente NAO bloqueia
+    `/var/folders` (mktemp). Resolve TAMBEM cada zona antes de comparar
+    (defesa T2 contra symlinks adversariais que apontam para zona
+    proibida via `~`).
+
+  - `bash-guard.sh` (FR-018 + FR-028 + SC-008): subcomandos
+    `check-blocklist`, `check-whitelist`, `check`. Blocklist: sudo,
+    package managers (npm/pnpm/yarn/pip/gem/brew/go install/cargo
+    install) sem prefixo `docker exec/run`, `git push` (qualquer
+    remote), kubectl mutativo, terraform apply/destroy, aws cli
+    mutativo, gcloud deploy, docker push, docker-compose push, helm
+    install/upgrade/uninstall. Whitelist: detecta network calls
+    (curl/wget/gh api,issue,pr,repo,browse/git fetch,pull,clone),
+    extrai URL (incluindo via `--repo OWNER/NAME` para gh) e checa
+    contra whitelist; converte glob simples (`**` -> `.*`, `*` ->
+    `[^/]*`) em regex. Excecao escopada: `gh issue create --repo
+    JotJunior/claude-ai-tips` bypass (FR-021).
+
+  - `secrets-filter.sh` (FR-030): subcomandos `scrub`, `check`. Filtros
+    em ordem (especificos primeiro para preservar tipo): AWS keys
+    (`AKIA[A-Z0-9]{16,}`), Bearer tokens, basic auth em URLs, tokens
+    com palavra-chave proxima (token/key/secret/password/pwd/auth/
+    api_key/access_key precedendo valor 20+ chars), valores de chaves
+    do `.env` (carregado via `--env-file`, valores < 8 chars
+    ignorados). `[REDACTED]`, `[REDACTED-AWS-KEY]` e `[REDACTED-ENV]`
+    distinguem tipo. Hashes git e UUIDs sem palavra-chave proxima NAO
+    sao filtrados (anti-falso-positivo).
+
+  - `sanitize.sh` (FR-025): subcomandos `limit-length`, `check-length`,
+    `escape-commit-msg`, `escape-issue-body`, `escape-path`. Defaults
+    cobrem `descricao_curta` (max 500 chars). `escape-commit-msg`
+    remove newlines/tabs/dollars/backticks/quotes + limita 100 chars.
+    `escape-issue-body` preserva newlines (markdown), remove `$(...)`
+    e backticks. `escape-path` remove path traversal `..` + chars
+    nao-`[A-Za-z0-9._-]` + limita 64 chars.
+
+  - `whitelist-validate.sh` (FR-031): subcomandos `check`, `list`.
+    Rejeita patterns "overly broad": `**` puro sem dominio, `*://*`
+    (scheme com glob), `https://*` sem dominio, host vazio, sem
+    scheme, wildcard fora do padrao prefixo `*.dominio.tld`.
+    Diagnostico inclui numero da linha + motivo + conteudo.
+
+  Agente orquestrador (`global/agents/agente-00c-orchestrator.md`)
+  atualizado com tabela de primitivas estendida (5 novos scripts) +
+  secao "Defesa em profundidade" reescrita listando os 7 mecanismos
+  (bash-guard, path-guard, sanitize, secrets-filter, whitelist-validate,
+  sha256-verify, goal alignment) com instrucoes operacionais explicitas
+  para o LLM (quando invocar, qual subcomando, semantica de exit code).
+
+  62 cenarios de teste novos em
+  `tests/test_{path-guard,bash-guard,secrets-filter,sanitize,whitelist-validate}.sh`.
+  Inclui casos adversariais: symlink que aponta para `~/.ssh`, comando
+  Bash com `sudo`/`git push`/`docker push`/`kubectl apply`, payload com
+  AWS key/Bearer/basic auth/.env values, whitelist com `**`/`*://*`/etc.
+
+- **Autonomia controlada do agente-00C (FASE 5)**: 5 novos scripts em
+  `global/skills/agente-00c-runtime/scripts/` cobrem os 5 mecanismos de
+  aborto graceful que mantem o orquestrador dentro do orcamento e do
+  escopo declarado (Principio IV — Autonomia Limitada com Aborto).
+
+  - `budget.sh`: proxies de orcamento de sessao (FR-009, sem signal
+    nativo de tokens). 3 dimensoes: tool_calls da onda (default 80),
+    wallclock (default 5400s = 90min) e tamanho de state.json (default
+    1MB). `check` exit 1 quando QUALQUER threshold dispara, com TSV
+    `TIPO\tCURRENT\tTHRESHOLD` em stdout. Wallclock usa fallback portavel
+    BSD/GNU para `date -d` vs `date -j -f`. State size via `stat -f %z`
+    (BSD) / `stat -c %s` (GNU) / `wc -c` (fallback).
+
+  - `cycles.sh`: limite de ciclos por etapa (FR-014.a — `loop_em_etapa`).
+    `tick` incrementa contador; `--progress-made` zera (orquestrador
+    decide quando 1 dos 4 indicadores de FR-014 aconteceu). `reset`
+    explicito ao avancar de etapa (separacao de responsabilidades — nao
+    infere mudanca via `.etapa_corrente`). Exit 3 em > 5 ciclos.
+
+  - `circular.sh`: deteccao de movimento circular (FR-014.b). `push`
+    armazena `{problema_hash, solucao_hash, timestamp}` em buffer FIFO
+    de capacidade 6. Normalizacao: lowercase + nao-alfanumerico->space +
+    20 primeiras palavras. `detect` exit 3 quando mesmo problema_hash
+    aparece >=3 vezes (cobre o padrao "P=A,S=X / P=B,S=Y / P=A,S=Z /
+    P=B,S=Y / P=A,S=X" do exemplo da spec).
+
+  - `drift.sh`: drift detection / goal alignment (FR-027, threat T1).
+    `init` grava 3..7 aspectos-chave (cravado pos-primeira-onda — recusa
+    sobrescrever). `check` itera ondas do final para o inicio, conta
+    consecutivas sem decisao mencionando aspecto (case-insensitive
+    substring nos campos contexto/escolha/justificativa de cada
+    decisao). Warn em 3 ondas (stderr, exit 0); abort em 5 (exit 3,
+    motivo `desvio_de_finalidade`).
+
+  - `retro.sh`: limite de retro-execucoes (FR-006). `check` valida
+    `consumed < max` (default 2). `consume` exit 3 SEM mutar estado se
+    incremento excederia max (defesa em profundidade — testado com
+    snapshot before/after). Orquestrador converte 3a tentativa em
+    BloqueioHumano via `bloqueios.sh register`.
+
+  37 cenarios de teste em `tests/test_{budget,cycles,circular,drift,retro}.sh`.
+
+  Agente orquestrador (`global/agents/agente-00c-orchestrator.md`)
+  atualizado: tabela de primitivas inclui os 5 novos scripts; passos 7
+  e 8 do Loop principal de uma onda referenciam cada gatilho de aborto
+  com semantica explicita (motivo, exit code, acao do orquestrador).
+
+- **Padrao clarify de dois atores (agente-00C FASE 4)**: implementacao
+  do mecanismo de "Pause-or-Decide" (Principio II da feature), com
+  mediacao orquestrada entre clarify-asker (gera 1-5 perguntas via skill
+  clarify) e clarify-answerer (decide via heuristica de score 0..3).
+
+  - `global/agents/agente-00c-clarify-asker.md`: prompt operacional
+    completo. Inputs (`spec_path`, `briefing_path`, `etapa_corrente`,
+    `decisoes_anteriores`, `quantidade_max_perguntas`); fluxo (Read +
+    Skill clarify + filtro de redundantes); formato JSON cravado com
+    `Q1..QN` + `default_sugerido` opcional; saida vazia `{ "perguntas":
+    [] }` quando nao ha clarificacao pendente. Tools restritas a Skill+Read
+    (sem Agent — bisneto nao recursiona).
+
+  - `global/agents/agente-00c-clarify-answerer.md`: heuristica de score
+    documentada (3 fontes: briefing, constitutions toolkit+feature,
+    stack-sugerida). Tabela de decisao (>=2 decide, ==1 decide so se
+    outras violarem constitution, ==0 pause-humano). Tie-breaker em 4
+    niveis. Formato JSON com `pause_humano: bool` e
+    `contexto_para_humano` quando aplicavel. Tools restritas a Read+Bash
+    (Bash apenas para `date`).
+
+  - `global/agents/agente-00c-orchestrator.md`: passo 5 do Loop
+    principal expandido com fluxo de mediacao em 7 sub-passos (a-g):
+    pre-flight via spawn-tracker, spawn asker, spawn answerer (irmaos),
+    aplicar respostas validas como Decisao via state-decisions.sh,
+    converter score 0 em BloqueioHumano via bloqueios.sh, fim de onda
+    gracioso quando ha pendentes.
+
+  - **Novo script** `global/skills/agente-00c-runtime/scripts/bloqueios.sh`:
+    ciclo de vida de BloqueioHumano (FR-015, FR-016). 6 subcomandos:
+    `register` (gera `block-NNN` sequencial; valida FK para Decisao
+    existente; valida `pergunta >= 20 chars`; atualiza
+    `.execucao.status = "aguardando_humano"` e
+    `.metricas_acumuladas.bloqueios_humanos_total`); `respond` (marca
+    `respondido` + grava `resposta_humana` + `respondido_em`; volta
+    `.execucao.status = "em_andamento"` SO quando todos os bloqueios
+    pendentes foram respondidos); `list` (TSV com filtro opcional por
+    status); `count` (com `--pending-only`); `next-id`; `get`
+    (JSON do bloqueio).
+
+  14 cenarios de teste em `tests/test_bloqueios.sh` cobrem o lifecycle
+  completo (register -> respond), FK violation, validacao de pergunta
+  curta, status transitions com bloqueios multiplos, idempotencia.
+
+- **Orquestrador raiz do agente-00C (FASE 3)**: 4 novos scripts em
+  `global/skills/agente-00c-runtime/scripts/` cobrem state machine,
+  decisoes auditaveis, tracking de subagentes e ciclo de vida de ondas.
+
+  - `pipeline.sh`: 5 subcomandos. `stages` imprime as 10 etapas
+    canonicas (briefing → constitution → specify → clarify → plan →
+    checklist → create-tasks → execute-task → review-task →
+    review-features). `next-stage`/`prev-stage` para avanco linear ou
+    retro-execucao. `detect-completion` mapeia 7 etapas para artefatos
+    esperados em `docs/specs/<feature>/`. `skill-conflict` detecta
+    skill em local (`<projeto>/.claude/skills/`) + global
+    (`~/.claude/skills/`) com 4 status (conflict/only-local/only-global/
+    not-found); regra: local vence.
+  - `state-decisions.sh`: registro auditavel (Principio I —
+    Auditabilidade Total). `register` valida 5 campos obrigatorios
+    (contexto>=20, opcoes_consideradas>=1, escolha, justificativa>=20,
+    agente); falha = exit 1 com `violacao Principio I`. Ids `dec-NNN`
+    sequenciais; linka a `onda_id` corrente; `--score` 0..3 para
+    decisoes do clarify-answerer (FR-015). Atualiza
+    `metricas_acumuladas.decisoes_total`. Subcomandos `count`, `list`,
+    `next-id` para introspeccao.
+  - `spawn-tracker.sh`: enforce FR-013 (max 3 niveis). `enter` valida
+    `(current+1) <= 3` ANTES de qualquer escrita; falha = exit 3 SEM
+    modificar estado. Atualiza `profundidade_max_atingida` e
+    `subagentes_spawned`. `leave` decrementa (idempotente em min 1).
+    `check` exposto para validacao read-only. Defesa em profundidade:
+    agentes `agente-00c-clarify-asker` e `clarify-answerer` NAO
+    declaram tool Agent.
+  - `state-ondas.sh`: ciclo de vida de Ondas. `start` cria nova `onda-NNN`
+    + reseta tool_calls/inicio_onda_corrente. `end` valida 1 dos 5
+    motivos validos (etapa_concluida_avancando, threshold_proxy_atingido,
+    bloqueio_humano, aborto, concluido), calcula wallclock (fallback
+    portavel GNU `date -d` -> BSD `date -j -f`) e atualiza
+    metricas_acumuladas. `tool-call-tick` para incrementar contador
+    (backup so a cada 10 ticks p/ nao explodir state-history/).
+    `git-commit --motivo MOTIVO` faz commit local no projeto-alvo
+    (`chore(agente-00c): <onda-id> - <motivo>`); NUNCA `git push`
+    (Principio V — Blast Radius Confinado).
+
+  46 cenarios de teste em `tests/test_{pipeline,state-decisions,spawn-tracker,state-ondas}.sh`.
+
+  Agente orquestrador (`global/agents/agente-00c-orchestrator.md`)
+  atualizado com instrucoes operacionais detalhadas (13 passos do loop
+  principal de uma onda) referenciando estas primitivas.
+
+- **Skill interna `agente-00c-runtime` (agente-00C FASE 2)**: biblioteca
+  POSIX consumida pelos agentes custom do agente-00C. NAO e
+  user-invocavel — empacota helpers de estado, validacao e lock para a
+  pipeline. Distribuida via `cstk install` (catalog/skills/) e instalada
+  em `~/.claude/skills/agente-00c-runtime/`. Conteudo:
+
+  - `scripts/state-rw.sh`: subcomandos `init`, `read`, `write`, `get`,
+    `set`, `sha256-update`, `sha256-verify`, `path-check`. Implementa
+    schema state.json v1.0.0, backups automaticos por onda em
+    `state-history/`, integridade SHA-256 (FR-029), atomic write
+    via mktemp+mv, write-probe para detectar permissao negada, captura
+    de I/O errors (disco cheio).
+  - `scripts/state-validate.sh`: validador FR-008 read-only com 10
+    checagens (schema_version, 14 campos obrigatorios, 4 invariantes
+    numericas, status x terminada_em, 5 campos de Decisao, integridade
+    de FK BloqueioHumano -> Decisao, whitelist nao-vazia). Sem
+    auto-correcao (Principio III).
+  - `scripts/state-lock.sh`: subcomandos `acquire`, `release`, `check`,
+    `check-execution-busy`. Lock via `mkdir` atomico em
+    `<state-dir>/.lock/`; locks independentes por projeto-alvo
+    (permite execucoes simultaneas em projetos distintos). TOCTOU
+    residual (CHK072) documentado.
+
+  Dependencia: `jq` (carve-out 1.1.0 da constitution para JSON
+  estruturado). 36 cenarios de teste em `tests/test_state-{rw,validate,lock}.sh`.
+
+- **`cstk install` distribui `commands/` e `agents/` (agente-00C FASE 1.2)**:
+  o tarball de release agora inclui `catalog/commands/` e `catalog/agents/`
+  (espelhos de `global/commands/` e `global/agents/`), e o `cstk install`
+  copia esses `.md` soltos para `~/.claude/commands/` e `~/.claude/agents/`
+  (respectivamente `./.claude/commands/` e `./.claude/agents/` em
+  `--scope project`). Cada kind tem seu proprio manifest dedicado
+  (`<dest>/.cstk-manifest`) com schema identico ao de skills.
+
+  Comportamento: instalacao sempre processa TODOS os `.md` (sem filtro de
+  profile — sao infraestrutura, nao skills); re-install vira "updated";
+  arquivo pre-existente sem entry no manifest e PRESERVADO como third-party
+  (FR-007). Tarballs historicos sem `catalog/commands/` ou
+  `catalog/agents/` continuam validos — ambos os campos sao opcionais.
+
+- **`cstk doctor` varre os 3 kinds (skills, commands, agents)**: drift em
+  commands/agents (EDITED, MISSING, ORPHAN) e reportado com prefixo de
+  kind (ex: `[EDITED]   commands/agente-00c`); skills continuam exibidas
+  sem prefixo (compatibilidade backward). `--fix` remove entries MISSING
+  do manifest correto por kind.
+
+- **Esqueleto do agente-00C** em `global/commands/` (3 slash commands:
+  `/agente-00c`, `/agente-00c-abort`, `/agente-00c-resume`) e
+  `global/agents/` (3 agentes custom: orchestrator, clarify-asker,
+  clarify-answerer). Esqueleto apenas — implementacao operacional ocorre
+  ao longo das Fases 2-9 do backlog em
+  `docs/specs/agente-00c/tasks.md`.
+
+### Changed
+
+- `manifest_default_path` aceita argumento opcional `kind` (default
+  `skills` — backward compatible). Uso: `manifest_default_path global commands`.
+- `hash.sh` exporta `hash_file <arquivo>` (wrapper sobre `sha256_file`)
+  para cobrir artefatos single-file (commands/agents). `hash_dir`
+  inalterado.
+
 ## [3.3.0] - 2026-05-05
 
 ### Added

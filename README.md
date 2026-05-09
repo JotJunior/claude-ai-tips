@@ -219,6 +219,66 @@ em 134 sessões. Projetado para eliminar ciclos de "corrige-revela-corrige" em a
 - Mapeia DTOs, enums e nomes de campo em todas as fronteiras
 - Implementa correções em todas as camadas afetadas de uma vez
 
+## Agente-00C (orquestrador autônomo da pipeline SDD)
+
+> **Status: experimental — esqueleto FASE 1 instalado.** Implementação
+> operacional em andamento. Acompanhe o backlog em
+> [`docs/specs/agente-00c/tasks.md`](./docs/specs/agente-00c/) (44 tarefas,
+> 9 fases).
+
+O `agente-00C` é um **orquestrador autônomo** da pipeline SDD do toolkit:
+você invoca `/agente-00c` com uma descrição curta de POC/MVP e ele conduz
+`briefing → constitution → specify → clarify → plan → checklist →
+create-tasks → execute-task → review-task → review-features` sem
+intervenção humana entre etapas, gerando como entregável-mor um
+**relatório auditável** rico em decisões, bloqueios e lições aprendidas.
+
+### Comandos expostos
+
+| Comando | Função |
+|---------|--------|
+| `/agente-00c <descricao> [--stack ...] [--whitelist ...] [--projeto-alvo-path ...]` | Inicia nova execução |
+| `/agente-00c-resume [--projeto-alvo-path ...] [--resposta-bloqueio <id>:<resp>]` | Retoma após pausa ou schedule |
+| `/agente-00c-abort [--projeto-alvo-path ...]` | Aborto manual |
+
+### Pré-requisitos
+
+- **Claude Code** (Opus 4.x ou Sonnet 4.6 recomendado), **Auto mode**
+  ativo para reduzir interrupções.
+- **`gh` CLI autenticado** (necessário para abertura automática de issue
+  no toolkit em caso de bug em skill global — FR-021).
+- **`git` no PATH** (commit local entre ondas).
+- **Docker local** (apenas se a stack-sugerida usar containers; orquestrador
+  recusa qualquer `docker push`/deploy externo — Princípio V da feature).
+- **Toolkit instalado via `cstk install`** (ver seção Instalação) para que
+  os 3 slash commands e 3 agentes custom estejam disponíveis.
+
+### Limitações conhecidas
+
+- **Schedule limitado a 60-3600s via `ScheduleWakeup`**: continuação
+  cross-sessão usa `ScheduleWakeup`; para pausas longas (>=1h ou
+  bloqueios que só serão respondidos em horas/dias), o relatório
+  parcial sugere criar uma routine manual via `/schedule` que sobrevive
+  laptop suspend/restart (cloud Anthropic). Não há criação automática
+  de routines — operador escolhe cron específico.
+- **Sem observabilidade nativa de tokens consumidos**: o orçamento de
+  sessão usa 3 proxies (tool calls da onda, wallclock, tamanho do estado).
+  Não há sinal direto de quantos tokens foram gastos.
+- **Sem `git push`, sem deploy externo, sem `sudo`**: por constituição da
+  feature, blast radius é confinado ao `--projeto-alvo-path`. Tentativas
+  são bloqueadas com aborto explícito.
+- **Suíte de testes automatizada**: validação ocorre via execuções reais
+  com cenários manuais (`docs/specs/agente-00c/quickstart.md`). Não há
+  unit tests dos agentes custom (decisão consciente do briefing —
+  experimento pessoal).
+- **Schema de estado v1.0.0 sem migração**: se o schema evoluir, será
+  uma feature nova; execuções pendentes precisarão ser concluídas ou
+  abortadas antes de upgrade.
+
+Detalhamento completo (briefing, constitution, spec com 31 FRs, plan,
+research, threat-model, contracts, quickstart) em
+[`docs/specs/agente-00c/`](./docs/specs/agente-00c/).
+
 ## Insights de Uso
 
 A skill `apply-insights` aplica insights de uso ao projeto. Ela lê de
