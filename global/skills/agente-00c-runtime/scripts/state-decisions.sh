@@ -1,0 +1,311 @@
+#!/bin/sh
+# state-decisions.sh — registro de Decisoes (Principio I — Auditabilidade Total).
+#
+# Ref: docs/specs/agente-00c/spec.md FR-010
+#      docs/specs/agente-00c/data-model.md §Decisao
+#      docs/specs/agente-00c/constitution.md §I
+#      docs/specs/agente-00c/tasks.md FASE 3.2
+#
+# Subcomandos:
+#   state-decisions.sh register --state-dir DIR
+#       --agente A --etapa S
+#       --contexto T --opcoes JSON-ARR --escolha STR --justificativa STR
+#       [--score N] [--referencias JSON-ARR] [--artefato-originador STR]
+#       — Valida 5 campos obrigatorios (contexto>=20, opcoes >=1, escolha,
+#         justificativa>=20, agente). Falta = exit 1 (sem auto-correcao).
+#       — Gera id `dec-NNN` sequencial dentro da execucao.
+#       — Linka a `onda_id` da onda corrente (.ondas[-1].id; init = "init").
+#       — Append em .decisoes; persiste via state-rw write (com backup).
+#       — Atualiza metricas_acumuladas.decisoes_total.
+#
+#   state-decisions.sh count --state-dir DIR [--agente A]
+#       — Imprime total de decisoes (filtrado por agente, opcional).
+#
+#   state-decisions.sh next-id --state-dir DIR
+#       — Imprime proximo dec-NNN sem registrar.
+#
+#   state-decisions.sh list --state-dir DIR [--agente A] [--etapa S]
+#       — Lista TSV: id\tonda_id\tagente\tetapa\tescolha
+#
+# Exit codes:
+#   0 sucesso
+#   1 violacao Principio I OU erro generico
+#   2 uso incorreto
+#
+# POSIX sh + jq.
+
+set -eu
+
+_SD_NAME="state-decisions"
+
+_sd_die_usage() {
+  printf '%s: %s\n' "$_SD_NAME" "$1" >&2
+  exit 2
+}
+
+_sd_die() {
+  printf '%s: %s\n' "$_SD_NAME" "$1" >&2
+  exit "${2:-1}"
+}
+
+_sd_require_jq() {
+  if ! command -v jq >/dev/null 2>&1; then
+    _sd_die "jq nao encontrado no PATH (brew install jq | apt install jq)" 1
+  fi
+}
+
+_sd_iso_now() { date -u +%FT%TZ; }
+
+_sd_state_file() { printf '%s/state.json\n' "$1"; }
+
+# _sd_next_dec_id STATE_DIR -> proximo dec-NNN baseado em max(.decisoes[].id)
+_sd_next_dec_id() {
+  _sf=$(_sd_state_file "$1")
+  [ -f "$_sf" ] || _sd_die "next-id: state.json ausente em $1" 1
+  _max=$(jq -r '
+    if (.decisoes // []) | length == 0 then 0
+    else ([.decisoes[].id // ""] | map(sub("^dec-0*"; "") | tonumber? // 0) | max)
+    end' "$_sf" 2>/dev/null) || _max=0
+  _next=$((_max + 1))
+  printf 'dec-%03d\n' "$_next"
+}
+
+# _sd_current_onda_id STATE_DIR -> id da onda corrente (.ondas[-1].id) ou "init"
+_sd_current_onda_id() {
+  _sf=$(_sd_state_file "$1")
+  jq -r '
+    if (.ondas // []) | length > 0 then (.ondas[-1].id // "init")
+    else "init"
+    end' "$_sf" 2>/dev/null
+}
+
+# _sd_atomic_write DST CONTENT_FILE
+_sd_atomic_write() {
+  _dst=$1
+  _src=$2
+  _tmp=$(mktemp -- "${_dst}.XXXXXX") || _sd_die "mktemp falhou" 1
+  cp -- "$_src" "$_tmp" || { rm -f -- "$_tmp"; _sd_die "I/O cp tmp" 1; }
+  mv -f -- "$_tmp" "$_dst" || { rm -f -- "$_tmp"; _sd_die "mv atomico falhou" 1; }
+}
+
+# _sd_update_sha STATE_DIR
+_sd_update_sha() {
+  _sf=$(_sd_state_file "$1")
+  _shf="$1/state.json.sha256"
+  if command -v sha256sum >/dev/null 2>&1; then
+    _h=$(sha256sum -- "$_sf" | awk '{print $1}')
+  else
+    _h=$(shasum -a 256 -- "$_sf" | awk '{print $1}')
+  fi
+  printf '%s\n' "$_h" > "$_shf"
+}
+
+# _sd_backup_current STATE_DIR (mesma semantica de state-rw)
+_sd_backup_current() {
+  _sf=$(_sd_state_file "$1")
+  [ -f "$_sf" ] || return 0
+  _hd="$1/state-history"
+  mkdir -p -- "$_hd" 2>/dev/null || _sd_die "mkdir state-history falhou" 1
+  _curr=$(_sd_current_onda_id "$1") || _curr="init"
+  _ts=$(date -u +%Y%m%dT%H%M%SZ)
+  _bk="$_hd/${_curr}-${_ts}.json"
+  mv -- "$_sf" "$_bk" || _sd_die "backup falhou" 1
+}
+
+# ---------- Subcomandos ----------
+
+_sd_cmd_register() {
+  _sdir=""
+  _ag=""
+  _et=""
+  _ctx=""
+  _ops=""
+  _esc=""
+  _just=""
+  _score="null"
+  _refs="[]"
+  _arto="null"
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --state-dir)            _sdir=$2; shift 2 ;;
+      --agente)               _ag=$2;   shift 2 ;;
+      --etapa)                _et=$2;   shift 2 ;;
+      --contexto)             _ctx=$2;  shift 2 ;;
+      --opcoes)               _ops=$2;  shift 2 ;;
+      --escolha)              _esc=$2;  shift 2 ;;
+      --justificativa)        _just=$2; shift 2 ;;
+      --score)                _score=$2; shift 2 ;;
+      --referencias)          _refs=$2;  shift 2 ;;
+      --artefato-originador)  _arto=$2;  shift 2 ;;
+      *) _sd_die_usage "register: flag desconhecida: $1" ;;
+    esac
+  done
+  [ -n "$_sdir" ] || _sd_die_usage "register: --state-dir obrigatorio"
+  [ -n "$_ag" ]   || _sd_die_usage "register: --agente obrigatorio"
+  [ -n "$_et" ]   || _sd_die_usage "register: --etapa obrigatorio"
+  [ -n "$_ctx" ]  || _sd_die_usage "register: --contexto obrigatorio"
+  [ -n "$_ops" ]  || _sd_die_usage "register: --opcoes obrigatorio (JSON array)"
+  [ -n "$_esc" ]  || _sd_die_usage "register: --escolha obrigatorio"
+  [ -n "$_just" ] || _sd_die_usage "register: --justificativa obrigatorio"
+  _sd_require_jq
+
+  # Validacao Principio I (5 campos): contexto>=20, opcoes >=1 item, escolha
+  # nao-vazia, justificativa>=20, agente nao-vazio. Erros sao "violacao",
+  # nao "uso" — exit 1.
+  if [ "$(printf '%s' "$_ctx" | wc -c | tr -d ' ')" -lt 20 ]; then
+    _sd_die "register: violacao Principio I — contexto < 20 chars" 1
+  fi
+  if [ "$(printf '%s' "$_just" | wc -c | tr -d ' ')" -lt 20 ]; then
+    _sd_die "register: violacao Principio I — justificativa < 20 chars" 1
+  fi
+  if ! printf '%s' "$_ops" | jq -e 'type == "array" and length >= 1' >/dev/null 2>&1; then
+    _sd_die "register: violacao Principio I — opcoes_consideradas precisa ser JSON array com >=1 item" 1
+  fi
+  if ! printf '%s' "$_refs" | jq -e 'type == "array"' >/dev/null 2>&1; then
+    _sd_die "register: --referencias precisa ser JSON array" 2
+  fi
+  # score aceita "null" ou numero 0..3
+  case "$_score" in
+    null) ;;
+    0|1|2|3) ;;
+    *) _sd_die "register: --score deve ser null|0|1|2|3 (recebido $_score)" 2 ;;
+  esac
+
+  _sf=$(_sd_state_file "$_sdir")
+  [ -f "$_sf" ] || _sd_die "register: state.json ausente em $_sdir" 1
+
+  _id=$(_sd_next_dec_id "$_sdir")
+  _onda=$(_sd_current_onda_id "$_sdir")
+  _now=$(_sd_iso_now)
+
+  # Monta a decisao via jq (escape automatico).
+  _new_state=$(mktemp) || _sd_die "mktemp falhou" 1
+  jq \
+    --arg id "$_id" \
+    --arg onda "$_onda" \
+    --arg ts "$_now" \
+    --arg etapa "$_et" \
+    --arg agente "$_ag" \
+    --arg ctx "$_ctx" \
+    --arg esc "$_esc" \
+    --arg just "$_just" \
+    --argjson opcoes "$_ops" \
+    --argjson refs "$_refs" \
+    --argjson score "$_score" \
+    --arg arto "$_arto" \
+    '
+    .decisoes += [{
+      id: $id,
+      onda_id: $onda,
+      timestamp: $ts,
+      etapa: $etapa,
+      agente: $agente,
+      contexto: $ctx,
+      opcoes_consideradas: $opcoes,
+      escolha: $esc,
+      justificativa: $just,
+      score_justificativa: $score,
+      referencias: $refs,
+      artefato_originador: (if $arto == "null" then null else $arto end)
+    }]
+    | .metricas_acumuladas.decisoes_total = ((.metricas_acumuladas.decisoes_total // 0) + 1)
+    ' "$_sf" > "$_new_state" || { rm -f -- "$_new_state"; _sd_die "jq update falhou" 1; }
+
+  _sd_backup_current "$_sdir"
+  _sd_atomic_write "$_sf" "$_new_state"
+  rm -f -- "$_new_state" 2>/dev/null || :
+  _sd_update_sha "$_sdir"
+  printf '%s\n' "$_id"  # stdout: id da decisao registrada
+}
+
+_sd_cmd_count() {
+  _sdir=""
+  _ag=""
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --state-dir) _sdir=$2; shift 2 ;;
+      --agente)    _ag=$2;   shift 2 ;;
+      *) _sd_die_usage "count: flag desconhecida: $1" ;;
+    esac
+  done
+  [ -n "$_sdir" ] || _sd_die_usage "count: --state-dir obrigatorio"
+  _sd_require_jq
+  _sf=$(_sd_state_file "$_sdir")
+  [ -f "$_sf" ] || _sd_die "count: state.json ausente" 1
+  if [ -n "$_ag" ]; then
+    jq --arg a "$_ag" '.decisoes // [] | map(select(.agente == $a)) | length' "$_sf"
+  else
+    jq '.decisoes // [] | length' "$_sf"
+  fi
+}
+
+_sd_cmd_next_id() {
+  _sdir=""
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --state-dir) _sdir=$2; shift 2 ;;
+      *) _sd_die_usage "next-id: flag desconhecida: $1" ;;
+    esac
+  done
+  [ -n "$_sdir" ] || _sd_die_usage "next-id: --state-dir obrigatorio"
+  _sd_require_jq
+  _sd_next_dec_id "$_sdir"
+}
+
+_sd_cmd_list() {
+  _sdir=""
+  _ag=""
+  _et=""
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --state-dir) _sdir=$2; shift 2 ;;
+      --agente)    _ag=$2;   shift 2 ;;
+      --etapa)     _et=$2;   shift 2 ;;
+      *) _sd_die_usage "list: flag desconhecida: $1" ;;
+    esac
+  done
+  [ -n "$_sdir" ] || _sd_die_usage "list: --state-dir obrigatorio"
+  _sd_require_jq
+  _sf=$(_sd_state_file "$_sdir")
+  [ -f "$_sf" ] || _sd_die "list: state.json ausente" 1
+  jq -r --arg a "$_ag" --arg e "$_et" '
+    .decisoes // []
+    | map(select((($a == "") or (.agente == $a)) and (($e == "") or (.etapa == $e))))
+    | .[]
+    | [.id, .onda_id, .agente, .etapa, .escolha] | @tsv
+  ' "$_sf"
+}
+
+# ---------- Dispatch ----------
+
+if [ "$#" -lt 1 ]; then
+  cat >&2 <<'HELP'
+state-decisions.sh — registra Decisoes auditaveis (Principio I).
+
+USO:
+  state-decisions.sh register --state-dir DIR --agente A --etapa S \
+    --contexto T --opcoes JSON-ARR --escolha STR --justificativa STR \
+    [--score N] [--referencias JSON-ARR] [--artefato-originador STR]
+  state-decisions.sh count --state-dir DIR [--agente A]
+  state-decisions.sh next-id --state-dir DIR
+  state-decisions.sh list --state-dir DIR [--agente A] [--etapa S]
+
+EXIT:
+  0 sucesso
+  1 violacao Principio I OU erro generico
+  2 uso incorreto
+HELP
+  exit 2
+fi
+
+_SD_SUBCMD=$1
+shift
+
+case "$_SD_SUBCMD" in
+  register)        _sd_cmd_register "$@" ;;
+  count)           _sd_cmd_count "$@" ;;
+  next-id)         _sd_cmd_next_id "$@" ;;
+  list)            _sd_cmd_list "$@" ;;
+  -h|--help|help)  exec sh -c "exit 0" ;;
+  *) _sd_die_usage "subcomando desconhecido: $_SD_SUBCMD" ;;
+esac
