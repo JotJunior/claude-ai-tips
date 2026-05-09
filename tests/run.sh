@@ -155,6 +155,10 @@ _is_internal_test() {
     test_smoke.sh|test_harness.sh) return 0 ;;
     test_cstk-main.sh|test_bootstrap.sh|test_build-release.sh|test_hooks-integration.sh|test_quickstart-e2e.sh)
       return 0 ;;
+    test_install-extra-kinds.sh)
+      # Cobre interacao install.sh + manifest.sh + doctor.sh para os kinds
+      # commands/agents (nao mapeia 1:1 para um unico script sob a convencao).
+      return 0 ;;
     *) return 1 ;;
   esac
 }

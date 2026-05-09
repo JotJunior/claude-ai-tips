@@ -31,6 +31,8 @@
 #   │   ├── VERSION
 #   │   ├── profiles.txt
 #   │   ├── skills/        (espelho de global/skills/)
+#   │   ├── commands/      (espelho de global/commands/ — opcional, .md soltos)
+#   │   ├── agents/        (espelho de global/agents/   — opcional, .md soltos)
 #   │   └── language/      (espelho de language-related/)
 #   └── CHANGELOG.md
 #
@@ -164,6 +166,35 @@ for _skdir in "$REPO_ROOT/global/skills/"*/; do
   _skname=$(basename -- "${_skdir%/}")
   cp -R -- "${_skdir%/}" "$STAGE_ROOT/catalog/skills/$_skname"
 done
+
+# ==== 2b. catalog/commands/ (mirror de global/commands/, opcional) ====
+# Commands sao .md soltos (1 arquivo = 1 command). Diretorio so e criado se
+# global/commands/ tiver pelo menos 1 .md — manter o tarball minimal quando o
+# toolkit nao expoe commands.
+if [ -d "$REPO_ROOT/global/commands" ]; then
+  _has_cmd=0
+  for _f in "$REPO_ROOT/global/commands/"*.md; do
+    [ -f "$_f" ] || continue
+    if [ "$_has_cmd" = 0 ]; then
+      mkdir -p -- "$STAGE_ROOT/catalog/commands"
+      _has_cmd=1
+    fi
+    cp -- "$_f" "$STAGE_ROOT/catalog/commands/"
+  done
+fi
+
+# ==== 2c. catalog/agents/ (mirror de global/agents/, opcional) ====
+if [ -d "$REPO_ROOT/global/agents" ]; then
+  _has_agent=0
+  for _f in "$REPO_ROOT/global/agents/"*.md; do
+    [ -f "$_f" ] || continue
+    if [ "$_has_agent" = 0 ]; then
+      mkdir -p -- "$STAGE_ROOT/catalog/agents"
+      _has_agent=1
+    fi
+    cp -- "$_f" "$STAGE_ROOT/catalog/agents/"
+  done
+fi
 
 # ==== 3. catalog/language/ (mirror de language-related/) ====
 mkdir -p -- "$STAGE_ROOT/catalog/language"

@@ -206,6 +206,11 @@ install_main() {
   # FASE 7.2: integracao de hooks language-* (FR-009b/c/d)
   _install_apply_hooks_if_needed
 
+  # agente-00c FASE 1.2: distribui catalog/commands/ e catalog/agents/ alem
+  # de skills. Sao .md soltos (1 arquivo = 1 artefato), instalados sempre
+  # (sem filtro de profile) porque sao infraestrutura global do toolkit.
+  _install_apply_extra_kinds
+
   _install_emit_summary
   return 0
 }
@@ -235,6 +240,12 @@ _install_reset_state() {
   _install_count_updated=0
   _install_count_preserved=0
   _install_count_missing=0
+  _install_count_commands_installed=0
+  _install_count_commands_updated=0
+  _install_count_commands_preserved=0
+  _install_count_agents_installed=0
+  _install_count_agents_updated=0
+  _install_count_agents_preserved=0
 }
 
 _install_cleanup() {
@@ -675,6 +686,121 @@ _install_apply_hooks_if_needed() {
   return 0
 }
 
+# _install_apply_extra_kinds: instala commands e agents (1 .md = 1 artefato).
+#
+# Sempre instala TODOS os .md em catalog/<kind>/ — sem filtro de profile,
+# porque commands e agents sao infraestrutura global do toolkit, nao skills.
+# 3 ramos por arquivo (espelha _install_process_skill):
+#   1. nao existe em disco        -> install fresh
+#   2. existe + esta no manifest  -> overwrite (update)
+#   3. existe + nao no manifest   -> preserve (third-party)
+_install_apply_extra_kinds() {
+  for _iaek_kind in commands agents; do
+    _install_apply_kind "$_iaek_kind"
+  done
+}
+
+# _install_apply_kind: itera catalog/<kind>/*.md e processa cada um.
+#
+# Usa manifest dedicado por kind (~/.claude/<kind>/.cstk-manifest) — schema
+# identico ao de skills, reaproveitando manifest.sh sem alteracao.
+_install_apply_kind() {
+  _iak_kind=$1
+  _iak_src_dir="$_install_catalog_dir/$_iak_kind"
+  if [ ! -d "$_iak_src_dir" ]; then
+    return 0
+  fi
+
+  # dest = scope_dir/../<kind>  (ex: ~/.claude/skills/.. = ~/.claude/, depois /commands)
+  case "$_install_scope" in
+    global)  _iak_dst_dir="${HOME:?HOME nao setado}/.claude/$_iak_kind" ;;
+    project) _iak_dst_dir="./.claude/$_iak_kind" ;;
+    *)
+      log_error "install: scope invalido em apply_kind (bug): $_install_scope"
+      return 1
+      ;;
+  esac
+
+  _iak_manifest=$(manifest_default_path "$_install_scope" "$_iak_kind") || {
+    log_error "install: manifest_default_path falhou para kind=$_iak_kind"
+    return 1
+  }
+
+  # Itera .md soltos. Sem .md no catalog -> nada a fazer (silencio).
+  _iak_has_any=0
+  for _iak_src in "$_iak_src_dir"/*.md; do
+    [ -f "$_iak_src" ] || continue
+    _iak_has_any=1
+    _iak_name=$(basename -- "$_iak_src" .md)
+    _iak_dst="$_iak_dst_dir/$_iak_name.md"
+
+    # Dry-run: reporta plano sem escrever
+    if [ "$_install_dry_run" = 1 ]; then
+      if [ ! -e "$_iak_dst" ]; then
+        log_info "[dry-run] $_iak_kind install: $_iak_name"
+        _install_bump_extra_counter "$_iak_kind" install
+      elif lookup_entry "$_iak_manifest" "$_iak_name" >/dev/null 2>&1; then
+        log_info "[dry-run] $_iak_kind update: $_iak_name"
+        _install_bump_extra_counter "$_iak_kind" update
+      else
+        log_warn "[dry-run] $_iak_kind preserve (third-party): $_iak_name"
+        _install_bump_extra_counter "$_iak_kind" preserved
+      fi
+      continue
+    fi
+
+    # Cria dir destino sob demanda — antes de qualquer escrita.
+    if ! mkdir -p -- "$_iak_dst_dir" 2>/dev/null; then
+      log_error "install: nao foi possivel criar $_iak_dst_dir"
+      return 1
+    fi
+
+    # Ramo 3: existe e nao esta no manifest -> preserve
+    if [ -e "$_iak_dst" ] && ! lookup_entry "$_iak_manifest" "$_iak_name" >/dev/null 2>&1; then
+      log_warn "install: preservando $_iak_kind nao-manifestado (third-party): $_iak_name"
+      _install_bump_extra_counter "$_iak_kind" preserved
+      continue
+    fi
+
+    # Ramo 1 ou 2: copia + manifest upsert
+    _iak_action=install
+    [ -e "$_iak_dst" ] && _iak_action=update
+    if ! cp -- "$_iak_src" "$_iak_dst"; then
+      log_error "install: cp falhou para $_iak_kind/$_iak_name"
+      return 1
+    fi
+    _iak_sha=$(hash_file "$_iak_dst") || {
+      log_error "install: hash_file falhou para $_iak_kind/$_iak_name"
+      return 1
+    }
+    if ! upsert_entry "$_iak_manifest" "$_iak_name" \
+                      "$_install_release_version" "$_iak_sha" "$_install_now"; then
+      log_error "install: upsert manifest falhou para $_iak_kind/$_iak_name"
+      return 1
+    fi
+    _install_bump_extra_counter "$_iak_kind" "$_iak_action"
+  done
+
+  # Sem nenhum .md em catalog/<kind>/ -> retorno limpo, sem barulho.
+  if [ "$_iak_has_any" = 0 ]; then
+    return 0
+  fi
+  return 0
+}
+
+# _install_bump_extra_counter <kind> <action>
+# Action: install | update | preserved
+_install_bump_extra_counter() {
+  case "$1.$2" in
+    commands.install)   _install_count_commands_installed=$((_install_count_commands_installed + 1)) ;;
+    commands.update)    _install_count_commands_updated=$((_install_count_commands_updated + 1)) ;;
+    commands.preserved) _install_count_commands_preserved=$((_install_count_commands_preserved + 1)) ;;
+    agents.install)     _install_count_agents_installed=$((_install_count_agents_installed + 1)) ;;
+    agents.update)      _install_count_agents_updated=$((_install_count_agents_updated + 1)) ;;
+    agents.preserved)   _install_count_agents_preserved=$((_install_count_agents_preserved + 1)) ;;
+  esac
+}
+
 # _install_emit_summary: bloco em stderr conforme contract §install.
 _install_emit_summary() {
   _ies_prefix=""
@@ -691,6 +817,20 @@ _install_emit_summary() {
     printf '  toolkit version: %s\n' "${_install_release_version:-?}"
     if [ -n "$_install_hook_state" ]; then
       printf '  hooks: %s\n' "$_install_hook_state"
+    fi
+    _ies_cmd_total=$((_install_count_commands_installed + _install_count_commands_updated + _install_count_commands_preserved))
+    if [ "$_ies_cmd_total" -gt 0 ]; then
+      printf '  commands: installed=%d updated=%d preserved=%d\n' \
+        "$_install_count_commands_installed" \
+        "$_install_count_commands_updated" \
+        "$_install_count_commands_preserved"
+    fi
+    _ies_ag_total=$((_install_count_agents_installed + _install_count_agents_updated + _install_count_agents_preserved))
+    if [ "$_ies_ag_total" -gt 0 ]; then
+      printf '  agents: installed=%d updated=%d preserved=%d\n' \
+        "$_install_count_agents_installed" \
+        "$_install_count_agents_updated" \
+        "$_install_count_agents_preserved"
     fi
   } >&2
 }

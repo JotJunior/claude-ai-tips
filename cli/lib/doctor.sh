@@ -78,41 +78,13 @@ doctor_main() {
     return 0
   fi
 
-  if ! _doctor_resolve_scope_dir; then
-    return 1
-  fi
-
-  # Walk manifest entries primeiro
-  if [ -f "$_doctor_manifest_path" ]; then
-    _doctor_old_ifs=$IFS
-    IFS='
-'
-    for _line in $(read_manifest "$_doctor_manifest_path"); do
-      IFS=$_doctor_old_ifs
-      _skill=$(printf '%s' "$_line" | awk -F'\t' '{print $1}')
-      _stored_sha=$(printf '%s' "$_line" | awk -F'\t' '{print $3}')
-      _doctor_classify_entry "$_skill" "$_stored_sha"
-      IFS='
-'
-    done
-    IFS=$_doctor_old_ifs
-  fi
-
-  # Walk disk dirs em scope_dir/ — quem nao tem entry vira ORPHAN
-  if [ -d "$_doctor_scope_dir" ]; then
-    for _d in "$_doctor_scope_dir"/*; do
-      [ -d "$_d" ] || continue
-      _name=$(basename -- "$_d")
-      # Skipa lock dirs e arquivos de manifest.
-      case "$_name" in
-        .cstk.lock|.cstk-manifest|.*) continue ;;
-      esac
-      # Se nao listado no manifest -> ORPHAN
-      if ! _doctor_in_seen "$_name"; then
-        _doctor_record "$_name" ORPHAN ""
-      fi
-    done
-  fi
+  # Varre todos os 3 kinds. Skills usa hash_dir (artefato = pasta);
+  # commands/agents usam hash_file (artefato = .md solto).
+  for _doctor_current_kind in skills commands agents; do
+    if ! _doctor_walk_kind "$_doctor_current_kind"; then
+      return 1
+    fi
+  done
 
   # Aplica --fix se solicitado, antes do report final.
   if [ "$_doctor_fix" = 1 ]; then
@@ -126,6 +98,66 @@ doctor_main() {
   fi
   if [ "$_doctor_count_drift" -gt 0 ]; then
     return 1
+  fi
+  return 0
+}
+
+# _doctor_walk_kind <kind> — varre manifest+disco para um kind especifico.
+# Resolve scope_dir + manifest_path do kind, classifica entries, detecta
+# ORPHAN. Tolerante a kind sem instalacao (manifest e dir ausentes).
+_doctor_walk_kind() {
+  _dwk_kind=$1
+  case "$_doctor_scope" in
+    global)  _doctor_scope_dir="${HOME:?HOME nao setado}/.claude/$_dwk_kind" ;;
+    project) _doctor_scope_dir="./.claude/$_dwk_kind" ;;
+    *) log_error "doctor: scope invalido"; return 1 ;;
+  esac
+  _doctor_manifest_path=$(manifest_default_path "$_doctor_scope" "$_dwk_kind") || return 1
+  _doctor_seen=""
+
+  # Walk manifest entries primeiro
+  if [ -f "$_doctor_manifest_path" ]; then
+    _doctor_old_ifs=$IFS
+    IFS='
+'
+    for _line in $(read_manifest "$_doctor_manifest_path"); do
+      IFS=$_doctor_old_ifs
+      _skill=$(printf '%s' "$_line" | awk -F'\t' '{print $1}')
+      _stored_sha=$(printf '%s' "$_line" | awk -F'\t' '{print $3}')
+      _doctor_classify_entry "$_skill" "$_stored_sha" "$_dwk_kind"
+      IFS='
+'
+    done
+    IFS=$_doctor_old_ifs
+  fi
+
+  # Walk disk em scope_dir/ — quem nao tem entry vira ORPHAN
+  if [ -d "$_doctor_scope_dir" ]; then
+    case "$_dwk_kind" in
+      skills)
+        # Skills sao diretorios filho.
+        for _d in "$_doctor_scope_dir"/*; do
+          [ -d "$_d" ] || continue
+          _name=$(basename -- "$_d")
+          case "$_name" in
+            .cstk.lock|.cstk-manifest|.*) continue ;;
+          esac
+          if ! _doctor_in_seen "$_name"; then
+            _doctor_record "$_name" ORPHAN "" "$_dwk_kind"
+          fi
+        done
+        ;;
+      commands|agents)
+        # Commands e agents sao .md soltos. Nome sem extensao = identidade.
+        for _f in "$_doctor_scope_dir"/*.md; do
+          [ -f "$_f" ] || continue
+          _name=$(basename -- "$_f" .md)
+          if ! _doctor_in_seen "$_name"; then
+            _doctor_record "$_name" ORPHAN "" "$_dwk_kind"
+          fi
+        done
+        ;;
+    esac
   fi
   return 0
 }
@@ -174,33 +206,42 @@ _doctor_parse_args() {
   return 0
 }
 
-_doctor_resolve_scope_dir() {
-  case "$_doctor_scope" in
-    global) _doctor_scope_dir="${HOME:?HOME nao setado}/.claude/skills" ;;
-    project) _doctor_scope_dir="./.claude/skills" ;;
-    *) log_error "doctor: scope invalido"; return 1 ;;
-  esac
-  _doctor_manifest_path=$(manifest_default_path "$_doctor_scope") || return 1
-  return 0
-}
-
-# _doctor_classify_entry: classifica uma entry do manifest (skill, stored_sha).
+# _doctor_classify_entry <name> <stored_sha> <kind>
+# Para kind=skills usa hash_dir; commands/agents usam hash_file no .md correspondente.
 _doctor_classify_entry() {
   _ce_skill=$1
   _ce_stored=$2
+  _ce_kind=$3
   _doctor_seen="$_doctor_seen
 $_ce_skill"
 
-  _ce_dir="$_doctor_scope_dir/$_ce_skill"
-  if [ ! -d "$_ce_dir" ]; then
-    _doctor_record "$_ce_skill" MISSING ""
-    return 0
-  fi
-  _ce_hash=$(hash_dir "$_ce_dir" 2>/dev/null) || _ce_hash=""
+  case "$_ce_kind" in
+    skills)
+      _ce_target="$_doctor_scope_dir/$_ce_skill"
+      if [ ! -d "$_ce_target" ]; then
+        _doctor_record "$_ce_skill" MISSING "" "$_ce_kind"
+        return 0
+      fi
+      _ce_hash=$(hash_dir "$_ce_target" 2>/dev/null) || _ce_hash=""
+      ;;
+    commands|agents)
+      _ce_target="$_doctor_scope_dir/$_ce_skill.md"
+      if [ ! -f "$_ce_target" ]; then
+        _doctor_record "$_ce_skill" MISSING "" "$_ce_kind"
+        return 0
+      fi
+      _ce_hash=$(hash_file "$_ce_target" 2>/dev/null) || _ce_hash=""
+      ;;
+    *)
+      log_error "doctor: kind invalido em classify_entry: $_ce_kind"
+      return 1
+      ;;
+  esac
+
   if [ "$_ce_hash" = "$_ce_stored" ]; then
-    _doctor_record "$_ce_skill" OK "$_ce_hash"
+    _doctor_record "$_ce_skill" OK "$_ce_hash" "$_ce_kind"
   else
-    _doctor_record "$_ce_skill" EDITED "$_ce_hash"
+    _doctor_record "$_ce_skill" EDITED "$_ce_hash" "$_ce_kind"
   fi
 }
 
@@ -212,13 +253,14 @@ $1"*) return 0 ;;
   return 1
 }
 
-# _doctor_record: anota status; mantem em $_doctor_findings (status\tskill\tdetail).
+# _doctor_record: anota status; mantem em $_doctor_findings (status\tskill\tdetail\tkind).
 _doctor_record() {
   _r_skill=$1
   _r_status=$2
   _r_detail=$3
+  _r_kind=${4:-skills}
   _doctor_findings="$_doctor_findings
-$_r_status	$_r_skill	$_r_detail"
+$_r_status	$_r_skill	$_r_detail	$_r_kind"
   case "$_r_status" in
     OK) _doctor_count_ok=$((_doctor_count_ok + 1)) ;;
     EDITED)
@@ -249,20 +291,29 @@ _doctor_apply_fix() {
     _status=$(printf '%s' "$_f" | awk -F'\t' '{print $1}')
     _skill=$(printf '%s' "$_f" | awk -F'\t' '{print $2}')
     _detail=$(printf '%s' "$_f" | awk -F'\t' '{print $3}')
+    _kind=$(printf '%s' "$_f" | awk -F'\t' '{print $4}')
+    [ -n "$_kind" ] || _kind=skills
+    _mf=$(manifest_default_path "$_doctor_scope" "$_kind") || continue
+    # Para skills, mantem mensagem historica (sem prefixo de kind) para
+    # compatibilidade backward com testes/usuarios de versoes anteriores.
+    _label=$_skill
+    case "$_kind" in
+      commands|agents) _label="$_kind/$_skill" ;;
+    esac
     case "$_status" in
       MISSING)
-        if ! remove_entry "$_doctor_manifest_path" "$_skill"; then
-          log_error "doctor --fix: remove_entry falhou para $_skill"
+        if ! remove_entry "$_mf" "$_skill"; then
+          log_error "doctor --fix: remove_entry falhou para $_label"
         else
-          log_info "doctor --fix: removida entry MISSING $_skill"
+          log_info "doctor --fix: removida entry MISSING $_label"
         fi
         ;;
       OK)
         # Refresh: reusa entry atual mas com hash recalculado (no-op se nao mudou)
-        _entry=$(lookup_entry "$_doctor_manifest_path" "$_skill") || continue
+        _entry=$(lookup_entry "$_mf" "$_skill") || continue
         _ver=$(printf '%s' "$_entry" | awk -F'\t' '{print $2}')
         _ts=$(printf '%s' "$_entry" | awk -F'\t' '{print $4}')
-        upsert_entry "$_doctor_manifest_path" "$_skill" "$_ver" "$_detail" "$_ts" 2>/dev/null || :
+        upsert_entry "$_mf" "$_skill" "$_ver" "$_detail" "$_ts" 2>/dev/null || :
         ;;
     esac
     IFS='
@@ -282,11 +333,18 @@ _doctor_emit_report() {
         IFS=$_emit_old_ifs
         _status=$(printf '%s' "$_f" | awk -F'\t' '{print $1}')
         _skill=$(printf '%s' "$_f" | awk -F'\t' '{print $2}')
+        _kind=$(printf '%s' "$_f" | awk -F'\t' '{print $4}')
+        [ -n "$_kind" ] || _kind=skills
+        # Mostra prefixo de kind so para nao-skills, p/ nao alterar saida historica.
+        _label=$_skill
+        case "$_kind" in
+          commands|agents) _label="$_kind/$_skill" ;;
+        esac
         case "$_status" in
-          OK)      printf '  [OK]       %s\n' "$_skill" ;;
-          EDITED)  printf '  [EDITED]   %s    local edits detected\n' "$_skill" ;;
-          MISSING) printf '  [MISSING]  %s    in manifest, not on disk\n' "$_skill" ;;
-          ORPHAN)  printf '  [ORPHAN]   %s    on disk, not in manifest (third-party)\n' "$_skill" ;;
+          OK)      printf '  [OK]       %s\n' "$_label" ;;
+          EDITED)  printf '  [EDITED]   %s    local edits detected\n' "$_label" ;;
+          MISSING) printf '  [MISSING]  %s    in manifest, not on disk\n' "$_label" ;;
+          ORPHAN)  printf '  [ORPHAN]   %s    on disk, not in manifest (third-party)\n' "$_label" ;;
         esac
         IFS='
 '

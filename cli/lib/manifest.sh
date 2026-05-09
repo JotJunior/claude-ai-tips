@@ -5,12 +5,18 @@
 #   linha 2:  # schema: <skill-name>\t<toolkit-version>\t<source-sha256>\t<installed-at-iso>
 #   linha 3+: <skill>\t<version>\t<sha256>\t<iso-ts>   (uma por skill instalada)
 #
-# Localizacao por escopo:
-#   global  = ~/.claude/skills/.cstk-manifest
-#   project = ./.claude/skills/.cstk-manifest  (relativo ao CWD)
+# Localizacao por escopo (e tipo de artefato — `kind`):
+#   global  + skills   = ~/.claude/skills/.cstk-manifest
+#   global  + commands = ~/.claude/commands/.cstk-manifest
+#   global  + agents   = ~/.claude/agents/.cstk-manifest
+#   project + skills   = ./.claude/skills/.cstk-manifest  (relativo ao CWD)
+#   project + commands = ./.claude/commands/.cstk-manifest
+#   project + agents   = ./.claude/agents/.cstk-manifest
 #
 # Funcoes exportadas:
-#   manifest_default_path <scope>      — caminho default para "global" ou "project"
+#   manifest_default_path <scope> [<kind>]
+#                                       — caminho default; kind default = skills
+#                                         (backward compatible)
 #   detect_schema_version <path>       — imprime "v1" ou aborta com erro
 #   read_manifest <path>               — emite linhas data (sem comentarios)
 #   write_manifest <path>              — le TSV em stdin, escreve atomicamente
@@ -38,13 +44,21 @@ _CSTK_MANIFEST_HEADER_V1='# cstk manifest v1'
 _CSTK_MANIFEST_SCHEMA_V1='# schema: <skill-name>\t<toolkit-version>\t<source-sha256>\t<installed-at-iso>'
 
 manifest_default_path() {
-  if [ "$#" -ne 1 ]; then
-    printf 'manifest: manifest_default_path espera 1 argumento (scope)\n' >&2
+  if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
+    printf 'manifest: manifest_default_path espera 1-2 argumentos (scope [kind])\n' >&2
     return 2
   fi
+  _manifest_kind=${2:-skills}
+  case "$_manifest_kind" in
+    skills|commands|agents) ;;
+    *)
+      printf 'manifest: kind invalido: %s (esperado skills|commands|agents)\n' "$_manifest_kind" >&2
+      return 2
+      ;;
+  esac
   case "$1" in
-    global)  printf '%s/.claude/skills/.cstk-manifest\n' "${HOME:?HOME nao setado}" ;;
-    project) printf '%s\n' "./.claude/skills/.cstk-manifest" ;;
+    global)  printf '%s/.claude/%s/.cstk-manifest\n' "${HOME:?HOME nao setado}" "$_manifest_kind" ;;
+    project) printf './.claude/%s/.cstk-manifest\n' "$_manifest_kind" ;;
     *)
       printf 'manifest: scope invalido: %s (esperado global|project)\n' "$1" >&2
       return 2

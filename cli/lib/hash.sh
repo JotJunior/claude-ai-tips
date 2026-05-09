@@ -1,7 +1,8 @@
 # hash.sh — hash determinista de diretorio via manifest canonico ordenado.
 #
-# Funcao exportada:
-#   hash_dir <dir>   — imprime SHA-256 de um manifest ordenado do conteudo
+# Funcoes exportadas:
+#   hash_dir  <dir>   — imprime SHA-256 de um manifest ordenado do conteudo
+#   hash_file <file>  — imprime SHA-256 do arquivo (wrapper sobre sha256_file)
 #
 # Estrategia (portavel mac + linux):
 #   1. Lista TODOS os arquivos regulares sob <dir> via find -type f
@@ -28,6 +29,18 @@ _CSTK_HASH_LOADED=1
 
 # shellcheck source=/dev/null
 . "${CSTK_LIB:?CSTK_LIB must be set}/compat.sh"
+
+hash_file() {
+  if [ "$#" -ne 1 ]; then
+    printf 'hash: hash_file espera 1 argumento (arquivo)\n' >&2
+    return 2
+  fi
+  if [ ! -f "$1" ]; then
+    printf 'hash: arquivo nao existe: %s\n' "$1" >&2
+    return 1
+  fi
+  sha256_file "$1"
+}
 
 hash_dir() {
   # POSIX sh NAO tem local vars — prefixo _hash_ para evitar colisao.
