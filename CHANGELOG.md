@@ -7,6 +7,8 @@ este projeto adere a [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ## [Unreleased]
 
+## [3.4.0] - 2026-05-09
+
 ### Changed
 
 - **`/agente-00c` faz warm-up de permissoes em batch ANTES de spawnar
