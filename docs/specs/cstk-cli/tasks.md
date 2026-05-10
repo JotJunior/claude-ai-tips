@@ -540,7 +540,17 @@ Ref: `spec.md` FR-016f, FR-016g, SC-008.
     `chore(release): v3.5.0`. MINOR bump (3.4.0 -> 3.5.0); FASE 12 e
     adicao backward-compatible. Push da tag pendente.
 - [ ] 12.7.2 Validar artefatos do release no GitHub (workflow `release.yml` ja cobre)
-- [ ] 12.7.3 Smoke manual em maquina limpa: `curl ... | sh` -> `cstk install` -> `cstk 00c ./test-poc` -> verificar que claude inicia com slash command montada (SC-008)
+- [x] 12.7.3 Smoke manual em maquina limpa: `curl ... | sh` -> `cstk install` -> `cstk 00c ./test-poc` -> verificar que claude inicia com slash command montada (SC-008)
+  → Resolvido via `tests/docker/` em container Ubuntu 24.04 limpo
+    (`tests/docker/run-smoke.sh 3.5.0`): 24/24 assertions PASS cobrindo
+    bootstrap one-liner, cstk install --profile all (commands + agents +
+    runtime skill), doctor sem drift, cstk 00c --help, validacoes
+    (arg vazio/zona proibida/sem TTY), e happy path com mock claude
+    validando argv completa (slash command + stack JSON com aspas
+    duplas + whitelist absoluta + projeto-alvo-path absoluto + lock
+    liberado antes do exec + whitelist chmod 600). Smoke com claude
+    REAL (nao mock) ainda pendente — requer API key + ambiente
+    autenticado; pode ser feito apos push da tag em maquina pessoal.
 
 ## Resumo Quantitativo
 

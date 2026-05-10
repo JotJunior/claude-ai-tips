@@ -1,0 +1,43 @@
+# Dockerfile.smoke — ambiente clean para smoke test do cstk + cstk 00c.
+#
+# Objetivo:
+#   - Validar SC-005 (bootstrap em <5min em maquina limpa)
+#   - Validar SC-008 (cstk 00c spawna claude com slash command montada)
+#
+# Imagem minimal: ubuntu:24.04 + jq + git + ca-certificates + curl.
+# claude CLI nao e instalado — usamos mock que loga argv.
+
+FROM ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update -y \
+ && apt-get install -y --no-install-recommends \
+    bash \
+    ca-certificates \
+    coreutils \
+    curl \
+    findutils \
+    git \
+    grep \
+    jq \
+    sed \
+    tar \
+ && rm -rf /var/lib/apt/lists/*
+
+# Cria usuario nao-root (operador tipico)
+RUN useradd -m -s /bin/bash cstkuser
+USER cstkuser
+WORKDIR /home/cstkuser
+
+# install.sh checa $HOME/.local/bin no PATH.
+ENV PATH=/home/cstkuser/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ENV HOME=/home/cstkuser
+
+# Mount points (preenchidos via -v no docker run):
+#   /fixtures/cstk-3.5.0.tar.gz       — tarball local da release
+#   /fixtures/cstk-3.5.0.tar.gz.sha256 — checksum
+#   /fixtures/install.sh               — bootstrap one-liner
+#   /smoke/smoke.sh                    — script de teste
+VOLUME ["/fixtures", "/smoke"]
+
+CMD ["/smoke/smoke.sh"]
