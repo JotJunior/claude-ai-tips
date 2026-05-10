@@ -434,6 +434,7 @@ flowchart TD
     F9[FASE 9 - Release Pipeline]
     F10[FASE 10 - Testes integracao]
     F11[FASE 11 - Docs + 1a Release]
+    F12[FASE 12 - cstk 00c bootstrap]
 
     F0 --> F1
     F1 --> F2
@@ -450,12 +451,91 @@ flowchart TD
     F7 --> F10
     F8 --> F10
     F10 --> F11
+    F11 --> F12
 ```
 
 Observacoes:
 - F0 e curta (governanca); pode rodar em paralelo com inicio de F1
 - F9 (release pipeline) pode comecar em paralelo apos F3 ser funcional; so bloqueia F10 (testes precisam das fixtures)
 - F4, F5, F6, F7, F8 sao paralelizaveis entre si apos F3
+- F12 (`cstk 00c`) depende de F11 (1a release) porque o subcomando assume CLI publicado e instalavel; tambem depende implicitamente da feature `agente-00c` (em `docs/specs/agente-00c/`) que ja foi entregue separadamente. Pode comecar antes de F11 fechar se a integracao com `agente-00c.md` ja esta validada localmente
+
+## FASE 12 - Subcomando `cstk 00c <path>` (bootstrap interativo do agente-00C)
+
+Ref: `spec.md` §US-5 + FR-016..FR-016g + SC-008/009.
+
+**Objetivo**: implementar `cstk 00c <path>` que cria projeto-alvo, coleta parametros do
+agente-00C via prompts e invoca `claude` ja com `/agente-00c <args>` montado, eliminando
+a friccao de `mkdir`/`cd` + memorizar a sintaxe da slash command.
+
+**Sub-features** (criticidade entre parenteses):
+
+### 12.1 Dispatcher + path validation `[C]`
+
+Ref: `spec.md` FR-016, FR-016a, FR-016b, FR-016h, SC-009.
+
+- [x] 12.1.1 Adicionar `00c` ao dispatcher em `cli/cstk` (case statement); rotear para `cli/lib/00c-bootstrap.sh::00c_bootstrap_main`
+- [x] 12.1.2 Criar `cli/lib/00c-bootstrap.sh` com funcao publica `00c_bootstrap_main`; helpers privados com prefixo `_00c_`
+- [x] 12.1.3 Helper `_00c_validate_path` (plan FASE 12 Project Structure): validar arg posicional `<path>` — rejeitar vazio (exit 2), rejeitar componentes `..` (path traversal, exit 2), rejeitar zonas de sistema (`/`, `/etc`, `/usr`, `/var`, `/bin`, `/sbin`, `/boot`, `/proc`, `/sys`, `~`, `~/.ssh`, `~/.gnupg`, `~/.aws`, `~/.config/claude`) via `_00c_realpath` (12.1.5) + match de prefixo (cobre tambem o caso `path` ainda nao existe)
+- [x] 12.1.4 Helper `_00c_check_tty` (plan FASE 12 Project Structure): se `[ ! -t 0 ]` ou `[ ! -t 1 ]`, exit 2 com mensagem clara ("`cstk 00c` requer TTY interativo — fluxo nao automatizavel via pipe"); aceitar override implicito apenas em CI dos proprios testes via `CSTK_00C_FORCE_TTY=1` (documentado como hook de teste)
+- [x] 12.1.5 Helper `_00c_realpath` portavel (research.md Decision 12): tentar `realpath -m` (GNU coreutils); fallback POSIX via `cd "$(dirname "$p")" && printf '%s/%s\n' "$(pwd -P)" "$(basename "$p")"`. Funciona em macOS BSD (sem flag `-m`) e Linux. Usado por 12.1.3 (path validation) antes do match contra zonas proibidas
+- [x] 12.1.6 Tests `tests/cstk/test_00c-bootstrap.sh`: arg vazio, `..` no meio do path, path absoluto em zona proibida, symlink resolvendo para zona proibida, dispatcher rotea corretamente, ausencia de TTY -> exit 2; mock de `realpath` para testar fallback POSIX
+- [x] 12.1.7 Helpers `_00c_acquire_lock` + `_00c_release_lock` (FR-016h, plan FASE 12): logo apos validar `<path>` e ANTES de qualquer prompt ou escrita, `_00c_acquire_lock` cria `<path>/.cstk-00c.lock/` via `mkdir` atomico; se mkdir falha (lock ja existe), abortar com exit 1 e mensagem `outra instancia de cstk 00c em andamento em <path>` sem alterar nada. `_00c_release_lock` faz `rmdir <lock> 2>/dev/null || :` (idempotente). Registro: `trap '_00c_release_lock' EXIT INT TERM` (research.md Decision 14); release explicito chamado ANTES do `exec claude` no caminho feliz
+- [x] 12.1.8 Tests do lock: `mkdir <path>/.cstk-00c.lock` pre-existente -> abort exit 1; `cstk 00c` segue ate `exec` libera o lock; Ctrl+C entre prompts libera o lock via trap; falha em qualquer step intermediario libera o lock; trap em INT/TERM dispara `rmdir` idempotente
+
+### 12.2 Diretorio + dependencia checks `[A]`
+
+Ref: `spec.md` FR-016b, FR-016d.
+
+- [x] 12.2.1 Helper `_00c_check_dir_empty` (plan FASE 12): `<path>` nao existe -> `mkdir -p` + `chmod 700 <path>` (sensitive content), falha de mkdir propaga exit 1; `<path>` existe e vazio -> prosseguir (mkdir e idempotente); `<path>` existe e contem qualquer arquivo -> abortar com exit 1 SEM prompt e mensagem apontando `/agente-00c-resume --projeto-alvo-path <path>` como caminho para retomada
+- [x] 12.2.2 Helper `_00c_check_deps` (plan FASE 12) — primeiro de 3 checks: verificar `claude` no PATH (`command -v claude`); se ausente, exit 1 com mensagem ("Claude Code CLI nao encontrado. Instale via `npm install -g @anthropic-ai/claude-code` ou veja https://docs.claude.com/claude-code/setup")
+- [x] 12.2.3 `_00c_check_deps` segundo check: verificar `jq` no PATH (`command -v jq`); se ausente, exit 1 com mensagem por OS (`brew install jq` em macOS, `apt install jq` em Linux). `jq` e dependencia do `agente-00c-runtime`; falha cedo aqui para evitar erro tardio no orquestrador
+- [x] 12.2.4 `_00c_check_deps` terceiro check: verificar `~/.claude/commands/agente-00c.md` existe; se ausente, delega para `_00c_prompt_install`
+- [x] 12.2.5 Helper `_00c_prompt_install` (plan FASE 12): prompt `Comando agente-00c nao instalado. Instalar agora via 'cstk install'? [Y/n]`. Default Y -> rodar `cstk install` em foreground (mostrar saida); Y aceita via `--yes`; N aborta com exit 1 e instrucao manual. Prosseguir apenas se `cstk install` saiu com exit 0
+- [x] 12.2.6 `_00c_prompt_install` lida com falha do nested `cstk install` (exit != 0): capturar exit code + razao stderr, liberar lock per-path (12.1.7), abortar com exit 1 e mensagem `cstk install falhou (exit code N): <razao>`. Diretorio criado em 12.2.1 PERMANECE (sem rollback automatico). Mensagem aponta `cstk install --force` para retry manual
+- [x] 12.2.7 `_00c_prompt_install` lida com conflito de lock (FR-015 lockfile do install paralelo): nested install falha imediatamente, cstk 00c libera lock per-path e aborta com mensagem `outro cstk install em andamento. Aguarde, depois rode 'cstk 00c <path>' novamente`
+- [x] 12.2.8 Tests: `<path>` nao-vazio aborta com exit 1 SEM prompt (regressao se prompt aparecer), `claude` ausente, `jq` ausente, `agente-00c.md` ausente com prompt N -> exit 1, prompt Y dispara `cstk install` mockado em PATH (sucesso), prompt Y dispara `cstk install` que falha por rede mockada -> exit 1 + dir permanece, prompt Y com lockfile FR-015 ja tomado -> abort imediato
+
+### 12.3 Prompts interativos + sanitizacao `[C]`
+
+Ref: `spec.md` FR-016c, FR-016g.
+
+- [x] 12.3.1 Helper `_00c_read_descricao`: prompt "Descricao curta do POC/MVP (10-500 chars):"; valida >=10, <=500, sem `\n`/`$`/`` ` ``. Aceitar printable unicode (acentos, emojis) via teste `[:print:]`; rejeitar bytes < 0x20 (controles invisiveis) — resolucao do CHK048. Loop ate input valido; Ctrl+C aborta limpo com **exit 130** (POSIX `128 + SIGINT`, alinhado com contracts/cstk-00c.md), trap dispara `_00c_release_lock` antes da terminacao
+- [x] 12.3.2 Helper `_00c_read_stack`: prompt "Stack-sugerida em JSON (Enter para pular):"; aceita linha vazia como skip; se nao-vazio, valida via `jq -e .` (rejeita ate JSON valido). Adotar `jq` 1.5+ como baseline (CHK050)
+- [x] 12.3.3 Helper `_00c_read_whitelist`: prompt "Whitelist de URLs externas (uma por linha, linha vazia para terminar; Enter agora para pular):". Espelha o validador de `global/skills/agente-00c-runtime/scripts/whitelist-validate.sh:50-100` (referencia canonica) reimplementando a sequencia de 6 verificacoes: (1) rejeitar `**` puro; (2) rejeitar `*://*` (scheme glob); (3) exigir scheme `http://` ou `https://`; (4) host nao-vazio apos `://`; (5) rejeitar host `*` ou `[*]`; (6) wildcard no host SO permitido como prefixo `*.dominio.tld` (rejeita `*dominio.com`, `dominio.*`, `*.*`). Comentario inline em `cli/lib/00c-bootstrap.sh` deve apontar canonico exato (path + range de linhas) — drift requer PR review (Clarif round 2 Q1). Loop ate URL valida; resultado retornado em variavel multi-linha
+- [x] 12.3.4 Helper `_00c_escape_sq` (FR-016g): substituir `'` por `'\''` (escape canonico shell single-quote, espelha `sanitize.sh::escape-commit-msg`); comentario aponta canonico em `global/skills/agente-00c-runtime/scripts/sanitize.sh`
+- [x] 12.3.5 Tests: descricao com `$`, descricao com newline, descricao com 9 chars, descricao com 501 chars, descricao com unicode (acentos + emoji) -> aceita, descricao com `\t`/`\v` -> rejeita (CHK048), JSON malformado, URL sem scheme, URL com `**`/`*://*`/`https://*` (overly broad — CHK049), descricao com aspa simples literal (`don't`) -> escapada corretamente (CHK063)
+
+### 12.4 Dry-run preview + confirmacao `[A]`
+
+Ref: `spec.md` FR-016e.
+
+- [x] 12.4.1 Helper `_00c_dry_run_preview` (plan FASE 12): imprimir resumo formatado em stderr — path final (realpath), descricao, stack (ou "—"), whitelist count + path, linha exata da `/agente-00c` que sera invocada
+- [x] 12.4.2 Helper `_00c_confirm_final` (plan FASE 12): prompt `[Y/n]` (default Y); flag `--yes` pula apenas este prompt (FR-016e: nao pula validacoes nem prompt de dir nao-vazio); aceitar variantes `Y/y/yes/sim/s/S/Enter` para confirmacao
+- [x] 12.4.3 Tests: confirmacao N -> exit 0 sem `cd`/`exec`, `--yes` skipa prompt mas mantem fluxo, prompt aceita variantes `Y/y/yes/sim/s/S/Enter` (CHK051)
+
+### 12.5 Persistencia de whitelist + spawn `claude` via exec `[C]`
+
+Ref: `spec.md` FR-016f, FR-016g, SC-008.
+
+- [x] 12.5.1 Helper `_00c_persist_whitelist` (plan FASE 12): escrita atomica via `mktemp + mv` em `<path>/.agente-00c-whitelist.txt` (uma URL por linha, sem comentarios) ANTES do `cd` final, com `chmod 600`
+- [x] 12.5.2 Helper `_00c_exec_claude` (plan FASE 12) — passo 1: construir argv: `claude "/agente-00c '<desc-escapada>' [--stack '<json-cli>'] [--whitelist <abs-path-whitelist>] --projeto-alvo-path '<abs-path>'"`. Usa `_00c_escape_sq` (12.3.4) para a descricao
+- [x] 12.5.3 `_00c_exec_claude` — passo 2: `cd "<path>"` (ja validado em 12.1.3); falha de cd propaga exit 1
+- [x] 12.5.4 `_00c_exec_claude` — passo 3: chamar `_00c_release_lock` explicitamente (Decision 14) e em seguida `exec claude "$_cmd"` (cstk substituido pelo processo claude); falha de exec propaga
+- [x] 12.5.5 Tests com `claude` mockado em `PATH` (script que loga argv e exit 0): validar que (a) argv recebido bate com slash command esperada, (b) `--whitelist` aponta pro arquivo persistido, (c) `--projeto-alvo-path` e absoluto, (d) cstk nao retorna apos exec (testar via `pid` do mock), (e) lock per-path foi liberado ANTES do exec
+
+### 12.6 Documentacao + ajuda `[M]`
+
+- [x] 12.6.1 Adicionar `cstk 00c --help` em `cli/cstk` com texto cobrindo: (a) sintaxe `cstk 00c <path> [--yes]`, (b) os 5 passos do fluxo (validar path, criar dir + lock, prompts interativos, dry-run, exec claude), (c) **pre-requisito TTY** explicito (resolve CHK065 — operador descobre antes de tentar usar em script), (d) variantes aceitas em prompts `[Y/n]`: `Y/y/yes/sim/s/S/Enter` para sim; `n/N/no/nao/Ctrl+D` para nao (resolve CHK051), (e) lista de exit codes (0/1/2/130) e seus significados
+- [x] 12.6.2 Atualizar `cstk --help` para listar `00c` entre os subcomandos com one-liner
+- [x] 12.6.3 Atualizar `README.md` §Agente-00C: documentar `cstk 00c <path>` como caminho preferido para iniciar uma sessao do agente-00C; mencionar pre-requisito TTY e que e atalho para projeto NOVO
+- [ ] 12.6.4 Adicionar entrada no `CHANGELOG.md` (sob `[Unreleased]`) com bullets: novo subcomando `cstk 00c <path>`; FR-016*..h adicionados; SC-008/009 cobrem; carve-out 1.1.0 atualizada com `jq` em `cli/lib/00c-bootstrap.sh`
+
+### 12.7 Release `[M]`
+
+- [ ] 12.7.1 Bump SemVer (MINOR — adicao backward-compatible) apos FASE 12 fechar; criar tag `vX.Y.0`
+- [ ] 12.7.2 Validar artefatos do release no GitHub (workflow `release.yml` ja cobre)
+- [ ] 12.7.3 Smoke manual em maquina limpa: `curl ... | sh` -> `cstk install` -> `cstk 00c ./test-poc` -> verificar que claude inicia com slash command montada (SC-008)
 
 ## Resumo Quantitativo
 
@@ -473,7 +553,8 @@ Observacoes:
 | 9 - Release Pipeline | 3 | 14 | A/M |
 | 10 - Testes integracao | 2 | 18 | A |
 | 11 - Docs + 1a Release | 2 | 11 | A |
-| **Total** | **21** | **144** | - |
+| 12 - `cstk 00c <path>` | 7 | 36 | C/A |
+| **Total** | **28** | **180** | - |
 
 ## Escopo Coberto
 
@@ -483,11 +564,14 @@ Observacoes:
 | US-2 | Atualizacao de skills ja instaladas (P2) | 4 |
 | US-3 | Instalacao em escopo de projeto (P3) | 3, 7 |
 | US-4 | Self-update do proprio CLI (P4) | 5 |
+| US-5 | Bootstrap interativo de projeto-alvo do agente-00C (P5) | 12 |
 | FR-001..015 | Todos os requisitos funcionais da spec | 1-8 |
 | FR-005a | Bootstrap via one-liner | 3.2 |
 | FR-006a | Self-update nao toca manifest | 5.1.8, 5.1.12 |
 | FR-010a | SHA-256 obrigatorio em todo download | 3.1.5, 3.2.2, 4.1.3, 5.1.4 |
+| FR-016..016g | `cstk 00c <path>` (bootstrap interativo do agente-00C) | 12 |
 | SC-001..007 | Success criteria validados em testes integrados | 10 |
+| SC-008..009 | Success criteria do `cstk 00c` (tempo + integridade) | 12 |
 | Governance | Constitution Exception formalizada | 0 |
 | Release pipeline | CI/CD para publicacao automatizada | 9 |
 | Documentacao | README + CLAUDE.md + CHANGELOG atualizados | 11 |

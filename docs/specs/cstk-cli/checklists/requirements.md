@@ -188,15 +188,200 @@ for English" — cada item testa qualidade do REQUISITO escrito, nao da implemen
   arquivo, rollback trace) ou toda informacao vive apenas em stderr daquele run?
   [Gap, Spec §FR-005]
 
+## FASE 12 — `cstk 00c <path>` (US-5, FR-016, SC-008/009)
+
+### Testabilidade dos novos Success Criteria
+
+- [x] CHK041 - SC-008 mede "<60 segundos da invocacao do subcomando ate o claude
+  aparecer ja com `/agente-00c` montado". Os pontos de inicio e fim do cronometro
+  sao observaveis externamente (timestamp na invocacao do `cstk 00c` vs primeira
+  saida do `claude` no TTY)? [Mensurabilidade, Spec §SC-008]
+  → Resolvido. SC-008 cravou os endpoints: "contando da invocacao do subcomando
+  ate o `claude` aparecer ja com `/agente-00c` montado como primeiro turno".
+  Inicio = timestamp do shell ao invocar `cstk 00c`; fim = primeira saida do
+  `claude` no TTY com a slash command processada (auto-submit confirmado em
+  Clarifications 2026-05-09 via FR-016f).
+- [ ] CHK042 - SC-008 assume `toolkit instalado e claude no PATH` mas o tempo de
+  resposta dos prompts interativos depende do operador. O SC esta cravado em
+  tempo de cstk-side ou tempo total de UX? [Clareza, Spec §SC-008]
+- [ ] CHK043 - SC-009 exige verificacao "via comparacao de inode/timestamp do
+  filesystem antes/depois". O conjunto de paths a inspecionar esta enumerado
+  (apenas `<path>` resolvido? `<path>/.agente-00c-whitelist.txt`? cwd anterior?
+  `~/.claude/state-history`)? [Mensurabilidade, Spec §SC-009]
+- [ ] CHK044 - SC-009 lista 4 cenarios de path invalido (traversal, zona, vazio,
+  dir nao-vazio). O conjunto e fechado e exaustivo, ou ha gap (ex: path com
+  symlink que resolve para zona — coberto por FR-016b mas nao explicito em
+  SC-009)? [Cobertura, Spec §SC-009 vs §FR-016b]
+
+### Clareza dos FR-016*
+
+- [ ] CHK045 - FR-016a recusa "stdin OU stdout nao-TTY". E stderr? Algumas
+  ferramentas redirecionam stderr para arquivo mantendo stdout no TTY — o
+  requisito cobre/permite/proibe esse caso? [Clareza, Spec §FR-016a]
+- [x] CHK046 - FR-016b lista 14 zonas proibidas. A lista e exaustiva ou
+  exemplificativa? Como o operador adiciona zonas custom (ex: politicas
+  corporativas que proibem `/opt`, `~/Documents`)? [Gap, Spec §FR-016b]
+  → Resolvido em Clarifications 2026-05-09 (round 2): lista FECHADA na
+  FASE 12. Operadores que precisam de extensao abrem issue ou fork.
+  Extensibilidade pode ser adicionada em fase futura. cstk e ferramenta
+  pessoal sem caso de uso corporativo conhecido.
+- [ ] CHK047 - FR-016b exige `realpath -m` para resolver symlinks e tambem
+  resolver "cada zona proibida antes de comparar". Esta especificado o
+  comportamento quando uma zona proibida da lista canonica nao existe no host
+  (ex: `/proc` em macOS)? [Ambiguity, Spec §FR-016b]
+- [ ] CHK048 - FR-016c exige descricao "10-500 chars; rejeitar newlines/`$`/`` ` ``".
+  Caracteres unicode (acentos, emojis) sao permitidos? E controles invisiveis
+  (zero-width space, `\t`)? [Clareza, Spec §FR-016c]
+- [ ] CHK049 - FR-016c valida URL na whitelist via regex
+  `^https?://[A-Za-z0-9._/*?-]+$` (em tasks.md 12.3.3) — esta inconsistente
+  com `whitelist-validate.sh` do agente-00c-runtime, que rejeita
+  patterns "overly broad" como `**` puro, `*://*`, `https://*`. Os dois
+  validators concordam ou ha drift? [Consistencia, Spec §FR-016c vs
+  agente-00c-runtime]
+- [ ] CHK050 - FR-016d (b) exige `jq` no PATH. O requisito cobre versao minima
+  de `jq`? Algumas distros embarcam versoes muito antigas; `jq -e .` para
+  validacao precisa de feature de exit code que existe ha tempo, mas vale
+  cravar para evitar surpresa. [Clareza, Spec §FR-016d]
+- [ ] CHK051 - FR-016e exige confirmacao final `[Y/n]`. Aceita-se `s/S` (em
+  pt-BR) e `yes/no` por extenso? Comportamento de Enter (default) e Ctrl+D?
+  [Clareza, Spec §FR-016e]
+- [x] CHK052 - FR-016f diz "auto-submetido". Existe um cenario onde o `claude`
+  nao processa o primeiro turno auto-submetido (ex: claude exige session
+  resume ou abre TUI ao inves de processar argv)? Ha requisito de testar essa
+  premissa antes do release? [Premissa, Spec §FR-016f]
+  → Resolvido. tasks.md 12.7.3 cravou "Smoke manual em maquina limpa: ...
+  `cstk 00c ./test-poc` -> verificar que claude inicia com slash command
+  montada (SC-008)" como gate antes do release. tasks.md 12.5.5 cobre via
+  mock no CI; 12.7.3 cobre claude real. Validacao premissa esta planejada.
+
+### Consistencia cross-requirement
+
+- [x] CHK053 - FR-016b lista zonas proibidas e tasks.md 12.1.3 menciona
+  "compartilhada com path-guard.sh". As listas devem permanecer sincronizadas
+  ao longo do tempo (mudanca em uma exige mudanca na outra) ou cada uma evolui
+  independente? Ha requisito sobre isso? [Consistencia, Spec §FR-016b]
+  → Resolvido em Clarifications 2026-05-09 (round 2): cstk reimplementa em
+  `cli/lib/` com comentario apontando o canonico em
+  `global/skills/agente-00c-runtime/scripts/path-guard.sh`. Politica
+  explicita: divergencias futuras precisam ser refletidas em ambos por
+  PR review (gate manual). Reflexionado em FR-016g.
+- [x] CHK054 - FR-016g exige sanitizacao com escape de single-quotes mas
+  `sanitize.sh` do agente-00c-runtime tem subcomandos especializados
+  (`escape-commit-msg`, `escape-issue-body`, `escape-path`). cstk 00c reusa
+  essas primitivas (via shelling para o script da skill instalada) ou
+  reimplementa em `cli/lib/`? [Consistencia, Spec §FR-016g]
+  → Resolvido em Clarifications 2026-05-09 (round 2): cstk reimplementa em
+  `cli/lib/`. cstk e camada inferior ao runtime (instalador vs instalado);
+  shell-out criaria chicken-and-egg porque path validation precisa rodar
+  ANTES do dep check de FR-016d. FR-016g atualizado para crava a
+  reimplementacao + comentario cross-reference + PR review como gate.
+- [x] CHK055 - FR-015 ja cobre "lockfile por escopo". `cstk 00c` cria um
+  diretorio fora dos escopos `~/.claude/skills/` ou `./.claude/skills/`,
+  entao o lock atual nao se aplica. Ha requisito sobre concorrencia entre
+  duas invocacoes simultaneas de `cstk 00c <path>` no mesmo `<path>`? [Gap,
+  Spec §FR-015 vs §FR-016]
+  → Resolvido em Clarifications 2026-05-09 (round 2): novo FR-016h cravou
+  lockfile per-path via `mkdir <path>/.cstk-00c.lock` atomico, com release
+  via trap on exit. Aborto explicito se lock pre-existente. tasks.md
+  12.1.6/12.1.7 cobrem implementacao e testes.
+- [x] CHK056 - FR-016d (c) dispara `cstk install` em foreground. Esse `cstk
+  install` aninhado interage com FR-015 (lockfile)? Se outro `cstk install`
+  ja esta rodando paralelamente, o nested install bloqueia ou aborta?
+  [Gap, Spec §FR-016d vs §FR-015]
+  → Resolvido em Clarifications 2026-05-09 (round 2): nested install
+  RESPEITA o lockfile global de FR-015. Se lock tomado, nested falha
+  imediatamente; cstk 00c captura, libera lock per-path (FR-016h) e aborta
+  com mensagem `outro cstk install em andamento. Aguarde, depois rode
+  'cstk 00c <path>' novamente`. Sem retry automatico nem bypass. FR-016d (c)
+  e tasks.md 12.2.8 cravam o comportamento.
+
+### Cobertura de cenarios e edge cases
+
+- [ ] CHK057 - US-5 tem 5 acceptance scenarios. Ha cenario para Ctrl+C no
+  meio dos prompts (mencionado em Edge Cases mas sem AS dedicado)?
+  [Cobertura, Spec §US-5]
+- [x] CHK058 - Ha cenario para boundary da descricao: exatamente 9 chars
+  (rejeitar), exatamente 10 chars (aceitar), exatamente 500 chars (aceitar),
+  exatamente 501 chars (rejeitar)? [Cobertura, Spec §FR-016c]
+  → Resolvido. tasks.md 12.3.5 lista "descricao com 9 chars, descricao com 501
+  chars" cobrindo boundary-1 e boundary+1. Aceitacao em 10 e 500 e implicada
+  por exclusao (se 9 e 501 sao rejeitados, 10 e 500 sao aceitos pela politica
+  >=10 && <=500). Cenarios reforcaveis em test_00c-bootstrap durante a
+  implementacao se vier necessidade.
+- [x] CHK059 - Edge case `Operador interrompe (Ctrl+C) durante prompts`
+  diz "deixar como esta sem rollback automatico". Cobre o caso onde o
+  diretorio foi criado mas a interrupcao aconteceu APOS escrever
+  `.agente-00c-whitelist.txt` — esse arquivo persiste? [Cobertura,
+  Spec §Edge Cases]
+  → Resolvido implicitamente pela regra "deixar como esta sem rollback
+  automatico". Como FR-016f persiste a whitelist ANTES do `exec claude`, e
+  Ctrl+C entre persistencia e exec deixa o arquivo no disco — comportamento
+  esperado e operador remove manualmente se quiser. Sem necessidade de
+  cleanup automatico (pode mascarar bugs).
+- [ ] CHK060 - SC-009 cita `<path>/.agente-00c-whitelist.txt` mas nao cobre
+  outros artefatos potenciais (ex: lockfile, log temporario do prompt do
+  cstk install). Ha cenario testando que NENHUM byte e escrito em caso de
+  abort precoce? [Cobertura, Spec §SC-009]
+- [x] CHK061 - Edge case "agente-00c.md ausente -> prompt + auto-install"
+  cobre o caminho feliz (Y -> install completa). Cobre o caso onde `cstk
+  install` falha (rede, sha mismatch) durante o prompt — abort com erro
+  claro ou estado intermediario? [Gap, Spec §FR-016d]
+  → Resolvido em Clarifications 2026-05-09 (round 2): falha do nested
+  install (qualquer exit code != 0 que nao seja conflito de lock — esse
+  ja e tratado em CHK056) faz cstk 00c abortar com exit 1 proxiando o
+  motivo. Diretorio criado em FR-016b PERMANECE (sem rollback automatico,
+  alinhado com edge case Ctrl+C). Mensagem aponta `cstk install --force`
+  para retry manual. tasks.md 12.2.7 cobre.
+
+### Ambiguidades e premissas explicitas
+
+- [x] CHK062 - Premissa nao validada: `claude "<prompt>"` aceita uma slash
+  command como prompt e a executa como primeiro turno auto-submetido. Ha
+  requisito de validacao dessa premissa antes da implementacao da FASE 12
+  (tasks.md 12.5.5 cobre via mock, mas falta gate manual com claude real)?
+  [Premissa, Spec §FR-016f]
+  → Resolvido. tasks.md 12.7.3 cravou smoke manual em maquina limpa como
+  gate de release. Se a premissa nao se confirmar com `claude` real, FASE
+  12 abre nova clarify para revisar FR-016f (ex: trocar auto-submit por
+  pre-typed se nao for tecnicamente possivel via argv).
+- [x] CHK063 - Existe requisito sobre o que acontece quando o operador
+  fornece descricao com aspas simples literais? FR-016g escapa para
+  single-quotes mas o conteudo da descricao em si vai para dentro de
+  single-quotes shell — apostrofos no texto precisam ser escapados como
+  `'\''`. [Ambiguity, Spec §FR-016g]
+  → Resolvido. FR-016g cravou "descricao escapada para shell single-quotes"
+  — esse escape canonico SUBSTITUI cada `'` por `'\''` exatamente para
+  preservar apostrofos no conteudo. tasks.md 12.3.4 reforca a regra. Caso
+  tipico ("don't") fica corretamente escapado e chega ao orquestrador como
+  string ASCII original.
+- [x] CHK064 - O acceptance scenario 5 (cstk install via prompt Y) assume
+  que `cstk install` e idempotente. Ha requisito explicito de idempotencia
+  para o caso onde `agente-00c.md` foi recem-instalado mas em versao
+  incorreta (FR-008 cobre `--force`, mas o auto-install em FASE 12 nao usa
+  `--force`)? [Gap, Spec §FR-016d]
+  → Resolvido. SC-002 ja cobre idempotencia geral do `cstk install`. Para
+  o caso "agente-00c.md ausente -> install novo": e o caminho feliz, a
+  ausencia exclui conflito de versao. Para "agente-00c.md presente": a
+  verificacao em FR-016d (c) detecta arquivo presente e SKIPA o prompt
+  (nao reinstala). Politica de `--force` permanece responsabilidade do
+  operador via `cstk install --force` rodado fora do `cstk 00c`.
+- [ ] CHK065 - O subcomando `cstk 00c` e exposto no `--help` (tasks 12.6.1,
+  12.6.2). Ha requisito sobre como `cstk --help` documenta o pre-requisito
+  TTY (FR-016a) — para o operador descobrir antes de tentar usar em script?
+  [Gap, Spec §FR-016a]
+
 ## Notes
 
 - Marcar items concluidos com `[x]`
-- Items numerados sequencialmente (CHK001 a CHK040)
+- Items numerados sequencialmente (CHK001 a CHK065)
 - Items com `[Gap]` indicam que a spec precisa ser AMPLIADA
 - Items com `[Ambiguity]` indicam que existe requisito mas interpretacao dupla
 - Items com `[Clareza]` indicam que requisito existe mas termos vagos precisam
   quantificacao
 - Items com `[Consistencia]` indicam conflito potencial entre dois requisitos
 - Items com `[Mensurabilidade]` indicam criterios nao diretamente observaveis
+- Items com `[Cobertura]` indicam cenario/AS ausente para um requisito existente
+- Items com `[Premissa]` indicam suposicao implicita que precisa validacao antes
+  da implementacao
 - Rodar `/clarify` nos items `[Ambiguity]` / `[Gap]` de maior impacto antes de
   `/create-tasks`

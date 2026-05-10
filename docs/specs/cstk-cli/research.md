@@ -297,3 +297,103 @@ race condition de asset trocado.
 - **Sem checksum** — HTTPS e suficiente na maioria dos casos, mas checksum protege
   contra cenario raro de asset corrompido no proprio GitHub (ja aconteceu
   historicamente durante incidentes).
+
+## Decision 11: Modelo de spawn do `claude` no `cstk 00c` (FASE 12)
+
+**Decision**: invocar `claude` via `exec` com a slash command `/agente-00c <args>`
+como argumento posicional, contando que a CLI do Claude Code interpreta o argumento
+como **primeiro turno auto-submetido** na sessao interativa.
+
+**Rationale**:
+- A documentacao publica do Claude Code CLI descreve `claude "<prompt>"` como o modo
+  one-shot/interativo onde o argumento e tratado como mensagem inicial; a UX padrao
+  e que a mensagem seja processada imediatamente, sem exigir Enter manual.
+- Clarifications 2026-05-09 Q1 cravou auto-submit como o comportamento esperado pelo
+  operador (ele ja teve dry-run em FR-016e como confirmacao final).
+- `exec` substitui o processo `cstk` pelo `claude`, evitando proxy desnecessario e
+  preservando o TTY para o operador (fork+wait introduziria buffering e quebraria a
+  ergonomia). Padrao tradicional de wrappers shell.
+- Testabilidade: tasks.md 12.5.5 cobre via mock (`claude` substituido por script que
+  loga argv); tasks.md 12.7.3 cravou smoke manual em maquina limpa como GATE
+  obrigatorio antes do release — se a premissa nao se confirmar com claude real, a
+  spec volta para clarify e FR-016f e revisado.
+
+**Alternatives considered**:
+- **Pre-typed (claude abre com slash digitada mas aguarda Enter)**: requer suporte
+  do claude CLI a este modo (tipo flag `--prefill`); nao confirmado existir.
+  Adicionaria atrito redundante apos o dry-run.
+- **Print + paste manual**: maxima transparencia mas zero automacao — derrota o
+  proposito do `cstk 00c` como atalho.
+- **`claude --print "<prompt>"`**: modo nao-interativo (one-shot). Nao serve porque
+  o agente-00C precisa rodar interativamente em multiplas ondas com pause-or-decide.
+
+## Decision 12: Resolucao portavel de paths com symlinks no `cstk 00c` (FASE 12)
+
+**Decision**: usar `realpath -m` quando disponivel (GNU coreutils — Linux,
+macOS com `brew install coreutils` simbolizado como `grealpath`); fallback
+POSIX puro via `cd "$(dirname "$p")" && printf '%s/%s\n' "$(pwd -P)"
+"$(basename "$p")"` que resolve symlinks de ancestrais via `cd -P`. Implementar
+wrapper `_00c_realpath` em `cli/lib/00c-bootstrap.sh` que tenta `realpath -m`
+e cai no fallback POSIX se nao disponivel.
+
+**Rationale**:
+- macOS (BSD) tem `realpath` nativo desde Catalina mas SEM flag `-m` (que aceita
+  paths inexistentes, necessario porque `<path>` ainda nao existe quando validamos).
+- Linux (GNU coreutils) tem `realpath -m`.
+- Workaround POSIX (`cd -P`) funciona em ambos OS porem so resolve ancestrais
+  existentes — para o componente final inexistente, usamos `dirname` + concat.
+- Alinha com padrao do `path-guard.sh` no agente-00c-runtime que ja usa fallback
+  similar.
+
+**Alternatives considered**:
+- **Exigir GNU coreutils como dep**: rejeitado — adiciona pre-requisito ao
+  one-liner de bootstrap (`brew install coreutils`).
+- **Python como fallback**: rejeitado — adiciona dep nao-shell para um
+  edge case de portabilidade.
+- **Sem resolucao de symlinks**: rejeitado — Clarifications 2026-05-09 Q4
+  cravou validacao defensiva contra symlinks adversariais.
+
+## Decision 13: Detecao de TTY em POSIX (FASE 12)
+
+**Decision**: usar `[ -t 0 ] && [ -t 1 ]` (POSIX `test -t fd`) para verificar
+que stdin e stdout sao TTY. Stderr explicitamente NAO incluido — operador
+pode redirecionar stderr para arquivo de log sem violar a semantica interativa.
+
+**Rationale**:
+- `test -t fd` e POSIX e funciona em sh/bash/zsh/dash sem deps extra.
+- Excluir stderr e padrao em CLIs interativos (ex: `vim`, `git rebase -i`) —
+  permite ao operador `cstk 00c ./x 2>cstk.log` para debug sem perder
+  interatividade.
+- Resolve CHK045 (stderr nao-TTY): explicitamente permitido e nao bloqueia.
+
+**Alternatives considered**:
+- **Tambem checar stderr**: rejeitado — quebra padrao Unix de stderr-redirect-OK.
+- **Detectar stdin via `tty -s`**: rejeitado — `test -t` e mais portavel
+  e nao depende do binario `tty`.
+
+## Decision 14: Lock e cleanup via trap para o `cstk 00c` (FASE 12)
+
+**Decision**: usar `trap '_00c_release_lock' EXIT INT TERM` no inicio do
+`00c_bootstrap_main`, registrado APOS o `mkdir <path>/.cstk-00c.lock/`
+atomico. `_00c_release_lock` faz `rmdir "$_00c_lock_dir" 2>/dev/null || :`
+(idempotente; nao falha se ja foi removido). No caminho feliz, chamar
+`_00c_release_lock` explicitamente ANTES do `exec claude` para nao depender
+do trap herdado.
+
+**Rationale**:
+- POSIX `trap` em EXIT cobre exit normal, abort precoce, e maior parte dos
+  caminhos de saida sem requerer codigo replicado.
+- INT (Ctrl+C) e TERM cobrem interrupcoes externas — POSIX dispara o trap
+  no shell antes da terminacao do processo.
+- `rmdir` falha se diretorio nao-vazio, entao usamos `2>/dev/null || :` para
+  ser idempotente. Lock e diretorio vazio (`mkdir` puro), entao `rmdir`
+  funciona.
+- Release explicito antes do `exec` documenta a intencao e evita ambiguidade
+  sobre comportamento do trap heredado pelo `claude`.
+
+**Alternatives considered**:
+- **Sem trap, release explicito em cada exit point**: rejeitado — espalha
+  cleanup pelo codigo, fragil a refactor.
+- **Lockfile com PID e auto-stale-detection**: overkill para o uso; lock e
+  curto (segundos a minutos). Stale lock requer intervencao manual
+  (`rmdir <path>/.cstk-00c.lock`) — aceitavel como trade-off.

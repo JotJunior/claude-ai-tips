@@ -228,3 +228,174 @@ Scenario 6 e 7 do quickstart exigem release mock. Fixtures em
 `tests/cstk/fixtures/releases/` contem tarballs pre-preparados simulando versoes
 diferentes. Variavel `CSTK_RELEASE_URL` override permite apontar CLI para fixture
 local em vez do GitHub real durante testes.
+
+---
+
+## FASE 12 — Plano do subcomando `cstk 00c <path>`
+
+Plano da FASE 12 (delta sobre o plan original FASES 0-11). Refs:
+spec.md §US-5 + FR-016*..h + SC-008/009; research.md Decisions 11-14;
+data-model.md §Per-path Lock + §Bootstrap Whitelist File;
+contracts/cstk-00c.md; quickstart.md Scenarios 13-16.
+
+### Summary (FASE 12)
+
+Adicionar subcomando `cstk 00c <path>` que cria projeto-alvo do agente-00C,
+coleta parametros via prompts interativos e invoca `claude` ja com a slash
+command `/agente-00c` montada (auto-submetida como primeiro turno). Atalho
+para criar projeto NOVO; retomada de existente fica para `/agente-00c-resume`.
+
+Abordagem tecnica:
+- Implementacao 100% POSIX shell em `cli/lib/00c-bootstrap.sh`, dispatcher em
+  `cli/cstk`. Sem novas deps de runtime do `cstk` alem das ja existentes (`jq`
+  ja era opcional em FR-009d; `cstk 00c` torna obrigatorio via FR-016d).
+- Reimplementacao de path-guard, sanitize e whitelist-validate em `cli/lib/`
+  (espelhando `agente-00c-runtime/scripts/*.sh`) — Decisao arquitetural
+  cravada em Clarifications 2026-05-09 round 2.
+- Lock per-path via `mkdir <path>/.cstk-00c.lock/` atomico + trap on EXIT.
+- Spawn do `claude` via `exec` com prompt como argv (auto-submit confirmado
+  na Decision 11 + smoke manual em tasks 12.7.3 antes do release).
+
+### Constitution Check (FASE 12)
+
+cstk-cli tem governance via Constitution Exception formalizada em FASE 0.
+Re-check para FASE 12:
+
+| Principio | Status | Notas |
+|-----------|--------|-------|
+| **I — POSIX-first portability** | PASS | Implementacao em `sh` puro; `realpath -m` com fallback POSIX (Decision 12); `[ -t 0 ]` POSIX (Decision 13); `trap EXIT INT TERM` POSIX (Decision 14). |
+| **II — Exit codes deterministicos** | PASS | Contratos de codigo cravados em contracts/cstk-00c.md (0/1/2/130) + alinhados com convencao do `cstk` existente. |
+| **III — Determinismo de release** | PASS | Subcomando NAO altera build de release; tarball continua determinista. |
+| **IV — Zero coleta remota** | PASS | `cstk 00c` nao chama rede para telemetria. Unica chamada de rede potencial e o `cstk install` aninhado, que ja respeita FR-010 (apenas GitHub Releases). |
+| **V — Carve-outs documentadas** | PASS | `jq` torna-se obrigatorio em FR-016d (versus opcional em FR-009d). Carve-out 1.1.0 ja cobria `jq` em `cli/lib/hooks.sh`; estendemos a justificativa para `cli/lib/00c-bootstrap.sh` na nota abaixo. |
+
+**Carve-out 1.1.0 update (FASE 12)**: `jq` segue como dep opcional do `cstk`
+em geral (install/update/doctor/list/self-update/hooks merge), porem **OBRIGATORIO**
+em `cstk 00c` por dois motivos: (a) validacao de stack JSON em FR-016c; (b)
+o `agente-00c-runtime` que o `cstk 00c` invoca via `/agente-00c` ja precisa
+de `jq` para todas as operacoes em `state.json`. Falha cedo em FR-016d (b)
+e melhor UX que erro tardio. Adicionar item ao registry:
+
+| Caso registrado | Por Que Necessario | Como satisfaz carve-out 1.1.0 |
+|-----------------|-------------------|-------------------------------|
+| `jq` obrigatorio em `cli/lib/00c-bootstrap.sh` | Validacao de stack JSON via `jq -e .` (FR-016c) + dep transitiva do agente-00c-runtime invocado por `/agente-00c` | (a) sem fallback porque o orquestrador downstream tambem exige; (b) confinado em 1 arquivo (`cli/lib/00c-bootstrap.sh`) + dep check em FR-016d; (c) declarado em spec.md §FR-016d + Clarifications round 2 + esta subsecao |
+
+### Technical Context (FASE 12)
+
+| Campo | Valor |
+|-------|-------|
+| Linguagem | POSIX `sh` (mesmo do resto do `cstk`) |
+| Deps de build | nenhuma nova |
+| Deps de runtime obrigatorias (do `cstk 00c`) | `claude`, `jq`, `realpath` (com fallback POSIX), `git` (transitivo via `agente-00c-runtime`), `mkdir`/`rmdir`/`cp`/`chmod`/`cd` (POSIX core) |
+| Plataforma | macOS + Linux (testado via fixtures + smoke manual em ambos) |
+| Storage | filesystem-only (lock dir + whitelist file no `<path>`) |
+| Testing | `tests/cstk/test_00c-bootstrap.sh` com `claude` mockado em `PATH` (script que loga argv); validacao de scenarios 13-16 via mocks |
+| Observabilidade | stderr para prompts/erros; sem logging persistente (sessao curta, debugging via re-run) |
+
+### Project Structure (FASE 12)
+
+Novos arquivos (todos sob `cli/lib/` ou `tests/cstk/`):
+
+```
+cli/
+├── cstk                                # dispatcher: + `00c) ...`
+└── lib/
+    └── 00c-bootstrap.sh                # NOVO: helper principal + helpers privados
+
+tests/
+└── cstk/
+    └── test_00c-bootstrap.sh           # NOVO: cenarios 13-16 + edge cases
+
+docs/specs/cstk-cli/
+├── spec.md                             # delta US-5 + FR-016*..h + SC-008/009 (FEITO)
+├── tasks.md                            # delta FASE 12 (FEITO)
+├── plan.md                             # esta secao (delta FASE 12)
+├── research.md                         # Decisions 11-14 (FEITO)
+├── data-model.md                       # +2 entities (FEITO)
+├── quickstart.md                       # +Scenarios 13-16 (FEITO)
+├── contracts/
+│   └── cstk-00c.md                     # NOVO: contrato do subcomando (FEITO)
+└── checklists/
+    └── requirements.md                 # CHK041..065 (FEITO)
+```
+
+Estrutura de `cli/lib/00c-bootstrap.sh` (esboco — NAO codigo, apenas
+organizacao logica):
+
+```
+00c-bootstrap.sh
+├── 00c_bootstrap_main      # publico — entry point
+├── _00c_parse_args          # parse posicional + --yes/--help
+├── _00c_check_tty           # FR-016a — `[ -t 0 ] && [ -t 1 ]`
+├── _00c_realpath            # Decision 12 — wrapper portavel
+├── _00c_validate_path       # FR-016b — traversal, zonas (espelha path-guard.sh)
+├── _00c_acquire_lock        # FR-016h — mkdir atomico + trap
+├── _00c_release_lock        # FR-016h — rmdir idempotente
+├── _00c_check_dir_empty     # FR-016b — abort se nao-vazio
+├── _00c_check_deps          # FR-016d (a)(b)(c) em ordem
+├── _00c_prompt_install      # FR-016d (c) — prompt + nested cstk install
+├── _00c_read_descricao      # FR-016c (a) — 10-500 chars, sanitize
+├── _00c_read_stack          # FR-016c (b) — opcional, jq -e .
+├── _00c_read_whitelist      # FR-016c (c) — multi-linha, regex (espelha whitelist-validate.sh)
+├── _00c_persist_whitelist   # FR-016f — escrita atomica + chmod 600
+├── _00c_dry_run_preview     # FR-016e — resumo formatado
+├── _00c_confirm_final       # FR-016e — prompt [Y/n] (--yes pula)
+├── _00c_escape_sq           # FR-016g — '` -> `'\''` (espelha sanitize.sh)
+└── _00c_exec_claude         # FR-016f — release lock explicito + cd + exec
+```
+
+### Phase 0 — Research (FASE 12)
+
+Resolvido em research.md Decisions 11-14:
+- D11: spawn do `claude` via `exec` + auto-submit (validado em smoke manual no
+  GATE de release)
+- D12: `realpath -m` com fallback POSIX (`cd -P` + `dirname/basename`)
+- D13: TTY via `[ -t 0 ] && [ -t 1 ]`; stderr explicitamente fora do check
+- D14: lock + cleanup via `trap EXIT INT TERM`; release explicito antes do `exec`
+
+Sem unknowns abertos para a FASE 12. Todos os `[NEEDS CLARIFICATION]` foram
+resolvidos via 2 rodadas de clarify (sessions 2026-05-09 round 1 e round 2).
+
+### Phase 1 — Design (FASE 12)
+
+| Artefato | Status |
+|----------|--------|
+| `data-model.md` §Per-path Lock + §Bootstrap Whitelist File | Adicionado |
+| `contracts/cstk-00c.md` | Adicionado (sintaxe, args, exit codes, prompts, efeitos colaterais, anti-affordances) |
+| `quickstart.md` Scenarios 13-16 (incluindo variantes 16b/c/d) | Adicionado |
+| Esboco de `cli/lib/00c-bootstrap.sh` | Documentado em "Project Structure" acima |
+
+### Re-check Constitution (pos-design FASE 12)
+
+Pos-design, sem novas violacoes. Carve-out 1.1.0 atualizada com 1 caso novo
+(`jq` obrigatorio em `cli/lib/00c-bootstrap.sh`), justificativa registrada
+acima. Outros principios continuam PASS.
+
+### Outstanding (Deferred ao plan ou implementacao)
+
+Items do checklist que ficaram Outstanding (CHK042-045, 047-051, 057, 060, 065)
+sao decisoes pequenas que serao resolvidas durante a implementacao:
+
+- **CHK042/043/044** (medicao de SC): operacionalizado em scripts de teste
+  do `tests/cstk/test_00c-bootstrap.sh` e no GATE manual da tasks.md 12.7.3.
+- **CHK045** (stderr nao-TTY): resolvido em Decision 13 (allowed).
+- **CHK047** (zonas inexistentes no host): fallback POSIX do `realpath` em
+  Decision 12 ja lida graciosamente — comparacao por prefixo funciona mesmo
+  se zona nao existe.
+- **CHK048** (unicode/control chars): aceitar printable unicode incluindo
+  acentos/emojis; rejeitar bytes < 0x20 exceto LF (que ja esta na blocklist
+  explicita). Implementar via verificacao de classe POSIX `[:print:]`.
+- **CHK049** (drift regex URL): adotar exatamente o regex e a lista de
+  patterns overly-broad de `whitelist-validate.sh` (Clarifications round 2 Q1).
+- **CHK050** (versao minima jq): aceitar `jq` 1.5+ (suporte a `jq -e .`
+  exit code documentado desde 1.4 oficialmente; 1.5 e baseline universal em
+  distros suportadas pelo cstk).
+- **CHK051** (`[Y/n]` chars aceitos): `Y/y/yes/sim/s/S/Enter` = sim;
+  `n/N/no/nao/Ctrl+D` = nao. Documentar em `cstk 00c --help`.
+- **CHK057** (AS dedicado para Ctrl+C): scenario quickstart pode ser
+  estendido com Scenario 17 se durante implementacao surgir necessidade;
+  por ora, edge case + Variante 16d cobrem.
+- **CHK060** (zero bytes exhaustivo): tasks.md 12.5.5 testa via
+  comparacao filesystem antes/depois com `find`; gate suficiente.
+- **CHK065** (`--help` documenta TTY): tasks.md 12.6.1 ja cravou — texto
+  do help inclui pre-requisito TTY explicito.

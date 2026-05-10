@@ -169,3 +169,47 @@ Installed CLI  ──reads/writes──▶  Manifest (por scope)
                 │
                 └──reads (at runtime)──▶  Release tarball (GitHub) ──contains──▶  Profile + Catalog Entries
 ```
+
+## Entity: Per-path Lock (FASE 12, FR-016h)
+
+Lock per-path criado pelo subcomando `cstk 00c <path>` para impedir invocacoes
+concorrentes no mesmo diretorio durante o fluxo interativo.
+
+| Campo | Tipo | Descricao |
+|-------|------|-----------|
+| Path | filesystem | `<path>/.cstk-00c.lock/` (diretorio vazio criado via `mkdir` atomico) |
+| Lifecycle | runtime | Criado apos validacao do path (FR-016b) e antes de qualquer prompt; liberado via `rmdir` no trap EXIT/INT/TERM ou explicitamente antes do `exec claude` |
+| Conflito | check | Tentativa de `mkdir` em lock pre-existente falha → cstk 00c aborta com exit 1 e mensagem instrutiva |
+| Tipo | runtime-only | NAO persistido no manifest; e estado efemero do fluxo `cstk 00c` |
+
+Notas:
+- Lock fica DENTRO do `<path>` (nao em diretorio global) — escopo natural do
+  subcomando. Cleanup orfao = `rmdir <path>/.cstk-00c.lock` manualmente.
+- Distinto do lock de FR-015 (`<scope>/.cstk.lock`), que protege escopos
+  `~/.claude/skills` etc. `cstk 00c` opera em diretorio arbitrario fora desses
+  escopos e nao herda esse lock.
+- Stale lock pode ocorrer se `cstk 00c` for terminado por SIGKILL (sem trap).
+  Detectavel por idade do diretorio `.cstk-00c.lock/` > tempo razoavel; cleanup
+  manual aceitavel.
+
+## Entity: Bootstrap Whitelist File (FASE 12, FR-016f)
+
+Arquivo de whitelist de URLs externas escrito pelo `cstk 00c <path>` antes do
+`exec claude`, consumido pelo agente-00c-orchestrator via flag `--whitelist`.
+
+| Campo | Tipo | Descricao |
+|-------|------|-----------|
+| Path | filesystem | `<path>/.agente-00c-whitelist.txt` |
+| Format | plain text | Uma URL absoluta por linha (`http://` ou `https://`); SEM comentarios; SEM linhas em branco; LF (Unix line endings) |
+| Permissions | mode | `chmod 600` (so owner le/escreve) |
+| Created by | `cstk 00c` | Sequencia: prompts -> sanitize/validate cada URL -> escrita atomica via `mktemp + mv` -> chmod 600 |
+| Read by | agente-00c-runtime | Orquestrador le via `--whitelist <abs-path>` repassado por `cstk 00c` |
+| Lifecycle | persistente | Permanece no `<path>` apos `exec claude`; NAO removido por `cstk 00c` |
+
+Notas:
+- Persistencia intencional: o orquestrador pode re-ler durante ondas posteriores
+  ou em retomada via `/agente-00c-resume`. Limpeza fica a cargo do operador.
+- Validacao de URL no `cstk 00c` espelha a logica de `whitelist-validate.sh` do
+  agente-00c-runtime (rejeita patterns overly-broad: `**`, `*://*`, `https://*`
+  sem dominio); reimplementada em `cli/lib/00c-bootstrap.sh` por escolha de
+  arquitetura (Decision 12 + Clarifications round 2 Q1).

@@ -138,6 +138,8 @@ COMANDOS:
   self-update   Atualiza o proprio binario cstk
   list          Lista skills instaladas
   doctor        Verifica integridade da instalacao e manifests
+  00c <path>    Bootstrap interativo de projeto-alvo do agente-00C
+                (cria diretorio, coleta parametros e invoca claude)
 
 UTILITARIOS:
   help [CMD]    Ajuda geral ou de um comando especifico
@@ -159,12 +161,17 @@ HELP
         "$_sub" "$_sub"
       exit "$CSTK_EXIT_OK"
       ;;
+    00c)
+      printf 'cstk help 00c: consulte docs/specs/cstk-cli/contracts/cstk-00c.md\n'
+      printf 'Para help inline, rode: cstk 00c --help\n'
+      exit "$CSTK_EXIT_OK"
+      ;;
     help|--help|-h)
       _cmd_help ""
       ;;
     *)
       printf 'cstk: comando desconhecido para help: %s\n' "$_sub" >&2
-      printf 'Comandos validos: install, update, self-update, list, doctor\n' >&2
+      printf 'Comandos validos: install, update, self-update, list, doctor, 00c\n' >&2
       exit "$CSTK_EXIT_USAGE"
       ;;
   esac
@@ -210,6 +217,24 @@ _dispatch() {
       fi
       "$_main_fn" "$@"
       ;;
+    00c)
+      # FASE 12: subcomando bootstrap interativo do agente-00C.
+      # Special-case porque POSIX nao permite funcoes comecando com digito —
+      # a funcao e `bootstrap_00c_main` (nao `00c_main`).
+      _check_bin_lib_match
+      _lib_file="$CSTK_LIB/00c-bootstrap.sh"
+      if [ ! -f "$_lib_file" ]; then
+        printf 'cstk 00c: nao implementado ainda (cli/lib/00c-bootstrap.sh ausente)\n' >&2
+        exit "$CSTK_EXIT_ERROR"
+      fi
+      # shellcheck source=/dev/null
+      . "$_lib_file"
+      if ! command -v bootstrap_00c_main >/dev/null 2>&1; then
+        printf 'cstk: %s nao define funcao bootstrap_00c_main\n' "$_lib_file" >&2
+        exit "$CSTK_EXIT_ERROR"
+      fi
+      bootstrap_00c_main "$@"
+      ;;
     -*)
       printf 'cstk: flag desconhecida: %s\n' "$_cmd" >&2
       printf 'Tente: cstk --help\n' >&2
@@ -217,7 +242,7 @@ _dispatch() {
       ;;
     *)
       printf 'cstk: comando desconhecido: %s\n' "$_cmd" >&2
-      printf 'Comandos validos: install, update, self-update, list, doctor, help, --version\n' >&2
+      printf 'Comandos validos: install, update, self-update, list, doctor, 00c, help, --version\n' >&2
       exit "$CSTK_EXIT_USAGE"
       ;;
   esac

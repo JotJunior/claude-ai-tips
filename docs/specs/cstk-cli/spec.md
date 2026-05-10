@@ -91,6 +91,104 @@ sem sobrescrever edicoes locais cegamente, e sabe atualizar a si propria.
   (rollback automatico no boot) teria surface de bug maior e menos transparencia
   para o usuario.
 
+### Session 2026-05-09 (FASE 12 — `cstk 00c`)
+
+- Q: Apos confirmacao do dry-run em `cstk 00c <path>`, como a slash command
+  montada chega ao `claude` spawnado? → A: Auto-submit. `exec claude
+  "/agente-00c '<desc>' ..."` envia a slash command como primeiro turno
+  automaticamente; o `claude` inicia ja processando o pedido sem exigir Enter
+  adicional do operador. O dry-run de FR-016e e a unica confirmacao final.
+  Pre-typed (aguardando Enter) e print+paste foram rejeitados por adicionarem
+  passo manual redundante apos o dry-run.
+- Q: Como `cstk 00c` deve reagir quando `~/.claude/commands/agente-00c.md`
+  ausente? → A: Prompt + auto-install. Detecta ausencia e pergunta `Comando
+  agente-00c nao instalado. Instalar agora via 'cstk install'? [Y/n]`. Default
+  Y roda `cstk install` em foreground (progresso visivel) e prossegue para os
+  prompts; N aborta com exit 1 e instrucao manual. Auto-install silencioso
+  (sem prompt) foi rejeitado por quebrar o principio de explicit operations
+  do cstk; instruct-only puro foi rejeitado por friccao desnecessaria.
+- Q: Como `cstk 00c` deve reagir quando `jq` esta ausente do PATH? → A: Hard
+  fail upfront. `jq` entra no dep check de FR-016d como requisito ao lado de
+  `claude` e `agente-00c.md`; ausencia aborta com exit 1 e mensagem de
+  instalacao por OS (`brew install jq` no macOS, `apt install jq` no Linux).
+  Justificativa: `jq` ja e dependencia de runtime do `agente-00c-runtime`
+  (operacoes em `state.json`); sem ele, o orquestrador falha na primeira
+  onda — falha cedo e em local explicito e melhor UX que erro tardio dentro
+  da sessao do `claude`. Skip-com-warning e accept-raw foram rejeitados por
+  apenas adiarem o erro.
+- Q: Como tratar symlinks em `<path>` durante validacao? → A: Resolver via
+  `realpath -m` (que aceita paths inexistentes) e checar o destino resolvido
+  contra a lista de zonas proibidas. Mesma postura defensiva do `path-guard.sh`
+  no `agente-00c-runtime` (defesa contra T2 — symlinks adversariais). Symlinks
+  legitimos que apontam para outros locais do `$HOME` continuam funcionando;
+  symlinks que apontam para `/etc`, `~/.ssh`, etc. sao rejeitados. Reject-any
+  (mesmo legitimos) e trust-operator foram rejeitados por excesso/insuficiencia
+  de proteção respectivamente.
+- Q: Em re-execucao com `<path>` ja existente e contendo arquivos, como
+  tratar? E como tratar `.agente-00c-whitelist.txt` colidindo? → A: Recusar
+  diretamente (sem prompt). A finalidade do `cstk 00c` e ser **atalho para
+  criar projeto NOVO**, nao retomar/reusar existente. Dir nao-vazio aborta
+  com exit 1 e mensagem `<path> ja existe e nao esta vazio. Use 'cstk 00c'
+  apenas em paths novos ou vazios; para retomar uma execucao existente do
+  agente-00C use '/agente-00c-resume --projeto-alvo-path <path>' diretamente
+  no claude`. Como consequencia, a questao "como tratar
+  `.agente-00c-whitelist.txt` ja existente" torna-se moot — o fluxo nunca
+  alcanca a etapa de persistencia se o dir tem conteudo. Prompt-com-confirmacao,
+  append-com-dedup e skip-com-reuso foram rejeitados por contradizerem a
+  finalidade do subcomando.
+
+### Session 2026-05-09 (FASE 12 — round 2: gaps de prioridade ALTA)
+
+- Q: Como `cstk 00c` deve obter logica de path-guard / sanitize /
+  whitelist-validate (ja existentes no `agente-00c-runtime`)? → A:
+  Reimplementar em `cli/lib/` com referencia cruzada. `cstk` e o instalador
+  (camada inferior) e `agente-00c-runtime` e algo que ele distribui (camada
+  superior). Validacao de path precisa rodar ANTES do dep check de FR-016d
+  — depender do runtime para validar criaria chicken-and-egg. Cada bloco
+  reimplementado em `cli/lib/` MUST conter comentario apontando o canonico
+  em `global/skills/agente-00c-runtime/scripts/<script>.sh`; divergencias
+  futuras precisam ser refletidas em ambos por PR review (gate manual). A
+  cobertura esperada e: zonas proibidas (espelha `path-guard.sh`), escape
+  de single-quotes/path-traversal/comprimento (espelha `sanitize.sh`),
+  regex de URL e patterns overly-broad (espelha `whitelist-validate.sh`).
+  Shell-out e hibrido foram rejeitados por acoplamento e complexidade.
+- Q: A lista de 14 zonas proibidas em FR-016b deve ser extensivel pelo
+  operador (env var, arquivo de config) ou fechada na FASE 12? → A: Fechada.
+  cstk e ferramenta pessoal/experimental, sem casos de uso corporativos
+  conhecidos. Operadores que precisam de zonas adicionais abrem issue ou
+  fork. Extensibilidade pode ser adicionada em fase futura se demanda real
+  aparecer. Env var e config file foram rejeitados por adicionar codigo
+  (parser, defaults, doc) sem ROI atual.
+- Q: Como tratar invocacoes concorrentes de `cstk 00c <path>` no mesmo
+  path? → A: Lockfile per-path. Logo apos validar `<path>` (e antes de
+  qualquer prompt), criar `<path>/.cstk-00c.lock/` via `mkdir` atomico. Se
+  mkdir falha (lock ja existe), abortar com exit 1 e mensagem `outra
+  instancia de cstk 00c em andamento neste path` (sem mexer no estado
+  existente). Lock liberado no `exec claude` final ou via `trap` on exit
+  (Ctrl+C, falha de prompt). Cobre race entre prompts e exec sem complicar.
+  Sem-lock e lock-global foram rejeitados por trade-off insuficiente
+  e restricao excessiva, respectivamente.
+- Q: Como tratar `cstk install` aninhado em FR-016d (c) quando outro
+  `cstk install` ja esta rodando paralelamente (FR-015 lockfile)? → A:
+  Respeitar o lock + aborto explicito. Nested install usa o mesmo lockfile
+  de FR-015; se lock esta tomado, nested install falha imediatamente; `cstk
+  00c` captura o exit, libera seu proprio lock per-path (FR-016h), e aborta
+  com exit 1 e mensagem `outro cstk install em andamento. Aguarde, depois
+  rode 'cstk 00c <path>' novamente`. Sem retry automatico nem bypass.
+  Operador escolhe quando tentar de novo. Wait-com-timeout e bypass foram
+  rejeitados.
+- Q: Quando `cstk install` aninhado falha por outro motivo (rede, sha
+  mismatch, disco cheio), como `cstk 00c` deve reagir? → A: Abort sem
+  rollback. Capturar exit code do install (qualquer != 0) e abortar com
+  exit 1 proxiando o motivo (`cstk install falhou (exit code N): <razao
+  stderr>`). Diretorio criado em FR-016b/12.2.1 PERMANECE no disco — sem
+  rollback automatico, alinhado com regra geral do edge case Ctrl+C.
+  Operador decide se remove o dir vazio antes de tentar de novo. Mensagem
+  aponta `cstk install --force` para retry manual fora do `cstk 00c`.
+  Lock per-path liberado via trap on exit. Cleanup-de-diretorio e
+  retry-interativo foram rejeitados por quebrar simetria com regra Ctrl+C
+  e por pouco ROI, respectivamente.
+
 ## User Scenarios & Testing
 
 ### User Story 1 - Instalacao inicial de skills no escopo global (Priority: P1)
@@ -212,6 +310,47 @@ no canal de distribuicao, rodar o comando de self-update e verificar que apos a 
 
 ---
 
+### User Story 5 - Bootstrap interativo de projeto-alvo do agente-00C (Priority: P5)
+
+Como operador querendo iniciar um POC/MVP guiado pelo `/agente-00c`, eu quero rodar
+`cstk 00c <path>` em uma unica passada e ter o diretorio criado, os parametros do
+slash command coletados e o `claude` invocado ja na sessao do agente-00C — sem
+precisar lembrar a sintaxe do `/agente-00c` nem fazer `mkdir`/`cd` manualmente.
+
+**Why this priority**: complementar ao MVP — quem ja conhece a CLI consegue rodar
+`/agente-00c` direto. Ganho real e onboarding de novos usuarios e reducao de friccao
+para uso recorrente. Depende das fases 1-11 (CLI base) e do agente-00C ja entregues.
+
+**Independent Test**: com `claude` no PATH e o agente-00C instalado via `cstk install`,
+rodar `cstk 00c ./projeto-x`, responder a descricao curta e confirmar — verificar
+que o `claude` inicia ja com `/agente-00c "<descricao>" --projeto-alvo-path .`
+montado, sem o operador precisar digitar a slash command.
+
+**Acceptance Scenarios**:
+
+1. **Given** `<path>` que nao existe e `claude` no PATH, **When** o operador roda
+   `cstk 00c ./novo-projeto` e responde a descricao curta, **Then** o diretorio e
+   criado, o CWD e ajustado e `claude` inicia ja com `/agente-00c` auto-submetido
+   como primeiro turno (sem exigir Enter adicional do operador).
+2. **Given** `<path>` ja existe e contem arquivos, **When** o operador roda
+   `cstk 00c ./projeto-existente`, **Then** a CLI aborta com exit 1 e mensagem
+   apontando `/agente-00c-resume` como caminho para retomada — NAO ha prompt
+   de overwrite porque `cstk 00c` so opera em paths novos ou vazios.
+3. **Given** ambiente sem TTY (entrada redirecionada via pipe ou `< /dev/null`),
+   **When** `cstk 00c ./x` e invocado, **Then** a CLI aborta com exit 2 e mensagem
+   indicando que o subcomando exige TTY interativo.
+4. **Given** `claude` ou `jq` ausentes do PATH, **When** o operador roda
+   `cstk 00c ./x`, **Then** a CLI aborta com exit 1 e mensagem apontando
+   ponteiro de instalacao por OS (sem auto-install — Claude Code e `jq`
+   estao fora do escopo do cstk).
+5. **Given** `claude` e `jq` presentes mas `~/.claude/commands/agente-00c.md`
+   ausente, **When** o operador roda `cstk 00c ./x` e responde `Y` ao prompt
+   `Instalar agora via 'cstk install'?`, **Then** `cstk install` executa em
+   foreground, completa com exit 0, e o fluxo prossegue para coletar
+   descricao/stack/whitelist; resposta `n` aborta com exit 1.
+
+---
+
 ### Edge Cases
 
 - Instalacao invocada sem permissao de escrita em `~/.claude/skills/` — CLI deve abortar
@@ -226,6 +365,23 @@ no canal de distribuicao, rodar o comando de self-update e verificar que apos a 
 - Usuario executa comando em diretorio que parece projeto mas nao tem `.claude/` — CLI
   deve pedir confirmacao antes de criar `.claude/skills/` do zero, para evitar
   poluicao acidental de um diretorio arbitrario.
+- `cstk 00c <path>` invocado em diretorio nao-vazio — CLI aborta diretamente
+  com exit 1 (sem prompt). Finalidade do subcomando e criar projeto novo;
+  retomada de execucao existente e via `/agente-00c-resume`.
+- `cstk 00c <path>` em ambiente nao-TTY (CI, pipe, `< /dev/null`) — abortar com
+  exit 2; o fluxo e estritamente interativo.
+- `cstk 00c <path>` quando `claude` CLI ou `jq` nao esta no PATH — CLI deve
+  detectar antes de coletar prompts, abortar com exit 1 e ponteiro de
+  instalacao por OS.
+- `cstk 00c <path>` quando `~/.claude/commands/agente-00c.md` ausente — CLI
+  deve oferecer prompt explicito para rodar `cstk install` automaticamente
+  (default Y); apenas N aborta com exit 1.
+- `cstk 00c <path>` quando `cstk install` aninhado falha (rede, sha
+  mismatch, disco cheio, ou outro `cstk install` paralelo): aborta com
+  exit 1 propagando exit code e razao do install. Diretorio criado em
+  FR-016b PERMANECE (sem rollback). Operador decide se remove e retenta.
+- Operador interrompe (Ctrl+C) durante prompts — abortar limpamente; se diretorio
+  ja foi criado, deixar como esta sem rollback automatico (operador decide remover).
 
 ## Requirements
 
@@ -341,6 +497,83 @@ no canal de distribuicao, rodar o comando de self-update e verificar que apos a 
   isso ao usuario durante update, exigindo confirmacao antes de apagar.
 - **FR-015**: A CLI MUST prevenir execucoes concorrentes no mesmo escopo via lockfile
   para evitar corrupcao quando dois comandos rodam em paralelo.
+- **FR-016**: A CLI MUST oferecer um subcomando `cstk 00c <path>` que faz bootstrap
+  interativo de um projeto-alvo do agente-00C: validar/criar diretorio em `<path>`,
+  coletar parametros do `/agente-00c` via prompts e invocar `claude` ja com a
+  slash command montada a partir das respostas.
+- **FR-016a**: O subcomando `cstk 00c` MUST recusar execucao em ambiente nao-TTY
+  (stdin OU stdout nao-TTY) com exit 2 e mensagem explicita. E fluxo estritamente
+  interativo — nao ha modo nao-interativo.
+- **FR-016b**: O subcomando `cstk 00c` MUST validar `<path>` antes de qualquer
+  escrita: rejeitar vazio, rejeitar componentes de path traversal `..`, e
+  resolver o path (incluindo symlinks em qualquer ancestral) via `realpath -m`
+  (modo que aceita paths inexistentes) ANTES de checar contra a lista de zonas
+  proibidas. A lista canonica e: `/`, `/etc`, `/usr`, `/var`, `/bin`, `/sbin`,
+  `/boot`, `/proc`, `/sys`, `~`, `~/.ssh`, `~/.gnupg`, `~/.aws`,
+  `~/.config/claude`. A checagem MUST resolver tambem cada zona proibida antes
+  de comparar (defesa contra symlinks adversariais — alinhado com
+  `path-guard.sh` do `agente-00c-runtime`). Se `<path>` resolvido ja existe e
+  contem qualquer arquivo, abortar com exit 1 SEM prompt (finalidade do
+  subcomando e criar projeto novo, nao retomar existente — mensagem deve
+  apontar `/agente-00c-resume` como caminho para retomada).
+- **FR-016c**: O subcomando `cstk 00c` MUST coletar interativamente, em ordem:
+  (a) descricao curta do POC/MVP (>=10 chars, <=500 chars; rejeitar
+  newlines/`$`/`` ` ``); (b) stack-sugerida em JSON (opcional, validado via `jq`
+  quando presente); (c) whitelist de URLs externas (opcional, uma URL por linha
+  ate linha vazia, cada linha precisa comecar com `http://` ou `https://`).
+- **FR-016d**: O subcomando `cstk 00c` MUST verificar dependencias antes de
+  invocar o agente, em ordem:
+  (a) binario `claude` no PATH — ausencia aborta com exit 1 e mensagem com
+      ponteiro de instalacao do Claude Code (sem auto-install — instalacao do
+      Claude Code esta fora do escopo do cstk);
+  (b) binario `jq` no PATH — ausencia aborta com exit 1 e mensagem de
+      instalacao por OS (`brew install jq` em macOS, `apt install jq` em
+      Linux). `jq` e dependencia de runtime do `agente-00c-runtime` (operacoes
+      em `state.json`) — falha cedo aqui evita erro tardio dentro da sessao
+      do `claude`;
+  (c) arquivo `~/.claude/commands/agente-00c.md` presente — ausencia dispara
+      prompt explicito `Comando agente-00c nao instalado. Instalar agora via
+      'cstk install'? [Y/n]`. Default Y executa `cstk install` em foreground
+      (progresso visivel no terminal) e prossegue para coletar prompts apenas
+      se a instalacao terminou com exit 0; N aborta com exit 1 e instrucao
+      manual. Flag `--yes` aceita o prompt automaticamente. O `cstk install`
+      aninhado MUST respeitar o lockfile global de FR-015 — se outro
+      `cstk install` ja esta rodando, o nested falha imediatamente e
+      `cstk 00c` aborta com exit 1, libera seu lock per-path (FR-016h) e
+      mensagem instrutiva `outro cstk install em andamento. Aguarde, depois
+      rode 'cstk 00c <path>' novamente`.
+- **FR-016e**: O subcomando `cstk 00c` MUST imprimir resumo dry-run antes de
+  invocar `claude` (path final, descricao, stack, whitelist e linha exata da
+  `/agente-00c` que sera disparada) e exigir confirmacao final `[Y/n]`
+  (default Y). Flag `--yes` pula apenas o prompt final (nao pula validacoes
+  de FR-016a, FR-016b, FR-016d, nem o prompt de dir nao-vazio).
+- **FR-016f**: O subcomando `cstk 00c` MUST fazer `cd` para `<path>` e em seguida
+  invocar `claude` via `exec` (substituindo o processo cstk) passando a slash
+  command `/agente-00c <args>` como **primeiro turno auto-submetido** — i.e.,
+  ao operador NAO e exigido pressionar Enter adicional dentro do `claude`; a
+  sessao do agente-00C inicia processando o pedido imediatamente. O dry-run de
+  FR-016e e a unica confirmacao final. A whitelist coletada MUST ser persistida
+  em `<path>/.agente-00c-whitelist.txt` antes do `exec` e referenciada via
+  `--whitelist` (nao inline) para evitar argv overflow e quote-escape.
+- **FR-016g**: O subcomando `cstk 00c` MUST sanitizar todas as respostas antes de
+  montar a linha de comando: descricao escapada para shell single-quotes
+  (`'` -> `'\''`); stack JSON reproduzida via `jq -c` para garantir uma linha;
+  nenhum caractere de controle inserido na argv final. A logica de validacao e
+  sanitizacao MUST ser reimplementada em `cli/lib/` (espelhando `path-guard.sh`,
+  `sanitize.sh`, `whitelist-validate.sh` do `agente-00c-runtime`) e NAO obtida
+  via shell-out para os scripts da skill — `cstk` e camada inferior ao runtime.
+  Cada bloco reimplementado MUST conter comentario apontando o canonico (path
+  exato em `global/skills/agente-00c-runtime/scripts/<script>.sh`); divergencias
+  futuras passam por PR review explicito.
+- **FR-016h**: O subcomando `cstk 00c` MUST prevenir invocacoes concorrentes no
+  mesmo `<path>` via lockfile per-path. Logo apos validacao do `<path>` por
+  FR-016b e ANTES de qualquer prompt, MUST tentar `mkdir <path>/.cstk-00c.lock`
+  atomicamente; falha do mkdir (lock pre-existente) aborta com exit 1 e
+  mensagem `outra instancia de cstk 00c em andamento em <path>` sem alterar
+  qualquer outro arquivo. O lock MUST ser liberado tanto no `exec claude`
+  final quanto via trap on exit (Ctrl+C, abort de prompt, falha em qualquer
+  etapa). FR-015 (lock por escopo skills/commands/agents) NAO se aplica aqui
+  — `cstk 00c` opera em diretorio arbitrario fora dos escopos canonicos.
 
 ### Key Entities
 
@@ -386,3 +619,12 @@ no canal de distribuicao, rodar o comando de self-update e verificar que apos a 
   renomeada na fonte, (4) skill removida da fonte. Casos adicionais (ex: permissoes
   alteradas, symlinks introduzidos) sao fora do escopo deste SC e podem ser
   adicionados em specs futuras.
+- **SC-008**: Rodando `cstk 00c <path>` em maquina com toolkit instalado e `claude`
+  no PATH, o operador consegue iniciar uma sessao do agente-00C em <60 segundos,
+  contando da invocacao do subcomando ate o `claude` aparecer ja com `/agente-00c`
+  montado como primeiro turno.
+- **SC-009**: Em 100% das tentativas com `<path>` invalido (path traversal, zona
+  de sistema, vazio, ou dir existente nao-vazio), o subcomando `cstk 00c`
+  aborta ANTES de qualquer escrita em disco e ANTES de invocar `claude`.
+  Verificavel via comparacao de inode/timestamp do filesystem antes/depois,
+  e via ausencia de `<path>/.agente-00c-whitelist.txt` no caso de aborto.

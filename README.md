@@ -237,9 +237,18 @@ intervenção humana entre etapas, gerando como entregável-mor um
 
 | Comando | Função |
 |---------|--------|
-| `/agente-00c <descricao> [--stack ...] [--whitelist ...] [--projeto-alvo-path ...]` | Inicia nova execução |
+| `cstk 00c <path>` | **Atalho recomendado**: bootstrap interativo (cria diretório, coleta parâmetros e invoca `claude` já com `/agente-00c` montada) |
+| `/agente-00c <descricao> [--stack ...] [--whitelist ...] [--projeto-alvo-path ...]` | Invocação direta no claude (alternativa ao `cstk 00c`) |
 | `/agente-00c-resume [--projeto-alvo-path ...] [--resposta-bloqueio <id>:<resp>]` | Retoma após pausa ou schedule |
 | `/agente-00c-abort [--projeto-alvo-path ...]` | Aborto manual |
+
+> **`cstk 00c <path>`** é o caminho preferido para iniciar um POC/MVP novo:
+> ele valida o path, cria o diretório, coleta descrição/stack/whitelist via
+> prompts e dá `exec claude` com a slash command auto-submetida. Requer
+> TTY interativo (não automatizável via pipe) e só opera em paths novos
+> ou vazios — para retomar execução existente, use `/agente-00c-resume`
+> diretamente no claude. Ver detalhes em
+> [`docs/specs/cstk-cli/contracts/cstk-00c.md`](./docs/specs/cstk-cli/contracts/cstk-00c.md).
 
 ### Pré-requisitos
 
