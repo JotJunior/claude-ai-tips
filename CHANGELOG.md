@@ -7,6 +7,85 @@ este projeto adere a [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ## [Unreleased]
 
+## [3.5.0] - 2026-05-09
+
+### Added
+
+- **Subcomando `cstk 00c <path>` — bootstrap interativo do agente-00C
+  (FASE 12 do `cstk-cli`)**: atalho recomendado para iniciar uma sessao
+  do agente-00C. Cria diretorio do projeto-alvo, valida path, coleta
+  parametros via prompts (descricao, stack JSON, whitelist de URLs) e
+  invoca `claude` ja com `/agente-00c '<args>'` auto-submetido como
+  primeiro turno. Elimina friccao de `mkdir`/`cd` + memorizar a sintaxe
+  da slash command.
+
+  - **Validacao defensiva** (FR-016b): rejeita path traversal `..`,
+    rejeita 14 zonas de sistema (`/`, `/etc`, `/usr`, `/var`, `/bin`,
+    `/sbin`, `/boot`, `/proc`, `/sys`, `~/.ssh`, `~/.gnupg`, `~/.aws`,
+    `~/.config/claude` + canonicas e resolvidas no macOS); resolve
+    symlinks via `realpath -m` (fallback POSIX `cd -P` para BSD).
+    `<path>` exato em `$HOME` rejeitado, mas paths INSIDE `$HOME` sao
+    permitidos.
+  - **TTY-only** (FR-016a): subcomando recusa execucao em pipe/CI;
+    `[ -t 0 ] && [ -t 1 ]`. Stderr pode ser redirecionado.
+  - **Dir nao-vazio = recusa direta sem prompt** (FR-016b): finalidade
+    e atalho para projeto NOVO; mensagem aponta `/agente-00c-resume`
+    para retomada.
+  - **Lock per-path** (FR-016h, novo): `mkdir <path>/.cstk-00c.lock/`
+    atomico antes de qualquer prompt; release via `trap EXIT INT TERM`
+    + release explicito antes do `exec claude`. Previne race entre
+    duas instancias simultaneas no mesmo `<path>`.
+  - **Dep checks** (FR-016d): claude CLI no PATH; `jq` no PATH (teste
+    funcional via `jq --version`); `~/.claude/commands/agente-00c.md`
+    instalado — ausencia dispara prompt `[Y/n]` para auto-install via
+    `cstk install` em foreground (respeita lockfile global de FR-015).
+    Falha do nested install propaga exit code + razao.
+  - **Sanitizacao** (FR-016g): descricao escapada para shell single-quotes
+    (`'` -> `'\''`); stack JSON compactada via `jq -c`; whitelist
+    persistida em `<path>/.agente-00c-whitelist.txt` (chmod 600) e
+    referenciada via path absoluto em `--whitelist` (evita argv overflow).
+  - **Validacao de URL na whitelist**: espelha
+    `agente-00c-runtime/scripts/whitelist-validate.sh` rejeitando
+    patterns overly-broad (`**` puro, `*://*`, `https://*` sem dominio,
+    host vazio, sem scheme http(s), wildcard fora do prefixo
+    `*.dominio.tld`).
+  - **Dry-run preview obrigatorio** (FR-016e): mostra path final,
+    descricao, stack, whitelist count + path, e linha exata da
+    `/agente-00c` que sera invocada. Confirmacao final `[Y/n]` (default
+    Y); flag `--yes` pula apenas o prompt final + auto-install.
+  - **Spawn auto-submit** (FR-016f): `exec claude "$slash_command"`
+    passa a slash command como argv[1]; claude processa como primeiro
+    turno automatico (sem exigir Enter adicional do operador).
+
+  Implementacao em `cli/lib/00c-bootstrap.sh` (~480 linhas POSIX puro)
+  com 16 helpers privados `_00c_*` + entry point publico
+  `bootstrap_00c_main`. **Special-case no dispatcher** porque POSIX
+  nao permite funcao com nome iniciando em digito (`00c_main` invalido).
+
+  Cobertura de testes: 18 cenarios em `tests/cstk/test_00c-bootstrap.sh`
+  com mocks de `claude` (registra argv) e `cstk install` (controlavel).
+  Cenarios cobrem path validation, TTY, deps ausentes, prompts (descricao
+  9/501 chars, com `$`, com unicode, JSON malformado, URL overly-broad),
+  lock pre-existente, dry-run + cancel, happy path com argv correto,
+  apostrofo escapado, JSON com aspas duplas internas. Suite total:
+  **505 PASS / 0 FAIL**.
+
+### Changed
+
+- **Carve-out 1.1.0 atualizada**: `jq` agora obrigatorio em
+  `cli/lib/00c-bootstrap.sh` (era opcional em outros comandos do cstk).
+  Justificativa: validacao de stack JSON (FR-016c) + dep transitiva do
+  `agente-00c-runtime` que o `cstk 00c` invoca via `/agente-00c` —
+  falha cedo em FR-016d e melhor UX que erro tardio dentro da sessao
+  do `claude`.
+
+- **`cstk` dispatcher e `cstk --help` atualizados** com nova entrada
+  `00c <path>` listando o subcomando entre os comandos validos.
+
+- **README.md secao Agente-00C** documenta `cstk 00c <path>` como o
+  caminho preferido para iniciar sessoes do agente-00C, com nota
+  apontando `/agente-00c-resume` para retomada de execucoes existentes.
+
 ## [3.4.0] - 2026-05-09
 
 ### Changed

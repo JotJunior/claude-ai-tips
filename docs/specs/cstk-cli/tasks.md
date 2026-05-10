@@ -529,11 +529,16 @@ Ref: `spec.md` FR-016f, FR-016g, SC-008.
 - [x] 12.6.1 Adicionar `cstk 00c --help` em `cli/cstk` com texto cobrindo: (a) sintaxe `cstk 00c <path> [--yes]`, (b) os 5 passos do fluxo (validar path, criar dir + lock, prompts interativos, dry-run, exec claude), (c) **pre-requisito TTY** explicito (resolve CHK065 — operador descobre antes de tentar usar em script), (d) variantes aceitas em prompts `[Y/n]`: `Y/y/yes/sim/s/S/Enter` para sim; `n/N/no/nao/Ctrl+D` para nao (resolve CHK051), (e) lista de exit codes (0/1/2/130) e seus significados
 - [x] 12.6.2 Atualizar `cstk --help` para listar `00c` entre os subcomandos com one-liner
 - [x] 12.6.3 Atualizar `README.md` §Agente-00C: documentar `cstk 00c <path>` como caminho preferido para iniciar uma sessao do agente-00C; mencionar pre-requisito TTY e que e atalho para projeto NOVO
-- [ ] 12.6.4 Adicionar entrada no `CHANGELOG.md` (sob `[Unreleased]`) com bullets: novo subcomando `cstk 00c <path>`; FR-016*..h adicionados; SC-008/009 cobrem; carve-out 1.1.0 atualizada com `jq` em `cli/lib/00c-bootstrap.sh`
+- [x] 12.6.4 Adicionar entrada no `CHANGELOG.md` (sob `[Unreleased]`) com bullets: novo subcomando `cstk 00c <path>`; FR-016*..h adicionados; SC-008/009 cobrem; carve-out 1.1.0 atualizada com `jq` em `cli/lib/00c-bootstrap.sh`
+  → Resolvido em release v3.5.0 (2026-05-09): entry com Added (cstk 00c
+    + FR-016*..h + 18 testes) e Changed (carve-out + dispatcher + README).
 
 ### 12.7 Release `[M]`
 
-- [ ] 12.7.1 Bump SemVer (MINOR — adicao backward-compatible) apos FASE 12 fechar; criar tag `vX.Y.0`
+- [x] 12.7.1 Bump SemVer (MINOR — adicao backward-compatible) apos FASE 12 fechar; criar tag `vX.Y.0`
+  → Resolvido: tag `v3.5.0` criada localmente apontando para o commit
+    `chore(release): v3.5.0`. MINOR bump (3.4.0 -> 3.5.0); FASE 12 e
+    adicao backward-compatible. Push da tag pendente.
 - [ ] 12.7.2 Validar artefatos do release no GitHub (workflow `release.yml` ja cobre)
 - [ ] 12.7.3 Smoke manual em maquina limpa: `curl ... | sh` -> `cstk install` -> `cstk 00c ./test-poc` -> verificar que claude inicia com slash command montada (SC-008)
 
