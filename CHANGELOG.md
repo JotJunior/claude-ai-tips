@@ -7,6 +7,43 @@ este projeto adere a [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ## [Unreleased]
 
+## [3.5.2] - 2026-05-12
+
+### Fixed
+
+- **`cstk 00c`: Ctrl+C nao abortava prompts limpo (#2)**: `trap
+  '_00c_release_lock' EXIT INT TERM` rodava o cleanup mas nao chamava
+  `exit`. POSIX consume o sinal apos o trap; `read -r` no loop de
+  validacao retornava empty e o while prosseguia pedindo input —
+  operador ficava preso no prompt e Ctrl+\ (SIGQUIT) era o unico escape,
+  orfanando o lock per-path.
+
+  Fix: split em duas traps. `EXIT` chama `_00c_release_lock` (cleanup);
+  `INT`/`TERM` chamam `exit 130`/`exit 143`, que disparam o EXIT trap
+  em sequencia. Operador sai com exit code POSIX correto e lock
+  liberado.
+
+  Regressao coberta via self-signal `kill -INT $$` em
+  `scenario_issue_2_sigint_propaga_exit_130` (SIGINT real em background
+  jobs nao eh testavel em POSIX sh por causa do SIG_IGN inherit).
+
+- **agente-00c: pipeline.sh detect-completion nao reconhecia paths do
+  `/initialize-docs` (#3)**: `detect-completion` so olhava em
+  `--feature-dir` (`docs/specs/<feature>/`), mas as skills `briefing`
+  e `constitution` salvam em paths project-level da hierarquia numerada:
+  briefing -> `docs/01-briefing-discovery/briefing.md`, constitution ->
+  `docs/constitution.md`. Orchestrator nunca detectava conclusao dessas
+  etapas; double-write workaround duplicava o artefato em dois locais
+  (suggestion `sug-001` da smoke v3.5.0).
+
+  Fix: novo flag opcional `--projeto-alvo-path PAP` em
+  `detect-completion`. Para briefing/constitution, paths do
+  `/initialize-docs` sao aceitos como fallback alem do feature-dir.
+  Orchestrator (`Loop principal item 6`) passa o PAP em todas as
+  chamadas. Skills `briefing`/`constitution` permanecem inalteradas
+  — caminho canonical delas continua nos paths numerados (decisao
+  consciente: artefatos project-level separados de feature-level).
+
 ## [3.5.1] - 2026-05-12
 
 ### Fixed
