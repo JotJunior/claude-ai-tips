@@ -21,6 +21,12 @@ sdd:create-tasks
 sdd:analyze
 sdd:execute-task
 sdd:review-task
+# Runtime do agente-00C — infra interna consumida por /agente-00c.
+# Commands e agents de agente-00c sao instalados sem filtro de profile
+# (via _install_apply_extra_kinds), mas a runtime e uma skill e seria
+# excluida do sdd default. Incluir aqui evita que `cstk install` deixe
+# o usuario com /agente-00c orfa de scripts (state-rw.sh, etc.).
+sdd:agente-00c-runtime
 
 # Skills complementares (uso pontual, sem sequencia)
 complementary:advisor
@@ -32,3 +38,5 @@ complementary:owasp-security
 complementary:validate-documentation
 complementary:validate-docs-rendered
 complementary:initialize-docs
+# Mesma razao do sdd:agente-00c-runtime acima.
+complementary:agente-00c-runtime

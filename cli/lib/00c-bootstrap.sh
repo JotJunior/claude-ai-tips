@@ -172,8 +172,10 @@ PRE-REQUISITOS:
   - TTY interativo (fluxo NAO automatizavel via pipe; aborta com exit 2)
   - `claude` no PATH (Claude Code CLI)
   - `jq` no PATH (validacao de stack JSON; dep do agente-00c-runtime)
-  - `~/.claude/commands/agente-00c.md` instalado (auto-prompt para
-    `cstk install` se ausente)
+  - Artefatos do agente-00C instalados (auto-prompt para `cstk install`
+    se ausentes): `~/.claude/commands/agente-00c.md`,
+    `~/.claude/skills/agente-00c-runtime/scripts/state-rw.sh` (+x),
+    `~/.claude/agents/agente-00c-orchestrator.md`.
 
 FLUXO (5 passos):
   1. Validar <path> (rejeita zonas de sistema, traversal, dir nao-vazio)
@@ -438,9 +440,24 @@ _00c_check_deps() {
     return "$_00C_EXIT_ERROR"
   fi
 
-  # (c) ~/.claude/commands/agente-00c.md instalado
-  _cd_cmd_path="${HOME:?HOME nao setado}/.claude/commands/agente-00c.md"
-  if [ ! -f "$_cd_cmd_path" ]; then
+  # (c) Artefatos do agente-00C instalados: command + runtime + 3 agents.
+  # Sanity de instalacao precisa cobrir as tres camadas — checar apenas o
+  # command deixa passar instalacoes parciais (ex.: profile sdd antigo que
+  # nao incluia runtime) que so falham em runtime quando o orquestrador
+  # chama state-rw.sh, ja dentro de uma onda.
+  _cd_home="${HOME:?HOME nao setado}"
+  _cd_cmd_path="$_cd_home/.claude/commands/agente-00c.md"
+  _cd_runtime_probe="$_cd_home/.claude/skills/agente-00c-runtime/scripts/state-rw.sh"
+  _cd_orchestrator_path="$_cd_home/.claude/agents/agente-00c-orchestrator.md"
+  _cd_missing=""
+  [ -f "$_cd_cmd_path" ] || _cd_missing="$_cd_missing command"
+  # Runtime: arquivo precisa existir E ser executavel — script sem +x
+  # silenciosamente falha quando invocado via Bash.
+  [ -x "$_cd_runtime_probe" ] || _cd_missing="$_cd_missing runtime"
+  [ -f "$_cd_orchestrator_path" ] || _cd_missing="$_cd_missing orchestrator"
+
+  if [ -n "$_cd_missing" ]; then
+    log_info "00c: instalacao incompleta detectada (faltando:$_cd_missing)"
     _00c_prompt_install || return $?
   fi
 
@@ -453,7 +470,7 @@ _00c_prompt_install() {
   if [ "$_00c_arg_yes" = 1 ]; then
     _pi_answer="Y"
   else
-    printf 'Comando agente-00c nao instalado. Instalar agora via "cstk install"? [Y/n] ' >&2
+    printf 'Artefatos do agente-00c ausentes ou incompletos. Instalar agora via "cstk install"? [Y/n] ' >&2
     if ! IFS= read -r _pi_answer; then
       # EOF / Ctrl+D = N
       _pi_answer="n"

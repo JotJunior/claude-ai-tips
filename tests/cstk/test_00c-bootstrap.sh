@@ -455,8 +455,20 @@ EOF
 # ==== Scenario: confirmacao N (sem --yes) cancela limpo (FR-016e) ====
 
 scenario_confirmacao_n_cancela() {
-  _h="$TMPDIR_TEST/h"; mkdir -p "$_h/.claude/commands"
+  _h="$TMPDIR_TEST/h"
+  mkdir -p "$_h/.claude/commands" \
+           "$_h/.claude/skills/agente-00c-runtime/scripts" \
+           "$_h/.claude/agents"
   printf '# agente-00c\n' > "$_h/.claude/commands/agente-00c.md"
+  # Probe da runtime: precisa existir + ser executavel (corresponde ao
+  # check em _00c_check_deps que valida [ -x state-rw.sh ]).
+  printf '#!/bin/sh\nexit 0\n' > "$_h/.claude/skills/agente-00c-runtime/scripts/state-rw.sh"
+  chmod +x "$_h/.claude/skills/agente-00c-runtime/scripts/state-rw.sh"
+  printf '#!/bin/sh\nexit 0\n' > "$_h/.claude/skills/agente-00c-runtime/scripts/state-lock.sh"
+  chmod +x "$_h/.claude/skills/agente-00c-runtime/scripts/state-lock.sh"
+  printf '#!/bin/sh\nexit 0\n' > "$_h/.claude/skills/agente-00c-runtime/scripts/path-guard.sh"
+  chmod +x "$_h/.claude/skills/agente-00c-runtime/scripts/path-guard.sh"
+  printf '# orchestrator\n' > "$_h/.claude/agents/agente-00c-orchestrator.md"
   _m="$TMPDIR_TEST/mock"; _make_mocks "$_m"
   _p="$_h/poc-cancel"
 

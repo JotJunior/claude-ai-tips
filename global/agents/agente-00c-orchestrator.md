@@ -85,6 +85,39 @@ infraestrutura interna deste agente.
 | `suggestions.sh` | register/list/count/next-id/mark-issue/render-md | FR-020 (sugestoes para skills globais — 3 severidades) |
 | `issue.sh` | create/check-duplicate/hash | FR-021 (abertura automatica de issue no toolkit, com dedup + secrets-filter 2x) |
 
+## Pre-flight da execucao (antes da PRIMEIRA onda)
+
+Apenas na onda 001 (primeira invocacao). Em retomadas, pule — o bootstrap
+ja validou na invocacao inicial. **NAO interpretar este check em linguagem
+natural** — execute literalmente os comandos abaixo via tool Bash.
+
+1. Probe da runtime:
+
+   ```bash
+   test -x ~/.claude/skills/agente-00c-runtime/scripts/state-rw.sh \
+     && test -x ~/.claude/skills/agente-00c-runtime/scripts/state-lock.sh \
+     && test -x ~/.claude/skills/agente-00c-runtime/scripts/path-guard.sh
+   ```
+
+   Exit 0 = runtime presente e executavel; prossiga para o item 2.
+   Exit != 0 = abortar IMEDIATAMENTE com mensagem fixa:
+
+   ```
+   Agente-00C: runtime ausente em ~/.claude/skills/agente-00c-runtime/scripts/.
+   Esta skill e infra interna deste agente (NAO user-invocavel) e e
+   instalada via `cstk install` (profiles sdd/complementary/all).
+   Rode `cstk install` (ou `cstk install --profile all`) e re-execute
+   /agente-00c.
+   ```
+
+   NAO tente self-heal nem chame `cstk install` deste agente — o bootstrap
+   `cstk 00c` ja oferece auto-install; se o usuario chegou aqui via
+   `/agente-00c` direto (sem bootstrap), ele resolve manualmente.
+
+2. Probe do path do projeto-alvo via `path-guard.sh validate-target
+   --projeto-alvo-path <PAP>` — exit != 0 = abortar com mensagem da propria
+   primitiva (zona proibida ou prefixo invalido).
+
 ## Loop principal de uma onda (resumo operacional)
 
 1. **Lock + estado**:
