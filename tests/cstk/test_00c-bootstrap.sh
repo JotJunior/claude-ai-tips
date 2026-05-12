@@ -491,6 +491,68 @@ EOF
   assert_stderr_contains "Cancelado" || return 1
 }
 
+# ==== Scenario: Issue #2 — trap INT propaga exit 130 + libera lock ====
+#
+# Antes do fix: `trap '_00c_release_lock' INT` rodava cleanup mas nao
+# propagava exit; `read -r` em loop de validacao retornava empty e prendia
+# o operador no prompt.
+# Depois do fix: trap split — EXIT chama cleanup; INT chama explicitamente
+# `exit 130` (que dispara EXIT trap em seguida).
+#
+# Testar SIGINT REAL via `kill -INT $bg_pid` nao funciona porque POSIX
+# manda background jobs herdarem SIGINT como SIG_IGN (e `trap` silently
+# ignora INT se ja estava ignorado na entrada do shell). O operador real
+# roda em foreground TTY onde SIGINT NAO esta ignorado.
+#
+# Workaround: self-signal via `kill -INT $$` — funciona em FG ou BG porque
+# o trap eh instalado antes do signal ser entregue, e o shell processa
+# sinal proprio mesmo com SIG_IGN na entrada (POSIX: trap acoes sao
+# obrigatorias para sinais auto-entregues mediante `kill`).
+
+scenario_issue_2_sigint_propaga_exit_130() {
+  # Bootstrap requer 3 artefatos do agente-00C — vide _00c_check_deps.
+  _h="$TMPDIR_TEST/h"
+  mkdir -p "$_h/.claude/commands" \
+           "$_h/.claude/skills/agente-00c-runtime/scripts" \
+           "$_h/.claude/agents"
+  printf '# agente-00c\n' > "$_h/.claude/commands/agente-00c.md"
+  for _scr in state-rw state-lock path-guard; do
+    printf '#!/bin/sh\nexit 0\n' > "$_h/.claude/skills/agente-00c-runtime/scripts/$_scr.sh"
+    chmod +x "$_h/.claude/skills/agente-00c-runtime/scripts/$_scr.sh"
+  done
+  printf '# orchestrator\n' > "$_h/.claude/agents/agente-00c-orchestrator.md"
+  _m="$TMPDIR_TEST/mock"; _make_mocks "$_m"
+  _p="$_h/poc-sigint"
+  mkdir -p "$_p"
+
+  # Source bootstrap, configura estado minimo (resolved_path + adquire lock
+  # — que tambem instala os traps), depois self-signal.
+  capture env \
+    HOME="$_h" \
+    PATH="$_m:/usr/bin:/bin" \
+    CSTK_LIB="$CSTK_LIB" \
+    CSTK_00C_FORCE_TTY=1 \
+    CSTK_BIN="$_m/cstk" \
+    sh -c '
+      . "$CSTK_LIB/00c-bootstrap.sh"
+      _00c_resolved_path="$1"
+      _00c_acquire_lock || exit 99
+      kill -INT $$
+      exit 88   # NAO deve chegar aqui — trap INT chama exit 130
+    ' 00c_test "$_p"
+
+  if [ "$_CAPTURED_EXIT" != 130 ]; then
+    _fail "exit code" "esperado 130 (trap INT exit 130), obtido $_CAPTURED_EXIT (88=trap nao propagou, 99=acquire_lock falhou)"
+    return 1
+  fi
+
+  # Lock liberado pelo EXIT trap apos exit 130.
+  if [ -d "$_p/.cstk-00c.lock" ]; then
+    _fail "lock orfanado" "$_p/.cstk-00c.lock persiste — EXIT trap nao rodou"
+    return 1
+  fi
+}
+
 # ==== Run all ====
 
 run_all_scenarios "$0"

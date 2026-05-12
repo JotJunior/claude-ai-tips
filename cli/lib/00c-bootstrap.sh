@@ -382,8 +382,15 @@ _00c_acquire_lock() {
     return "$_00C_EXIT_ERROR"
   fi
 
-  # Trap garante release em qualquer caminho de saida.
-  trap '_00c_release_lock' EXIT INT TERM
+  # Trap split (issue #2):
+  # - EXIT: cleanup (release_lock) em qualquer caminho de saida.
+  # - INT/TERM: chama `exit 130/143` explicitamente. Sem o `exit`, o trap
+  #   apenas roda mas o sinal e consumido — `read -r` no loop de prompts
+  #   retorna empty e o while de validacao prossegue, deixando o usuario
+  #   "preso" no prompt apos Ctrl+C. `exit` dispara o trap EXIT na sequencia.
+  trap '_00c_release_lock' EXIT
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
   return 0
 }
 
