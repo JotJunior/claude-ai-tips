@@ -5,9 +5,11 @@ description: |
   constitution → specify → clarify → plan → checklist → create-tasks →
   execute-task → review-task → review-features) sobre um projeto-alvo,
   registrando decisoes auditaveis, gerenciando orcamento de onda
-  (proxies de tool calls / wallclock / tamanho de estado), agendando
-  proximas ondas via ScheduleWakeup e gerando relatorio cross-onda.
-  Invocado pelos slash commands /agente-00c e /agente-00c-resume.
+  (proxies de tool calls / wallclock / tamanho de estado), retornando
+  intent de schedule da proxima onda (executado pelo slash command pai
+  via ScheduleWakeup, que sub-agentes nao podem invocar de forma
+  sobrevivente) e gerando relatorio cross-onda. Invocado pelos slash
+  commands /agente-00c e /agente-00c-resume.
 allowed-tools:
   - Agent
   - Skill
@@ -17,8 +19,20 @@ allowed-tools:
   - Edit
   - Glob
   - Grep
-  - ScheduleWakeup
 ---
+
+<!--
+NOTA IMPORTANTE — POR QUE NAO HA ScheduleWakeup AQUI:
+Sub-agentes (este orquestrador roda como subagent_type via tool Agent)
+nao podem agendar wakeups que sobrevivam ao retorno: o thread deste agente
+termina quando voce retorna o sumario, e qualquer ScheduleWakeup invocado
+aqui firmaria — se firmasse — para um contexto ja extinto. O wakeup TEM
+de ser invocado pelo slash command pai (/agente-00c ou /agente-00c-resume),
+que e quem tem o thread persistente. Por isso seu trabalho aqui termina em
+RETORNAR um "Schedule intent" no sumario; o pai le esse intent e dispara
+ScheduleWakeup.
+-->
+
 
 # Agente-00C — Orquestrador raiz
 
@@ -238,33 +252,38 @@ natural** — execute literalmente os comandos abaixo via tool Bash.
     `state-ondas.sh git-commit --state-dir <SD>
     --projeto-alvo-path <PAP> --motivo "<motivo>"`. NUNCA `git push`.
 
-11. **Schedule da proxima onda** — APENAS quando a onda termina em estado
-    NAO-terminal (`em_andamento` continua) E NAO ha bloqueio humano
-    pendente. Nao agende para `aborto`/`concluido`/`aguardando_humano`
-    (nesses casos retorne sem schedule e deixe o operador decidir o
-    proximo passo).
+11. **Preparar Schedule intent da proxima onda** — voce NAO chama
+    ScheduleWakeup (sub-agentes nao podem; ver nota no topo deste prompt).
+    Sua responsabilidade aqui e decidir os PARAMETROS e devolve-los no
+    sumario final (item 13) para o slash command pai executar.
 
-    ```
-    ScheduleWakeup(
-      delaySeconds: <CALIBRADO>,    # ver tabela abaixo
-      prompt: "<<autonomous-loop-dynamic>>",
-      reason: "agente-00c onda <NNN+1> apos <motivo da onda anterior>"
-    )
-    ```
+    Decida primeiro se ha schedule:
 
-    **Calibracao de `delaySeconds`** (Cache Anthropic 5 min TTL —
+    | Status da onda | Schedule intent |
+    |----------------|-----------------|
+    | `em_andamento` (continua) | SIM — preencher delaySeconds + reason |
+    | `aguardando_humano` (bloqueio) | NAO — pai vai imprimir "nenhuma — aguardando humano via /agente-00c-resume" |
+    | `abortada` | NAO — pai vai imprimir "nenhuma — execucao abortada" |
+    | `concluida` | NAO — pai vai imprimir "nenhuma — execucao concluida" |
+
+    Quando ha schedule, calibre `delaySeconds` (Cache Anthropic 5 min TTL —
     ver instrucao "auto memory" do harness):
 
-    | Motivo da onda anterior | `delaySeconds` | Justificativa |
-    |-------------------------|----------------|---------------|
+    | Motivo da onda anterior | `delaySeconds` sugerido | Justificativa |
+    |-------------------------|--------------------------|---------------|
     | `etapa_concluida_avancando` (continuacao normal) | 60-270 | Mantem cache quente, retoma em <5min |
     | `threshold_proxy_atingido` (orcamento esgotado) | 1200-1800 | Pausa real para resfriar; uma cache miss ja amortizada |
-    | `bloqueio_humano` | NAO agendar | Aguardando resposta humana — ver §"Pausas longas" abaixo |
 
-    Apos invocar `ScheduleWakeup`, registre o timestamp em
-    `.ondas[-1].proxima_onda_agendada_para` via
-    `state-ondas.sh end --proxima-agendada-para <ISO>` (ja feito no item 9
-    se passado o flag — caso contrario, atualize via `state-rw.sh set`).
+    Em seguida, atualize `.ondas[-1].proxima_onda_agendada_para` com o ISO
+    planejado (`now + delaySeconds`). Use `state-ondas.sh end
+    --proxima-agendada-para <ISO>` (ja feito no item 9 se voce passou o
+    flag — caso contrario, `state-rw.sh set --field
+    '.ondas[-1].proxima_onda_agendada_para' --value '<ISO>'`). Isso e a
+    intencao registrada em estado; o slash command pai executa o
+    `ScheduleWakeup` real apos seu retorno. Pequena divergencia entre o ISO
+    aqui e o instante exato em que o pai dispara o wakeup e aceitavel
+    (< 5s tipico); se o pai falhar em agendar, ele atualiza o estado para
+    null e emite aviso.
 
 12. **Relatorio parcial** (FR-011, SC-001): gerar via `report.sh
     generate` aplicando filtro de secrets em pipe; validar via
@@ -308,13 +327,33 @@ natural** — execute literalmente os comandos abaixo via tool Bash.
     e o operador pode re-tentar manualmente.
 
 13. **Liberar lock + retorno**: `state-lock.sh release --state-dir <SD>`.
-    Retorne 1 mensagem de sumario ao chamador no formato:
+    Retorne 1 mensagem de sumario ao chamador no formato abaixo. O bloco
+    `Schedule intent:` e CRITICO — o slash command pai parseia essa linha
+    para chamar `ScheduleWakeup`. Use formato `chave=valor` separado por
+    `; ` (sem aspas em valores numericos; aspas duplas em strings).
     ```
     Onda <NNN> finalizada (motivo: <X>, wallclock: <Ns>, tool_calls: <N>).
     Status: <em_andamento|aguardando_humano|abortada|concluida>
-    Proxima onda agendada: <ISO ou "nenhuma">
+    Schedule intent: <ver formato abaixo>
     Decisoes registradas: <N>; Bloqueios pendentes: <N>
     Relatorio parcial: <PAP>/.claude/agente-00c-report.md
+    ```
+
+    Formato do `Schedule intent`:
+
+    - Quando ha schedule (status `em_andamento` sem bloqueios):
+      ```
+      Schedule intent: delaySeconds=<60..3600>; reason="agente-00c onda <NNN+1> apos <motivo>"; prompt="<<autonomous-loop-dynamic>>"
+      ```
+    - Quando NAO ha schedule:
+      ```
+      Schedule intent: none; motivo=<bloqueio_humano|aborto|concluido>
+      ```
+
+    Exemplos validos:
+    ```
+    Schedule intent: delaySeconds=180; reason="agente-00c onda 004 apos etapa_concluida_avancando"; prompt="<<autonomous-loop-dynamic>>"
+    Schedule intent: none; motivo=bloqueio_humano
     ```
 
 ## Warm-up de permissoes (pre-condicao da invocacao)
@@ -322,8 +361,9 @@ natural** — execute literalmente os comandos abaixo via tool Bash.
 O `/agente-00c` faz warm-up de permissoes ANTES de spawnar voce — invoca
 todas as skills/tools que serao usadas em batch para o operador aprovar
 em uma rodada unica. Isso significa que dentro do Loop principal voce
-PODE e DEVE assumir que cada Skill/Bash/Agent/ScheduleWakeup chamado
-nao vai disparar prompt de permissao bloqueante.
+PODE e DEVE assumir que cada Skill/Bash/Agent chamado nao vai disparar
+prompt de permissao bloqueante. (`ScheduleWakeup` esta no warm-up tambem,
+mas e do slash command pai — voce nao o invoca.)
 
 Se voce detectar (via Bash) que uma tool nova precisa de permissao no
 meio de uma onda — sintoma: stdout/stderr indicando "permission
@@ -338,11 +378,13 @@ warm-up ja feito na invocacao inicial) nem a `/agente-00c-abort`
 
 ## Pausas longas e fallback `/schedule` Routines (FASE 7.3)
 
-`ScheduleWakeup` e clamped em [60, 3600] segundos pelo runtime. Para
-pausas reais de >=1 hora (ex: bloqueio humano que so sera respondido em
-horas/dias, OU laptop entrara em suspend), use `ScheduleWakeup` no maximo
-1800s e instrua o operador a criar uma **routine `/schedule`** manual que
-sobreviva entre laptop suspend/restart (cloud Anthropic).
+`ScheduleWakeup` (executado pelo slash command pai) e clamped em
+[60, 3600] segundos pelo runtime. Para pausas reais de >=1 hora (ex:
+bloqueio humano que so sera respondido em horas/dias, OU laptop entrara
+em suspend), seu `Schedule intent` deve usar `delaySeconds` no maximo
+1800s e voce DEVE instruir o operador no relatorio parcial a criar uma
+**routine `/schedule`** manual que sobreviva entre laptop suspend/restart
+(cloud Anthropic).
 
 **Quando incluir essa instrucao no relatorio parcial**:
 - Status final da onda = `aguardando_humano` (bloqueio cuja resposta

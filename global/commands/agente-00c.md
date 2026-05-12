@@ -13,6 +13,7 @@ allowed-tools:
   - Write
   - Bash
   - Glob
+  - ScheduleWakeup
 ---
 
 # /agente-00c
@@ -144,11 +145,38 @@ no prompt:
 - `whitelist`: path do whitelist file
 - `tipo_invocacao`: "primeira_invocacao"
 
-Aguarde retorno do orquestrador (uma mensagem de sumario).
+Aguarde retorno do orquestrador (uma mensagem de sumario contendo, entre
+outras linhas, um campo `Schedule intent: ...`).
 
-### 5. Apresentacao do resultado
+### 5. Schedule da proxima onda (CRITICO — ver nota no orchestrator)
 
-Imprima o sumario retornado pelo orquestrador no formato:
+Sub-agentes nao podem invocar `ScheduleWakeup` de forma sobrevivente: o
+thread deles termina ao retornar. O orquestrador, portanto, apenas
+DECIDE os parametros e os retorna como `Schedule intent` no sumario.
+Voce, slash command pai, e quem executa o wakeup.
+
+Procure a linha `Schedule intent: ...` no sumario retornado e aplique:
+
+| Forma da linha | Acao |
+|----------------|------|
+| `Schedule intent: delaySeconds=<N>; reason="<R>"; prompt="<P>"` | Invocar `ScheduleWakeup(delaySeconds=<N>, reason="<R>", prompt="<P>")` |
+| `Schedule intent: none; motivo=<X>` | NAO invocar ScheduleWakeup. Anotar motivo para o sumario final. |
+| linha ausente OU formato invalido | Anotar `Proxima onda agendada: nenhuma (Schedule intent ausente/invalido — ver report.md)`. NAO tentar adivinhar parametros. |
+
+Se `ScheduleWakeup` falhar (excecao da tool), atualize o estado para
+refletir a falha:
+
+```bash
+state-rw.sh set --state-dir <SD> \
+  --field '.ondas[-1].proxima_onda_agendada_para' --value 'null'
+```
+
+E inclua no sumario final `Proxima onda agendada: nenhuma (ScheduleWakeup
+falhou — operador retoma via /agente-00c-resume)`.
+
+### 6. Apresentacao do resultado
+
+Imprima o sumario final no formato:
 
 ```
 Agente-00C iniciado.
@@ -157,9 +185,14 @@ Projeto-alvo: <PAP>
 Stack: <stack ou "nao especificada — clarify-answerer escolhera">
 Onda 001: <etapa> iniciado, <N> decisoes registradas, <N> bloqueios.
 Status apos onda: <em_andamento | aguardando_humano | abortada | concluida>
-Proxima onda agendada: <ISO ou "nenhuma — operador deve agir">
+Proxima onda agendada: <ISO planejado | "nenhuma — <motivo>">
 Relatorio parcial: <PAP>/.claude/agente-00c-report.md
 ```
+
+O campo "Proxima onda agendada" deriva do passo 5: ISO planejado quando
+schedule foi disparado, ou string com motivo (`aguardando humano via
+/agente-00c-resume`, `execucao abortada`, `execucao concluida`,
+`ScheduleWakeup falhou — ...`) quando nao houve schedule.
 
 ## Estado atual
 

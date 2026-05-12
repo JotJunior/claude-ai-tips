@@ -10,6 +10,7 @@ allowed-tools:
   - Read
   - Write
   - Bash
+  - ScheduleWakeup
 ---
 
 # /agente-00c-resume
@@ -155,7 +156,8 @@ Agent(
 )
 ```
 
-Aguarde retorno do orquestrador (uma mensagem de sumario).
+Aguarde retorno do orquestrador (uma mensagem de sumario contendo um
+campo `Schedule intent: ...`).
 
 ### 7. Liberar lock
 
@@ -163,15 +165,40 @@ Aguarde retorno do orquestrador (uma mensagem de sumario).
 state-lock.sh release --state-dir <SD>
 ```
 
-### 8. Apresentar resultado ao operador
+### 8. Schedule da proxima onda (CRITICO — ver nota no orchestrator)
 
-Imprima o sumario retornado pelo orquestrador, anotando que e retomada:
+Identico ao passo 5 de `/agente-00c`: o orquestrador (sub-agent) nao pode
+disparar `ScheduleWakeup` sobrevivente — apenas DECIDE os parametros e os
+expressa em `Schedule intent: ...`. Voce, slash command pai, executa o
+wakeup.
+
+Procure a linha `Schedule intent: ...` no sumario e aplique:
+
+| Forma da linha | Acao |
+|----------------|------|
+| `Schedule intent: delaySeconds=<N>; reason="<R>"; prompt="<P>"` | Invocar `ScheduleWakeup(delaySeconds=<N>, reason="<R>", prompt="<P>")` |
+| `Schedule intent: none; motivo=<X>` | NAO invocar ScheduleWakeup. Anotar motivo. |
+| linha ausente OU formato invalido | Anotar `Proxima onda agendada: nenhuma (Schedule intent ausente/invalido)`. NAO tentar adivinhar. |
+
+Se `ScheduleWakeup` falhar, limpe o estado:
+
+```bash
+state-rw.sh set --state-dir <SD> \
+  --field '.ondas[-1].proxima_onda_agendada_para' --value 'null'
+```
+
+### 9. Apresentar resultado ao operador
+
+Imprima o sumario retornado pelo orquestrador, anotando que e retomada e
+incluindo a confirmacao de schedule:
 
 ```
 Agente-00C retomado.
 Execucao: <id>
 Tipo: <retomada apos bloqueio|retomada apos schedule>
-[sumario do orquestrador aqui]
+[sumario do orquestrador aqui — pode reformatar "Schedule intent: ..."
+ como "Proxima onda agendada: <ISO planejado | nenhuma — <motivo>>"
+ para clareza ao operador]
 ```
 
 ## Estado atual
