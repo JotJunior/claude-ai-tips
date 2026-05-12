@@ -7,6 +7,63 @@ este projeto adere a [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ## [Unreleased]
 
+## [3.5.3] - 2026-05-12
+
+### Fixed
+
+- **`cstk update` nao sincronizava `commands/` e `agents/`**: a funcao
+  `update_main` em `cli/lib/update.sh` so iterava o manifest de skills.
+  Commands e agents (infraestrutura global do toolkit, distribuida pelo
+  install via `_install_apply_extra_kinds`) ficavam congelados em drift
+  permanente apos a primeira instalacao. Sintoma reportado: orchestrator
+  do agente-00C continuava emitindo "ScheduleWakeup nao disponivel neste
+  harness" mesmo apos `cstk update`, porque o fix do commit 56b3959
+  (orchestrator retorna `Schedule intent` em vez de invocar
+  `ScheduleWakeup`) nunca alcancava o disco do usuario.
+
+  Fix: novo `_update_apply_extra_kinds` espelha o do install, com
+  semantica de update completa:
+  - Idempotencia: release == manifest -> zero writes (mtime preservado)
+  - Edit local: respeita `--force` (sobrescreve) e `--keep` (silencia);
+    sem flag, conta em `skipped_edits` e propaga exit 4
+  - Third-party (.md fora do manifest dedicado por kind): preservado
+    por default; `--force` sobrescreve — caminho de recuperacao para
+    instalacoes historicas em que o manifest dedicado por kind nunca
+    foi criado
+  - Manifest de skills vazio nao impede mais processar commands/agents
+  - Summary reporta linhas `commands: ...` e `agents: ...` com seis
+    counters (installed/updated/uptodate/kept/skipped/preserved)
+
+  Help text de `cstk update --help` atualizado para refletir o escopo.
+  Cobertura: 9 cenarios novos em `tests/cstk/test_update-extra-kinds.sh`
+  (idempotencia, atualizacao real, third-party com/sem `--force`,
+  edit local com `--force`/`--keep`/exit 4, dry-run zero writes,
+  compat com tarball historico sem commands/agents). 12 cenarios
+  existentes em `test_update.sh` continuam verdes.
+
+- **agente-00c-orchestrator emitia `Schedule intent: none` mesmo com
+  status `em_andamento`**: a nota explicativa do prompt comecava com
+  "POR QUE NAO HA ScheduleWakeup AQUI" e descrevia o problema em tom
+  negativo ("qualquer ScheduleWakeup invocado aqui firmaria — se
+  firmasse — para um contexto ja extinto"). O LLM, executando como
+  sub-agent, parafraseava essa explicacao e raciocinava "schedule nao
+  funciona aqui, motivo=ScheduleWakeup_indisponivel" — emitindo
+  `Schedule intent: none; motivo=ScheduleWakeup_indisponivel` mesmo
+  quando deveria emitir `delaySeconds=...`. O slash command pai
+  reproduzia a frase invalida ("Proxima onda agendada: nenhuma —
+  ScheduleWakeup indisponivel; retomar via /agente-00c-resume"),
+  efetivamente desabilitando schedule automatico.
+
+  Fix em `global/agents/agente-00c-orchestrator.md`:
+  - Nota de topo reescrita em tom positivo: "Schedule SEMPRE funciona.
+    Voce decide os parametros, o pai executa." Lista explicita de
+    antipadroes ("NUNCA emita `Schedule intent: none` com motivo
+    `ScheduleWakeup indisponivel` ou similar").
+  - Passo 11 reescrito: tabela de decisao expandida com coluna
+    "Bloqueios pendentes" e marca **OBRIGATORIO** para o caso
+    `em_andamento + 0 bloqueios`. Reforco final: "NUNCA emita
+    `Schedule intent: none` com motivo `ScheduleWakeup_*`".
+
 ## [3.5.2] - 2026-05-12
 
 ### Fixed
