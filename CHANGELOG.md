@@ -7,6 +7,62 @@ este projeto adere a [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ## [Unreleased]
 
+## [3.5.1] - 2026-05-12
+
+### Fixed
+
+- **`/agente-00c` falhava em install default por falta da skill
+  `agente-00c-runtime`**: a runtime (infra interna que provê
+  `state-rw.sh`, `path-guard.sh`, `whitelist-validate.sh` etc. ao
+  orchestrator) so constava no profile `all` — `cstk install` default
+  (profile `sdd`) instalava comandos e agentes do 00C mas deixava a
+  runtime de fora. Resultado: `/agente-00c` falhava na primeira chamada
+  Bash do orchestrator com referencia a script ausente.
+
+  Tres camadas de fix:
+
+  - `scripts/profiles.txt.in`: `agente-00c-runtime` agora pertence a
+    `sdd` E `complementary` (alem do `all` ja existente). Qualquer
+    install default carrega a runtime junto.
+  - `cli/lib/00c-bootstrap.sh::_00c_check_deps`: pre-flight do
+    `cstk 00c` estende para command + runtime executavel +
+    orchestrator. Antes so checava o `.md` do command — instalacao
+    parcial passava silenciosa e quebrava so dentro de uma onda.
+  - `global/agents/agente-00c-orchestrator.md`: nova secao "Pre-flight
+    da execucao" antes do loop de onda, com Bash check programatico de
+    `state-rw.sh`/`state-lock.sh`/`path-guard.sh` (+x). Substitui a
+    interpretacao em natural-language que estava produzindo
+    diagnosticos hallucinados.
+
+  Regression test em `tests/cstk/test_build-release.sh` garante que o
+  profile `sdd` inclui `agente-00c-runtime` permanentemente.
+
+- **Orchestrator (sub-agent) nao pode invocar `ScheduleWakeup` de forma
+  sobrevivente**: o thread do sub-agent termina ao retornar o sumario
+  para o slash command pai. Qualquer wakeup agendado pelo orchestrator
+  firmaria — se firmasse — para contexto ja extinto. O resultado era o
+  erro recorrente `Proxima onda agendada: nenhuma (ScheduleWakeup
+  indisponivel — operador retoma via agente-00c-resume)`.
+
+  Refactor para o padrao decide-aqui-executa-la:
+
+  - `global/agents/agente-00c-orchestrator.md`: `ScheduleWakeup`
+    removido de `allowed-tools`. Step 11 reescrito — orchestrator agora
+    DECIDE `delaySeconds` + `reason` e grava o ISO planejado em
+    `.ondas[-1].proxima_onda_agendada_para`. Step 13 (sumario)
+    formaliza linha `Schedule intent: delaySeconds=N; reason="..."; prompt="..."`
+    (ou `Schedule intent: none; motivo=<X>`) que o pai parseia.
+  - `global/commands/agente-00c.md` e `global/commands/agente-00c-resume.md`:
+    `ScheduleWakeup` adicionado ao `allowed-tools`. Novo step "Schedule
+    da proxima onda" parseia a linha do sumario do orchestrator e
+    invoca `ScheduleWakeup` no thread do pai. Em caso de falha, limpa
+    `.ondas[-1].proxima_onda_agendada_para` via `state-rw.sh set`.
+
+  Comportamento externo: `/agente-00c` e `/agente-00c-resume` agora
+  realmente agendam a proxima onda quando o status e `em_andamento` sem
+  bloqueios. O sumario ao operador mostra ISO real do wakeup, nao
+  intencao do sub-agent.
+
 ## [3.5.0] - 2026-05-09
 
 ### Added
