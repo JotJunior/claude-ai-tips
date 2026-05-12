@@ -22,15 +22,28 @@ allowed-tools:
 ---
 
 <!--
-NOTA IMPORTANTE — POR QUE NAO HA ScheduleWakeup AQUI:
-Sub-agentes (este orquestrador roda como subagent_type via tool Agent)
-nao podem agendar wakeups que sobrevivam ao retorno: o thread deste agente
-termina quando voce retorna o sumario, e qualquer ScheduleWakeup invocado
-aqui firmaria — se firmasse — para um contexto ja extinto. O wakeup TEM
-de ser invocado pelo slash command pai (/agente-00c ou /agente-00c-resume),
-que e quem tem o thread persistente. Por isso seu trabalho aqui termina em
-RETORNAR um "Schedule intent" no sumario; o pai le esse intent e dispara
-ScheduleWakeup.
+DIVISAO DE TRABALHO DE SCHEDULE (leia antes do Loop principal):
+
+Schedule SEMPRE funciona. O contrato e simples:
+
+- Voce (orquestrador, sub-agent) DECIDE os parametros do proximo wakeup
+  e os retorna como uma linha `Schedule intent: ...` no sumario (passo 13).
+- O slash command pai (/agente-00c ou /agente-00c-resume) EXECUTA o
+  ScheduleWakeup, porque ele tem o thread persistente apos seu retorno.
+
+Por que ScheduleWakeup nao esta em seu allowed-tools: nao porque a tool
+nao funciona, mas porque voce nao precisa dela — sua parte e decidir,
+nao executar. Pense nisso como uma chamada de funcao: voce monta os
+argumentos, o pai chama a funcao.
+
+REGRA DURA — NAO INFRINJA:
+- Status `em_andamento` + 0 bloqueios pendentes → voce DEVE emitir
+  `Schedule intent: delaySeconds=<60..3600>; reason="..."; prompt="<<autonomous-loop-dynamic>>"`.
+- NUNCA emita `Schedule intent: none` com motivo "ScheduleWakeup
+  indisponivel", "ScheduleWakeup nao disponivel neste harness", ou
+  qualquer variacao. Schedule esta disponivel — voce so nao e quem
+  invoca. `none` so e valido para: `bloqueio_humano`, `aborto`,
+  `concluido`.
 -->
 
 
@@ -260,18 +273,25 @@ natural** — execute literalmente os comandos abaixo via tool Bash.
     --projeto-alvo-path <PAP> --motivo "<motivo>"`. NUNCA `git push`.
 
 11. **Preparar Schedule intent da proxima onda** — voce NAO chama
-    ScheduleWakeup (sub-agentes nao podem; ver nota no topo deste prompt).
-    Sua responsabilidade aqui e decidir os PARAMETROS e devolve-los no
-    sumario final (item 13) para o slash command pai executar.
+    ScheduleWakeup (o pai chama; ver "DIVISAO DE TRABALHO DE SCHEDULE"
+    no topo). Sua responsabilidade aqui e decidir os PARAMETROS e
+    devolve-los no sumario final (item 13).
 
-    Decida primeiro se ha schedule:
+    Tabela de decisao (use o status REAL retornado por `state-ondas.sh
+    end`, nao raciocine se "ScheduleWakeup esta disponivel" — esta sim,
+    o pai e quem invoca):
 
-    | Status da onda | Schedule intent |
-    |----------------|-----------------|
-    | `em_andamento` (continua) | SIM — preencher delaySeconds + reason |
-    | `aguardando_humano` (bloqueio) | NAO — pai vai imprimir "nenhuma — aguardando humano via /agente-00c-resume" |
-    | `abortada` | NAO — pai vai imprimir "nenhuma — execucao abortada" |
-    | `concluida` | NAO — pai vai imprimir "nenhuma — execucao concluida" |
+    | Status da onda | Bloqueios pendentes | Schedule intent |
+    |----------------|---------------------|-----------------|
+    | `em_andamento` | 0 | **OBRIGATORIO** — `delaySeconds=<60..3600>; reason="..."; prompt="<<autonomous-loop-dynamic>>"` |
+    | `em_andamento` | >=1 | `none; motivo=bloqueio_humano` |
+    | `aguardando_humano` | qualquer | `none; motivo=bloqueio_humano` |
+    | `abortada` | qualquer | `none; motivo=aborto` |
+    | `concluida` | qualquer | `none; motivo=concluido` |
+
+    NUNCA emita `Schedule intent: none` com motivo `ScheduleWakeup_*`
+    (indisponivel, nao_disponivel, etc.). Schedule sempre funciona; e
+    so o pai que executa.
 
     Quando ha schedule, calibre `delaySeconds` (Cache Anthropic 5 min TTL —
     ver instrucao "auto memory" do harness):

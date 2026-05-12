@@ -54,19 +54,23 @@ _CSTK_UPDATE_LOADED=1
 
 _update_print_help() {
   cat >&2 <<'HELP'
-cstk update — atualiza skills ja instaladas para a release alvo.
+cstk update — atualiza skills, commands e agents ja instalados.
 
 USO:
   cstk update [SKILL...] [--scope global|project] [--force] [--keep] [--prune]
               [--from URL] [--dry-run] [--yes] [--interactive]
 
 ARGS:
-  SKILL...       Restringe update a este subset (default: tudo no manifest).
+  SKILL...       Restringe update de skills a este subset (default: tudo no
+                 manifest). Commands/agents sao sempre processados (sao
+                 infraestrutura global do toolkit, sem cherry-pick).
 
 OPCOES:
   --scope S      global ou project (default: global).
-  --force        Sobrescreve skills com edicao local (FR-008).
-  --keep         Mantem edicoes locais sem warning por skill (FR-008).
+  --force        Sobrescreve skills/commands/agents com edicao local ou
+                 third-party (FR-008). Caminho de recuperacao quando o
+                 manifest dedicado por kind foi perdido em upgrades historicos.
+  --keep         Mantem edicoes locais sem warning (FR-008).
   --prune        Remove skills do manifest ausentes do catalog (pede confirmacao).
   --from URL     URL do tarball (.tar.gz). Default: $CSTK_RELEASE_URL ou,
                  se ausente, consulta GitHub API /releases/latest.
@@ -75,11 +79,12 @@ OPCOES:
   --interactive  Seletor numerado em TTY (lista skills do manifest).
 
 EXIT CODES:
-  4  Pelo menos uma skill foi pulada por edicao local (sem --force/--keep).
+  4  Pelo menos um artefato (skill/command/agent) foi pulado por edicao
+     local sem --force/--keep.
 
 EXEMPLOS:
   cstk update --from file:///tmp/release/cstk-v0.2.0.tar.gz
-  cstk update --force --from URL    # sobrescreve edits locais
+  cstk update --force               # sobrescreve edits locais e third-party
   cstk update --prune --yes         # limpa skills removidas do catalog
 HELP
 }
@@ -143,9 +148,9 @@ update_main() {
   fi
 
   if [ -z "$_update_targets" ] && [ "$_update_prune" != 1 ]; then
-    log_info "update: nada para atualizar (manifest vazio)"
-    _update_emit_summary
-    return 0
+    # Manifest de skills vazio nao impede processar commands/agents (extras
+    # tem manifest dedicado por kind, independente do principal).
+    log_info "update: nenhuma skill a atualizar; verificando commands/agents..."
   fi
 
   # Lock (skip em dry-run; nada e escrito).
@@ -176,9 +181,16 @@ update_main() {
     _update_do_prune || return 1
   fi
 
+  # Espelha install: atualiza commands/agents (.md soltos em catalog/<kind>/).
+  # Sao infraestrutura global do toolkit, processados sempre — sem filtro de
+  # profile ou cherry-pick de skills.
+  _update_apply_extra_kinds || return 1
+
   _update_emit_summary
 
-  if [ "$_update_count_skipped_edits" -gt 0 ]; then
+  if [ "$_update_count_skipped_edits" -gt 0 ] \
+     || [ "$_update_count_commands_skipped_edits" -gt 0 ] \
+     || [ "$_update_count_agents_skipped_edits" -gt 0 ]; then
     return 4
   fi
   return 0
@@ -214,6 +226,18 @@ _update_reset_state() {
   _update_count_orphan=0
   _update_count_missing_disk=0
   _update_count_missing_manifest=0
+  _update_count_commands_installed=0
+  _update_count_commands_updated=0
+  _update_count_commands_uptodate=0
+  _update_count_commands_kept=0
+  _update_count_commands_skipped_edits=0
+  _update_count_commands_preserved=0
+  _update_count_agents_installed=0
+  _update_count_agents_updated=0
+  _update_count_agents_uptodate=0
+  _update_count_agents_kept=0
+  _update_count_agents_skipped_edits=0
+  _update_count_agents_preserved=0
 }
 
 _update_cleanup() {
@@ -561,6 +585,169 @@ _update_do_prune() {
   return 0
 }
 
+# _update_apply_extra_kinds: atualiza commands e agents (.md soltos).
+#
+# Espelha _install_apply_extra_kinds em install.sh, mas com semantica de
+# update: detecta edits locais, respeita --force/--keep, reporta uptodate
+# quando release_hash == stored_sha (idempotencia SC-002).
+_update_apply_extra_kinds() {
+  for _uaek_kind in commands agents; do
+    _update_apply_kind "$_uaek_kind" || return 1
+  done
+  return 0
+}
+
+# _update_apply_kind <kind>: itera catalog/<kind>/*.md e processa cada um.
+#
+# Ramos (espelha _update_process_skill com adicao do ramo "preserve
+# third-party" especifico de extra_kinds):
+#   - nao existe em disco                              -> install fresh
+#   - existe, no manifest, clean, release==manifest    -> uptodate (zero writes)
+#   - existe, no manifest, clean, release!=manifest    -> updated
+#   - existe, no manifest, edit local + --force        -> updated (overwrite)
+#   - existe, no manifest, edit local + --keep         -> kept
+#   - existe, no manifest, edit local (default)        -> skipped_edits + exit 4
+#   - existe, fora do manifest + --force               -> updated (overwrite third-party)
+#   - existe, fora do manifest (default)               -> preserved (warn)
+_update_apply_kind() {
+  _uak_kind=$1
+  _uak_src_dir="$_update_catalog_dir/$_uak_kind"
+  if [ ! -d "$_uak_src_dir" ]; then
+    return 0
+  fi
+
+  # dest = scope_dir/../<kind>  (ex: ~/.claude/skills/.. = ~/.claude/, depois /commands)
+  case "$_update_scope" in
+    global)  _uak_dst_dir="${HOME:?HOME nao setado}/.claude/$_uak_kind" ;;
+    project) _uak_dst_dir="./.claude/$_uak_kind" ;;
+    *)
+      log_error "update: scope invalido em apply_kind (bug): $_update_scope"
+      return 1
+      ;;
+  esac
+
+  _uak_manifest=$(manifest_default_path "$_update_scope" "$_uak_kind") || {
+    log_error "update: manifest_default_path falhou para kind=$_uak_kind"
+    return 1
+  }
+
+  for _uak_src in "$_uak_src_dir"/*.md; do
+    [ -f "$_uak_src" ] || continue
+    _uak_name=$(basename -- "$_uak_src" .md)
+    _uak_dst="$_uak_dst_dir/$_uak_name.md"
+    _uak_release_hash=$(hash_file "$_uak_src") || return 1
+
+    # Ramo 1: nao existe em disco -> install fresh
+    if [ ! -e "$_uak_dst" ]; then
+      _update_apply_kind_write "$_uak_kind" "$_uak_name" \
+        "$_uak_src" "$_uak_dst" "$_uak_dst_dir" "$_uak_manifest" \
+        "$_uak_release_hash" installed || return 1
+      continue
+    fi
+
+    _uak_current_hash=$(hash_file "$_uak_dst") || return 1
+
+    if lookup_entry "$_uak_manifest" "$_uak_name" >/dev/null 2>&1; then
+      _uak_entry=$(lookup_entry "$_uak_manifest" "$_uak_name")
+      _uak_stored_sha=$(printf '%s\n' "$_uak_entry" | awk -F'\t' '{print $3}')
+
+      if [ "$_uak_current_hash" = "$_uak_stored_sha" ]; then
+        # Clean (sem edit local). Compara com release.
+        if [ "$_uak_release_hash" = "$_uak_stored_sha" ]; then
+          # Idempotente — zero writes
+          _update_bump_extra_counter "$_uak_kind" uptodate
+          continue
+        fi
+        _update_apply_kind_write "$_uak_kind" "$_uak_name" \
+          "$_uak_src" "$_uak_dst" "$_uak_dst_dir" "$_uak_manifest" \
+          "$_uak_release_hash" updated || return 1
+        continue
+      fi
+
+      # Edicao local detectada
+      if [ "$_update_force" = 1 ]; then
+        _update_apply_kind_write "$_uak_kind" "$_uak_name" \
+          "$_uak_src" "$_uak_dst" "$_uak_dst_dir" "$_uak_manifest" \
+          "$_uak_release_hash" updated || return 1
+        continue
+      fi
+      if [ "$_update_keep" = 1 ]; then
+        _update_bump_extra_counter "$_uak_kind" kept
+        continue
+      fi
+      log_warn "update: edicao local em $_uak_kind/$_uak_name (use --force para sobrescrever, --keep para silenciar)"
+      _update_bump_extra_counter "$_uak_kind" skipped_edits
+      continue
+    fi
+
+    # Sem manifest entry -> third-party. Sobrescreve so com --force.
+    if [ "$_update_force" = 1 ]; then
+      _update_apply_kind_write "$_uak_kind" "$_uak_name" \
+        "$_uak_src" "$_uak_dst" "$_uak_dst_dir" "$_uak_manifest" \
+        "$_uak_release_hash" updated || return 1
+      continue
+    fi
+    log_warn "update: preservando $_uak_kind/$_uak_name (fora do manifest; use --force para sobrescrever)"
+    _update_bump_extra_counter "$_uak_kind" preserved
+  done
+
+  return 0
+}
+
+# _update_apply_kind_write <kind> <name> <src> <dst> <dst_dir> <manifest> <new_sha> <counter_action>
+# Encapsula a escrita (cp + upsert manifest). Em dry-run, apenas reporta.
+_update_apply_kind_write() {
+  _uakw_kind=$1
+  _uakw_name=$2
+  _uakw_src=$3
+  _uakw_dst=$4
+  _uakw_dst_dir=$5
+  _uakw_manifest=$6
+  _uakw_new_sha=$7
+  _uakw_action=$8
+
+  if [ "$_update_dry_run" = 1 ]; then
+    log_info "[dry-run] $_uakw_kind $_uakw_action: $_uakw_name"
+    _update_bump_extra_counter "$_uakw_kind" "$_uakw_action"
+    return 0
+  fi
+
+  if ! mkdir -p -- "$_uakw_dst_dir" 2>/dev/null; then
+    log_error "update: nao foi possivel criar $_uakw_dst_dir"
+    return 1
+  fi
+  if ! cp -- "$_uakw_src" "$_uakw_dst"; then
+    log_error "update: cp falhou para $_uakw_kind/$_uakw_name"
+    return 1
+  fi
+  if ! upsert_entry "$_uakw_manifest" "$_uakw_name" \
+                    "$_update_release_version" "$_uakw_new_sha" "$_update_now"; then
+    log_error "update: upsert manifest falhou para $_uakw_kind/$_uakw_name"
+    return 1
+  fi
+  _update_bump_extra_counter "$_uakw_kind" "$_uakw_action"
+  return 0
+}
+
+# _update_bump_extra_counter <kind> <action>
+# Actions: installed | updated | uptodate | kept | skipped_edits | preserved
+_update_bump_extra_counter() {
+  case "$1.$2" in
+    commands.installed)      _update_count_commands_installed=$((_update_count_commands_installed + 1)) ;;
+    commands.updated)        _update_count_commands_updated=$((_update_count_commands_updated + 1)) ;;
+    commands.uptodate)       _update_count_commands_uptodate=$((_update_count_commands_uptodate + 1)) ;;
+    commands.kept)           _update_count_commands_kept=$((_update_count_commands_kept + 1)) ;;
+    commands.skipped_edits)  _update_count_commands_skipped_edits=$((_update_count_commands_skipped_edits + 1)) ;;
+    commands.preserved)      _update_count_commands_preserved=$((_update_count_commands_preserved + 1)) ;;
+    agents.installed)        _update_count_agents_installed=$((_update_count_agents_installed + 1)) ;;
+    agents.updated)          _update_count_agents_updated=$((_update_count_agents_updated + 1)) ;;
+    agents.uptodate)         _update_count_agents_uptodate=$((_update_count_agents_uptodate + 1)) ;;
+    agents.kept)             _update_count_agents_kept=$((_update_count_agents_kept + 1)) ;;
+    agents.skipped_edits)    _update_count_agents_skipped_edits=$((_update_count_agents_skipped_edits + 1)) ;;
+    agents.preserved)        _update_count_agents_preserved=$((_update_count_agents_preserved + 1)) ;;
+  esac
+}
+
 _update_emit_summary() {
   _ues_prefix=""
   if [ "$_update_dry_run" = 1 ]; then
@@ -579,8 +766,35 @@ _update_emit_summary() {
     printf '  orphan (in manifest, not in catalog): %d\n' "$_update_count_orphan"
     printf '  scope: %s\n' "$_update_scope"
     printf '  toolkit version: %s\n' "${_update_release_version:-?}"
-    if [ "$_update_count_skipped_edits" -gt 0 ]; then
-      printf '  next: cstk update --force  (to overwrite edited skills)\n'
+    _ues_cmd_total=$((_update_count_commands_installed + _update_count_commands_updated + _update_count_commands_uptodate + _update_count_commands_kept + _update_count_commands_skipped_edits + _update_count_commands_preserved))
+    if [ "$_ues_cmd_total" -gt 0 ]; then
+      printf '  commands: installed=%d updated=%d uptodate=%d kept=%d skipped=%d preserved=%d\n' \
+        "$_update_count_commands_installed" \
+        "$_update_count_commands_updated" \
+        "$_update_count_commands_uptodate" \
+        "$_update_count_commands_kept" \
+        "$_update_count_commands_skipped_edits" \
+        "$_update_count_commands_preserved"
+    fi
+    _ues_ag_total=$((_update_count_agents_installed + _update_count_agents_updated + _update_count_agents_uptodate + _update_count_agents_kept + _update_count_agents_skipped_edits + _update_count_agents_preserved))
+    if [ "$_ues_ag_total" -gt 0 ]; then
+      printf '  agents: installed=%d updated=%d uptodate=%d kept=%d skipped=%d preserved=%d\n' \
+        "$_update_count_agents_installed" \
+        "$_update_count_agents_updated" \
+        "$_update_count_agents_uptodate" \
+        "$_update_count_agents_kept" \
+        "$_update_count_agents_skipped_edits" \
+        "$_update_count_agents_preserved"
+    fi
+    if [ "$_update_count_skipped_edits" -gt 0 ] \
+       || [ "$_update_count_commands_skipped_edits" -gt 0 ] \
+       || [ "$_update_count_agents_skipped_edits" -gt 0 ]; then
+      printf '  next: cstk update --force  (to overwrite edited skills/commands/agents)\n'
+    fi
+    if [ "$_update_count_commands_preserved" -gt 0 ] \
+       || [ "$_update_count_agents_preserved" -gt 0 ]; then
+      printf '  note: %d third-party file(s) preserved; use --force to overwrite\n' \
+        "$((_update_count_commands_preserved + _update_count_agents_preserved))"
     fi
   } >&2
 }
