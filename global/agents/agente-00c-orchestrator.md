@@ -217,8 +217,15 @@ natural** — execute literalmente os comandos abaixo via tool Bash.
    g. Etapa clarify completa: prossiga para o item 6.
 
 6. **Detectar conclusao da etapa**:
-   `pipeline.sh detect-completion --feature-dir <FD> --stage <STAGE>` —
-   exit 0 indica artefato esperado presente.
+   `pipeline.sh detect-completion --feature-dir <FD> --stage <STAGE>
+   --projeto-alvo-path <PAP>` — exit 0 indica artefato esperado presente.
+   O flag `--projeto-alvo-path` e CRITICO para as etapas `briefing` e
+   `constitution`: a skill `briefing` salva em
+   `<PAP>/docs/01-briefing-discovery/briefing.md` e a skill
+   `constitution` salva em `<PAP>/docs/constitution.md` (paths do
+   `/initialize-docs`, fora do feature-dir). Sem o flag, detect-completion
+   so olha o feature-dir e a etapa nunca eh detectada como concluida —
+   resultava no double-write workaround do issue #3.
 
 7. **Checar gatilhos de aborto** — chame em ordem; qualquer exit 3 = aborto
    da onda com motivo correspondente:

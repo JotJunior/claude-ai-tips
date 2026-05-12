@@ -86,6 +86,61 @@ scenario_detect_completion_briefing() {
   fi
 }
 
+# ==== Issue #3: briefing aceita path do /initialize-docs via --projeto-alvo-path ====
+scenario_detect_completion_briefing_aceita_path_initialize_docs() {
+  _fd="$TMPDIR_TEST/feat"
+  _pap="$TMPDIR_TEST/pap"
+  mkdir -p "$_fd" "$_pap/docs/01-briefing-discovery"
+
+  # Sem briefing em nenhum lugar -> exit 1
+  capture "$SCRIPT" detect-completion --feature-dir "$_fd" --stage briefing \
+    --projeto-alvo-path "$_pap"
+  [ "$_CAPTURED_EXIT" = 1 ] || {
+    _fail "sem briefing" "esperado 1, obtido $_CAPTURED_EXIT"
+    return 1
+  }
+
+  # Briefing SO no path do /initialize-docs -> exit 0 (com PAP)
+  printf '# briefing\n' > "$_pap/docs/01-briefing-discovery/briefing.md"
+  capture "$SCRIPT" detect-completion --feature-dir "$_fd" --stage briefing \
+    --projeto-alvo-path "$_pap"
+  [ "$_CAPTURED_EXIT" = 0 ] || {
+    _fail "briefing em PAP" "esperado 0, obtido $_CAPTURED_EXIT"
+    return 1
+  }
+
+  # Sem --projeto-alvo-path, ainda exige briefing.md no feature-dir
+  capture "$SCRIPT" detect-completion --feature-dir "$_fd" --stage briefing
+  [ "$_CAPTURED_EXIT" = 1 ] || {
+    _fail "sem PAP, briefing.md fora do FD" "esperado 1, obtido $_CAPTURED_EXIT"
+    return 1
+  }
+}
+
+# ==== Issue #3: constitution aceita docs/constitution.md via --projeto-alvo-path ====
+scenario_detect_completion_constitution_aceita_path_initialize_docs() {
+  _fd="$TMPDIR_TEST/feat"
+  _pap="$TMPDIR_TEST/pap"
+  mkdir -p "$_fd" "$_pap/docs"
+
+  # Sem constitution -> exit 1
+  capture "$SCRIPT" detect-completion --feature-dir "$_fd" --stage constitution \
+    --projeto-alvo-path "$_pap"
+  [ "$_CAPTURED_EXIT" = 1 ] || {
+    _fail "sem constitution" "esperado 1, obtido $_CAPTURED_EXIT"
+    return 1
+  }
+
+  # Constitution em docs/constitution.md (path da skill constitution) -> exit 0
+  printf '# constitution\n' > "$_pap/docs/constitution.md"
+  capture "$SCRIPT" detect-completion --feature-dir "$_fd" --stage constitution \
+    --projeto-alvo-path "$_pap"
+  [ "$_CAPTURED_EXIT" = 0 ] || {
+    _fail "constitution em PAP" "esperado 0, obtido $_CAPTURED_EXIT"
+    return 1
+  }
+}
+
 scenario_detect_completion_checklist_requer_md_dentro() {
   _fd="$TMPDIR_TEST/feat"
   mkdir -p "$_fd/checklists"

@@ -13,8 +13,9 @@
 #   pipeline.sh prev-stage --current STAGE
 #       — imprime etapa anterior (para retro-execucao)
 #   pipeline.sh detect-completion --feature-dir DIR --stage STAGE
+#                                  [--projeto-alvo-path PAP]
 #       — exit 0 se artefato esperado da etapa existe; exit 1 se nao
-#       — Mapeamento etapa -> artefato esperado:
+#       — Mapeamento etapa -> artefato esperado (no feature-dir):
 #           briefing       -> briefing.md
 #           constitution   -> constitution.md
 #           specify        -> spec.md
@@ -25,6 +26,15 @@
 #           execute-task   -> presenca de pelo menos 1 [x] em tasks.md
 #           review-task    -> sempre passa (review e cross-task — sem artefato)
 #           review-features -> sempre passa
+#       — `briefing` e `constitution` sao artefatos PROJECT-LEVEL (uma vez por
+#         projeto, nao por feature). As skills `briefing` e `constitution`
+#         salvam em paths do `/initialize-docs` (hierarquia numerada):
+#           briefing      -> docs/01-briefing-discovery/briefing.md
+#           constitution  -> docs/constitution.md
+#         Quando `--projeto-alvo-path PAP` e passado, esses paths sao
+#         aceitos como fallback alem do feature-dir convencional. Isso
+#         resolve o conflito com `/initialize-docs` (issue #3) sem quebrar
+#         o layout SDD canonico.
 #   pipeline.sh skill-conflict --skill NAME --projeto-alvo-path PATH
 #       — emite info se a skill existe em ambos local e global
 #       — exit 0 (info); exit 1 (so global); exit 2 (so local); exit 3 (nenhum)
@@ -58,6 +68,7 @@ USO:
   pipeline.sh next-stage --current STAGE
   pipeline.sh prev-stage --current STAGE
   pipeline.sh detect-completion --feature-dir DIR --stage STAGE
+                                [--projeto-alvo-path PAP]
   pipeline.sh skill-conflict --skill NAME --projeto-alvo-path PATH
 
 EXIT:
@@ -125,13 +136,21 @@ _pl_cmd_prev_stage() {
 }
 
 # detect-completion: artefato esperado por etapa.
+#
+# Fallback PAP (issue #3): briefing e constitution sao project-level. Quando
+# `--projeto-alvo-path PAP` e passado, alem do feature-dir convencional, os
+# paths do /initialize-docs sao aceitos:
+#   briefing      -> $PAP/docs/01-briefing-discovery/briefing.md
+#   constitution  -> $PAP/docs/constitution.md
 _pl_cmd_detect_completion() {
   _fd=""
   _st=""
+  _pap=""
   while [ "$#" -gt 0 ]; do
     case "$1" in
-      --feature-dir) _fd=$2; shift 2 ;;
-      --stage)       _st=$2; shift 2 ;;
+      --feature-dir)        _fd=$2;  shift 2 ;;
+      --stage)              _st=$2;  shift 2 ;;
+      --projeto-alvo-path)  _pap=$2; shift 2 ;;
       *) _pl_die_usage "detect-completion: flag desconhecida: $1" ;;
     esac
   done
@@ -141,8 +160,26 @@ _pl_cmd_detect_completion() {
   [ -d "$_fd" ] || _pl_die "detect-completion: feature-dir nao existe: $_fd" 1
 
   case "$_st" in
-    briefing)        [ -f "$_fd/briefing.md" ]         || return 1 ;;
-    constitution)    [ -f "$_fd/constitution.md" ]     || return 1 ;;
+    briefing)
+      # feature-dir OR (com PAP) hierarquia numerada do /initialize-docs.
+      if [ -f "$_fd/briefing.md" ]; then
+        return 0
+      elif [ -n "$_pap" ] && [ -f "$_pap/docs/01-briefing-discovery/briefing.md" ]; then
+        return 0
+      else
+        return 1
+      fi
+      ;;
+    constitution)
+      # feature-dir OR (com PAP) docs/constitution.md (root convencional).
+      if [ -f "$_fd/constitution.md" ]; then
+        return 0
+      elif [ -n "$_pap" ] && [ -f "$_pap/docs/constitution.md" ]; then
+        return 0
+      else
+        return 1
+      fi
+      ;;
     specify|clarify) [ -f "$_fd/spec.md" ]             || return 1 ;;
     plan)            [ -f "$_fd/plan.md" ]             || return 1 ;;
     checklist)
