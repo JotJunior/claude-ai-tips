@@ -538,18 +538,18 @@ Ref: constitution.md (toolkit) §III, plan.md §Project Structure
 - [x] 9.2.1 Determinar tipo de bump (provavel MINOR — adicao de commands/agents sem breaking) — confirmado MINOR: nenhuma alteracao breaking em manifest schema, install/doctor permanecem backward-compatible (veja CHANGELOG §Changed da FASE 1.2). Bump sera de 3.3.0 -> 3.4.0
 - [x] 9.2.2 Atualizar CHANGELOG.md com entrada para versao nova — bloco `[Unreleased]` ja contem 13 referencias as FASES 1-8 (ver `grep -c "FASE [1-8]" CHANGELOG.md`); promocao para `3.4.0` ocorre no momento do tag/release
 - [x] 9.2.3 Atualizar README.md mencionando agente-00c — secao "Agente-00C" adicionada na FASE 1.4 com pre-requisitos e limitacoes; atualizada na FASE 7.3 para refletir clamp 60-3600s + fallback /schedule (ver `grep -c "agente-00C\|agente-00c" README.md` = 8)
-- [ ] 9.2.4 Verificar que cstk doctor nao reporta drift apos instalacao limpa — depende de release real (tag + push); nao validavel ate v3.4.0 estar publicada e instalada via `cstk install`
+- [x] 9.2.4 Verificar que cstk doctor nao reporta drift apos instalacao limpa — validado pos-v3.6.0 (release publicada 2026-05-16): `cstk doctor` reporta `ok:43 edited:0 missing:0 orphan:0`; `cstk list` confirma `agente-00c-runtime 3.6.0 clean`. Zero drift.
 
 ### 9.3 Primeira execucao real em projeto-alvo de teste `[A]`
 
 Ref: briefing.md §criterio de sucesso
 
-- [ ] 9.3.1 Escolher projeto-alvo realista (ex: bot Slack que sumariza threads, ou similar do dia-a-dia do operador)
-- [ ] 9.3.2 Invocar /agente-00c com descricao curta + stack sugerida
-- [ ] 9.3.3 Deixar rodar ate completar ou atingir limite de orcamento
-- [ ] 9.3.4 Examinar relatorio final com criterios de Cenario A (qualidade do registro > sucesso da entrega)
-- [ ] 9.3.5 Coletar metricas: ondas, tool calls, decisoes, bloqueios, sugestoes, issues abertas
-- [ ] 9.3.6 Comparar contra SC-001 a SC-010 e marcar quais foram atendidos
+- [x] 9.3.1 Escolher projeto-alvo realista (ex: bot Slack que sumariza threads, ou similar do dia-a-dia do operador) — validado em exec-2026-05-11T19-59-58Z (projeto-alvo real escolhido pelo operador)
+- [x] 9.3.2 Invocar /agente-00c com descricao curta + stack sugerida — validado: execucao gerou `docs/01-briefing-discovery/agente-00c-report.md`
+- [x] 9.3.3 Deixar rodar ate completar ou atingir limite de orcamento — validado: 60 ondas completas com encerramento ordenado (dec-224 marca terminada_em)
+- [x] 9.3.4 Examinar relatorio final com criterios de Cenario A (qualidade do registro > sucesso da entrega) — validado: report.md cobre as 6 secoes; auditabilidade preservada (224 decisoes com 5 campos cada)
+- [x] 9.3.5 Coletar metricas: ondas, tool calls, decisoes, bloqueios, sugestoes, issues abertas — validado: 60 ondas, 224 decisoes, 10 bloqueios humanos, 52 sugestoes, 0 issues abertas (registrado em report.md e analise-licoes-aprendidas.md)
+- [ ] 9.3.6 Comparar contra SC-001 a SC-010 e marcar quais foram atendidos — PENDENTE: requer documento dedicado em `validation-runs/` cruzando spec.md §Success Criteria com observacoes da execucao real
 - [ ] 9.3.7 Verificar SC-006 (leitor reproduz mentalmente decisoes via relatorio): ler o relatorio gerado IGNORANDO o estado/logs externos e tentar reconstruir o fluxo de decisoes; criterio binario "consigo / nao consigo" para cada decisao critica (amostragem: todas as decisoes do clarify-answerer + 5 decisoes aleatorias do orquestrador). Registrar resultado em validation-runs/.
 
 ### 9.4 Documentar licoes aprendidas e alimentar evolucao das skills `[M]`
@@ -559,8 +559,8 @@ Ref: briefing.md, spec.md §SC-010
 - [x] 9.4.1 Compilar `docs/specs/agente-00c/lessons-from-first-run.md` com pelo menos 3 licoes concretas — entregue como `docs/specs/agente-00c/lessons-from-implementation.md` (escopo: licoes da IMPLEMENTACAO das 8 fases, NAO da execucao real). 5 licoes concretas: bug jq em pipe, dupla resolucao de symlinks no macOS, "skills internas" como padrao, cobertura forçada como ROI alto, estratificacao 3-camadas (commands/agents/scripts). `lessons-from-first-run.md` (do RUN real) sera escrito apos FASE 9.3
 - [x] 9.4.2 Para cada licao, propor mudanca em skill especifica do toolkit (com FR-formato) — secao "Sintese para FASE 9.4.2" no `lessons-from-implementation.md` lista 5 propostas (FR-LESSON-01..05) com skill afetada, tipo (doc/checklist/nova skill), esforco
 - [x] 9.4.3 Avaliar se proposta requer amendment da constitution do toolkit — secao "Sintese para FASE 9.4.3" conclui: nao requer amendment. Lessons sao refinamentos prescritivos, nao mudancas de principio. Possivel adicao informativa em "Principio II — POSIX sh puro" reconhecendo skills internas como padrao aceitavel
-- [ ] 9.4.4 Abrir as proprias issues no toolkit (validando pipeline de US5) — depende de autorizacao explicita do operador (jot) e exige sessao Claude Code com `/agente-00c` ou abertura manual via `gh issue create`. Lessons + propostas FR ja estao prontos para alimentar issues
-- [ ] 9.4.5 Atualizar threat-model.md se threats novos foram observados em runtime — depende da FASE 9.3 (primeira execucao real). Em shell-sim nenhum threat novo foi observado alem dos 7 ja documentados
+- [ ] 9.4.4 Abrir as proprias issues no toolkit (validando pipeline de US5) — depende de autorizacao explicita do operador (jot) e exige sessao Claude Code com `/agente-00c` ou abertura manual via `gh issue create`. Lessons + propostas FR ja estao prontos para alimentar issues. NOTE pos-evolucao v3.6.0: as 14 recomendacoes da analise-licoes-aprendidas.md viraram codigo diretamente (commits e5822c6 → 11e4510), nao issues; backlog vivo em docs/specs/agente-00c-evolucao/tasks.md
+- [x] 9.4.5 Atualizar threat-model.md se threats novos foram observados em runtime — validado em exec-2026-05-11T19-59-58Z: zero threats novos observados alem dos 7 ja documentados; analise-licoes-aprendidas.md confirma (relato sem secao "threats novos")
 
 ---
 
