@@ -545,7 +545,7 @@ Ref: constitution.md (toolkit) §III, plan.md §Project Structure
 Ref: briefing.md §criterio de sucesso
 
 - [x] 9.3.1 Escolher projeto-alvo realista (ex: bot Slack que sumariza threads, ou similar do dia-a-dia do operador) — validado em exec-2026-05-11T19-59-58Z (projeto-alvo real escolhido pelo operador)
-- [x] 9.3.2 Invocar /agente-00c com descricao curta + stack sugerida — validado: execucao gerou `docs/01-briefing-discovery/agente-00c-report.md`
+- [x] 9.3.2 Invocar /agente-00c com descricao curta + stack sugerida — validado: execucao exec-2026-05-11T19-59-58Z-agente-00c-novos-projetos rodou com sucesso (sintese disponivel em `docs/01-briefing-discovery/agente-00c-analise-licoes-aprendidas.md`; relatorio bruto e material do projeto-alvo, nao incluido neste repo)
 - [x] 9.3.3 Deixar rodar ate completar ou atingir limite de orcamento — validado: 60 ondas completas com encerramento ordenado (dec-224 marca terminada_em)
 - [x] 9.3.4 Examinar relatorio final com criterios de Cenario A (qualidade do registro > sucesso da entrega) — validado: report.md cobre as 6 secoes; auditabilidade preservada (224 decisoes com 5 campos cada)
 - [x] 9.3.5 Coletar metricas: ondas, tool calls, decisoes, bloqueios, sugestoes, issues abertas — validado: 60 ondas, 224 decisoes, 10 bloqueios humanos, 52 sugestoes, 0 issues abertas (registrado em report.md e analise-licoes-aprendidas.md)

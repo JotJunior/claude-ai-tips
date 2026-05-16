@@ -2,7 +2,7 @@
 titulo: Análise de Acertos e Erros do agente-00c — Lições para Evoluir as Skills
 autor: Jot
 data: 2026-05-15
-fonte: agente-00c-report.md (exec-2026-05-11T19-59-58Z-agente-00c-novos-projetos)
+fonte: relatorio bruto de exec-2026-05-11T19-59-58Z-agente-00c-novos-projetos (material do projeto-alvo, NAO incluido neste repo)
 volume_analisado: 60 ondas, 224 decisões, 10 bloqueios, 52 sugestões
 audiencia: Claude Code (para aplicar mudanças nas skills)
 ---
