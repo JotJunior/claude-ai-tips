@@ -245,6 +245,92 @@ Se ja existe um briefing:
 
 ---
 
+## Pre-flight de Bootstrap (apos briefing + plan)
+
+Stacks multi-workspace (monorepo npm/pnpm, Go modules multiplos, Cargo
+workspaces, etc) historicamente geram um bloqueio humano cirurgico
+`npm install` por workspace — 5 bloqueios em uma so execucao na rodada
+de validacao do agente-00c. Cada bloqueio tem mesmo formato e mesma
+resposta. Atrito mecanico previsivel deve ser amortizado em batch,
+nao resolvido onda-a-onda.
+
+Quando o briefing identificar stack multi-workspace, o agente DEVE
+materializar um script de bootstrap antes de declarar o briefing
+concluido:
+
+### Passos
+
+1. Identificar workspaces declarados (lendo `plan.md §Project Structure`
+   se ja existe, ou pedindo ao usuario no proprio briefing).
+2. Gerar `scripts/bootstrap-deps.sh` na raiz do projeto-alvo com uma
+   linha por workspace agrupando as dependencias canonicas. Formato:
+
+   ```sh
+   #!/bin/sh
+   # bootstrap-deps.sh — pre-flight de dependencias para evitar bloqueios
+   # cirurgicos npm install no meio da pipeline agente-00c.
+   #
+   # Rode UMA VEZ antes de /agente-00c (ou apos /initialize-docs).
+   #
+   # Gerado por: briefing skill (pre-flight de bootstrap)
+   # Data: <ISO>
+   # Workspaces: <lista>
+
+   set -eu
+
+   echo "==> auth-service"
+   npm install --workspace=services/auth-service \
+     express@5 zod@3 jsonwebtoken pino
+
+   echo "==> frontend-staff"
+   npm install --workspace=services/frontend-staff \
+     react@18 react-dom@18 @tanstack/react-query @radix-ui/react-dialog
+
+   # ...
+   ```
+
+   Para monorepos com `package.json` na raiz que ja declara workspaces,
+   uma alternativa equivalente e listar `npm install` (raiz) +
+   `npm install --workspace=<nome> <dep>` para cada workspace.
+
+3. Adicionar nota no `briefing.md` (secao "Setup / Bootstrap"):
+
+   > **Pre-flight obrigatorio**: rode `bash scripts/bootstrap-deps.sh`
+   > UMA VEZ antes de invocar `/agente-00c`. Stacks multi-workspace
+   > exigem instalacao de dependencias previa para evitar N bloqueios
+   > humanos cirurgicos durante a pipeline (FR-018 nao permite
+   > `npm install` autonomo).
+
+4. Se o briefing identifica que o projeto **NAO** e multi-workspace,
+   pular esse passo — `bootstrap-deps.sh` so faz sentido quando ha 2+
+   workspaces. Para single-package, o agente lida com `npm install`
+   onda-a-onda sem atrito amplificado.
+
+### Quando aplicar
+
+| Sinal | Aplicar pre-flight? |
+|-------|---------------------|
+| `package.json` declara `workspaces: [...]` | Sim |
+| Multiplos `package.json` em subdiretorios | Sim |
+| Go modules multiplos (`go.work`) | Sim (com `go mod download` por modulo) |
+| Cargo workspace (`Cargo.toml [workspace]`) | Sim (com `cargo fetch -p <crate>`) |
+| Repo single-package | Nao |
+
+### Quando NAO aplicar
+
+- Projetos puramente documentais (sem `package.json`, `go.mod`, etc).
+- Briefing identifica que a stack ainda nao esta decidida — gerar
+  `bootstrap-deps.sh` antes da decisao de stack vira lixo. Aplicar apos
+  o `plan.md` materializar `§Project Structure`.
+
+### Criterio de aceitacao
+
+Apos briefing salvo, executar `bash scripts/bootstrap-deps.sh` (se
+gerado) instala todas as dependencias com zero erros. A primeira onda
+do `/agente-00c` NAO encontra bloqueio `npm install`.
+
+---
+
 ## DIRETRIZES RAPIDAS
 
 - **Entrevista, nao interrogatorio** — tom conversacional, sem pressao

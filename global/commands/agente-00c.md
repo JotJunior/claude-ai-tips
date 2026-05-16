@@ -102,6 +102,36 @@ puder confirmar o warm-up no inicio.
 Extrair `descricao-curta` (primeiro posicional, minimo 10 chars),
 `--stack`, `--whitelist`, `--projeto-alvo-path` (default = cwd).
 
+#### Checklist pre-execucao (multi-workspace)
+
+Se o `projeto-alvo` declara `package.json` com `workspaces: [...]`,
+multiplos `go.mod` (`go.work`), ou Cargo workspace, **verifique se o
+operador rodou `bash scripts/bootstrap-deps.sh`** (gerado pela skill
+`briefing` na materializacao do pre-flight de bootstrap). Sem isso, a
+pipeline encontrara N bloqueios humanos `npm install` em sequencia
+(FR-018 nao permite instalacao autonoma).
+
+Detectar:
+```bash
+test -f "$PAP/scripts/bootstrap-deps.sh" \
+  && test -d "$PAP/node_modules" \
+  || echo "AVISO: bootstrap-deps.sh ausente ou nao executado"
+```
+
+Se a heuristica detecta gap, antes de iniciar a pipeline pergunte:
+```
+Detectei stack multi-workspace mas nao encontrei sinal de bootstrap
+executado. Voce rodou `bash scripts/bootstrap-deps.sh` (gerado pelo
+briefing)?
+
+  [s] Sim, prosseguir
+  [n] Nao, vou rodar agora e re-invocar /agente-00c
+```
+
+Se `n`, abortar; se `s` ou o operador confirma overrride, prosseguir.
+Pre-flight nao e bloqueante (operador pode legitimamente ter ambiente
+ja preparado fora do script), apenas defensivo.
+
 ### 2. Validacao de pre-condicoes
 
 - Descricao curta com >= 10 chars (caso contrario, falhar com mensagem

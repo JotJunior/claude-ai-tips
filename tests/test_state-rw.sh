@@ -203,4 +203,139 @@ scenario_round_trip_serializa_le_compara() {
   [ "$_hist_count" = 1 ] || { _fail "backup esperado" "obtido $_hist_count"; return 1; }
 }
 
+# ===== infer-aspectos (§2.3) =====
+
+# Helper: cria projeto-alvo git repo com arquivos especificos commitados
+# em 2 commits (HEAD~1 e HEAD), simulando uma onda.
+_setup_pap_with_diff() {
+  _pap=$1
+  shift
+  _files_baseline=$1
+  shift
+  _files_onda="$*"
+  mkdir -p -- "$_pap"
+  (
+    cd "$_pap" || exit 1
+    git init -q
+    git config user.email "test@test.local"
+    git config user.name "Test"
+    # Baseline: arquivo inicial
+    for _f in $_files_baseline; do
+      mkdir -p -- "$(dirname -- "$_f")" 2>/dev/null || :
+      printf 'base\n' > "$_f"
+    done
+    git add -A
+    git commit -q -m "baseline"
+    # Onda: arquivos modificados
+    for _f in $_files_onda; do
+      mkdir -p -- "$(dirname -- "$_f")" 2>/dev/null || :
+      printf 'onda\n' > "$_f"
+    done
+    git add -A
+    git commit -q -m "onda"
+  )
+}
+
+scenario_infer_aspectos_diff_com_aspecto_iniciais() {
+  _sd="$TMPDIR_TEST/state"
+  _pap="$TMPDIR_TEST/pap"
+  capture "$SCRIPT" init --state-dir "$_sd" \
+    --execucao-id "exec-test" \
+    --projeto-alvo-path "$_pap" \
+    --descricao "POC com aspectos"
+  # Grava aspectos manualmente
+  capture "$SCRIPT" set --state-dir "$_sd" \
+    --field '.aspectos_chave_iniciais' \
+    --value '["slack","bot","threads"]'
+  # Cria repo com arquivos relacionados
+  _setup_pap_with_diff "$_pap" "README.md" "src/slack-handler.ts src/threads.ts"
+  capture "$SCRIPT" infer-aspectos --state-dir "$_sd" --projeto-alvo-path "$_pap"
+  [ "$_CAPTURED_EXIT" = 0 ] || { _fail "infer" "$_CAPTURED_STDERR"; return 1; }
+  assert_stdout_contains "slack" || return 1
+  assert_stdout_contains "threads" || return 1
+}
+
+scenario_infer_aspectos_diff_sem_aspecto_retorna_vazio() {
+  _sd="$TMPDIR_TEST/state"
+  _pap="$TMPDIR_TEST/pap"
+  capture "$SCRIPT" init --state-dir "$_sd" \
+    --execucao-id "exec-test" \
+    --projeto-alvo-path "$_pap" \
+    --descricao "POC com aspectos"
+  capture "$SCRIPT" set --state-dir "$_sd" \
+    --field '.aspectos_chave_iniciais' \
+    --value '["slack","bot","threads"]'
+  _setup_pap_with_diff "$_pap" "README.md" "src/logger.ts src/cache.ts"
+  capture "$SCRIPT" infer-aspectos --state-dir "$_sd" --projeto-alvo-path "$_pap"
+  [ "$_CAPTURED_EXIT" = 0 ] || { _fail "infer vazio" "$_CAPTURED_STDERR"; return 1; }
+  # JSON array vazio
+  case "$_CAPTURED_STDOUT" in
+    *'[]'*) ;;
+    *) _fail "esperado [] vazio" "$_CAPTURED_STDOUT"; return 1 ;;
+  esac
+}
+
+scenario_infer_aspectos_considera_camada_tecnica() {
+  _sd="$TMPDIR_TEST/state"
+  _pap="$TMPDIR_TEST/pap"
+  capture "$SCRIPT" init --state-dir "$_sd" \
+    --execucao-id "exec-test" \
+    --projeto-alvo-path "$_pap" \
+    --descricao "POC com 3 camadas"
+  capture "$SCRIPT" set --state-dir "$_sd" \
+    --field '.aspectos_chave_iniciais' --value '["produto-a","produto-b","produto-c"]'
+  capture "$SCRIPT" set --state-dir "$_sd" \
+    --field '.aspectos_chave_tecnicos' --value '["auth","sessao","db"]'
+  _setup_pap_with_diff "$_pap" "README.md" "src/auth/middleware.ts src/sessao-store.ts"
+  capture "$SCRIPT" infer-aspectos --state-dir "$_sd" --projeto-alvo-path "$_pap"
+  [ "$_CAPTURED_EXIT" = 0 ] || { _fail "camada tec" "$_CAPTURED_STDERR"; return 1; }
+  assert_stdout_contains "auth" || return 1
+  assert_stdout_contains "sessao" || return 1
+}
+
+scenario_infer_aspectos_matcher_fuzzy_token() {
+  # aspecto "integracao-bidirecional-mcp-jira" deve casar com path
+  # que cite token "mcp-jira" ou "jira"
+  _sd="$TMPDIR_TEST/state"
+  _pap="$TMPDIR_TEST/pap"
+  capture "$SCRIPT" init --state-dir "$_sd" \
+    --execucao-id "exec-test" \
+    --projeto-alvo-path "$_pap" \
+    --descricao "POC fuzzy"
+  capture "$SCRIPT" set --state-dir "$_sd" \
+    --field '.aspectos_chave_iniciais' \
+    --value '["integracao-bidirecional-mcp-jira","triagem","priorizacao"]'
+  _setup_pap_with_diff "$_pap" "README.md" "src/jira-webhook.ts"
+  capture "$SCRIPT" infer-aspectos --state-dir "$_sd" --projeto-alvo-path "$_pap"
+  [ "$_CAPTURED_EXIT" = 0 ] || { _fail "fuzzy" "$_CAPTURED_STDERR"; return 1; }
+  # Deve identificar aspecto via token "jira" compartilhado
+  assert_stdout_contains "integracao-bidirecional-mcp-jira" || return 1
+}
+
+scenario_infer_aspectos_resolve_pap_de_state_se_nao_passado() {
+  _sd="$TMPDIR_TEST/state"
+  _pap="$TMPDIR_TEST/pap"
+  capture "$SCRIPT" init --state-dir "$_sd" \
+    --execucao-id "exec-test" \
+    --projeto-alvo-path "$_pap" \
+    --descricao "POC pap auto"
+  capture "$SCRIPT" set --state-dir "$_sd" \
+    --field '.aspectos_chave_iniciais' --value '["slack","bot","threads"]'
+  _setup_pap_with_diff "$_pap" "README.md" "src/slack-bot.ts"
+  # Sem --projeto-alvo-path explicito; resolve via state
+  capture "$SCRIPT" infer-aspectos --state-dir "$_sd"
+  [ "$_CAPTURED_EXIT" = 0 ] || { _fail "auto pap" "$_CAPTURED_STDERR"; return 1; }
+  assert_stdout_contains "slack" || return 1
+}
+
+scenario_infer_aspectos_state_ausente_falha() {
+  _sd="$TMPDIR_TEST/empty"
+  mkdir -p "$_sd"
+  capture "$SCRIPT" infer-aspectos --state-dir "$_sd" --projeto-alvo-path "/tmp"
+  if [ "$_CAPTURED_EXIT" != 1 ]; then
+    _fail "state ausente" "esperado 1, obtido $_CAPTURED_EXIT"
+    return 1
+  fi
+}
+
 run_all_scenarios

@@ -192,6 +192,82 @@ flowchart TD
 
 ---
 
+## Sincronizacao com Codigo
+
+`tasks.md` e fonte de verdade declarada, mas em execucoes longas o
+codigo e o documento drifam — historicamente 11 ondas consecutivas
+tiveram FASE marcada `[ ]` enquanto o codigo ja existia, com testes,
+no repositorio. Sub-FASEs criadas via Decisao nunca voltaram ao
+`tasks.md`. O custo: `/review-task` re-processa tarefas concluidas
+e o agente perde tempo re-investigando estado ja resolvido.
+
+### Protocolo de sincronizacao
+
+A sincronizacao acontece em TRES pontos do ciclo de vida da tarefa,
+cada um com responsabilidade clara:
+
+**1. Antes de executar (Etapa 2 do `/execute-task`)**
+
+Para cada subtarefa `[ ]` da tarefa-alvo, fazer `grep -l` (ou Glob) por
+arquivos canonicos antes de comecar:
+
+```bash
+# Exemplo: subtarefa "1.1.3 Implementar UserRepository" — checar antes
+test -f src/repositories/UserRepository.ts \
+  && grep -q "class UserRepository" src/repositories/UserRepository.ts \
+  && echo "JA EXISTE — marcar [x] com nota 'validado empiricamente onda-NNN'"
+```
+
+Se ja existe, marcar `[x]` ANTES de prosseguir, com nota inline:
+
+```markdown
+- [x] 1.1.3 Implementar UserRepository <!-- validado empiricamente onda-042 -->
+```
+
+**2. Decisao cria sub-FASE (sub-tarefas emergentes)**
+
+Quando uma Decisao tomada durante execucao cria trabalho novo (ex:
+"emergiu sub-FASE 6.4 para Helper de payload"), o agente DEVE inserir
+o novo bloco no `tasks.md` no MESMO commit que registra a Decisao.
+Nao deixar como "vou anotar depois" — essa intencao morre na proxima
+onda.
+
+Formato sugerido (insercao na fase apropriada):
+
+```markdown
+### N.M.K-bis {Nome da Sub-FASE Emergente} `[criticidade]`
+
+Ref: dec-NNN (sub-FASE emergiu durante execucao de N.M.K)
+
+- [ ] N.M.K-bis.1 {subtarefa nova}
+- [ ] N.M.K-bis.2 {subtarefa nova}
+```
+
+**3. Hook pos-onda (orquestrador)**
+
+Apos cada onda, o orquestrador compara `git diff --name-only HEAD~1..HEAD`
+contra checkboxes do `tasks.md` afetados. Se ha arquivos modificados
+que correspondem a checkboxes ainda `[ ]`, emite aviso na trilha de
+decisao (nao bloqueia). Ver `agente-00c-orchestrator.md` §Loop principal.
+
+### Paridade de tipos compartilhados
+
+Quando uma FASE replica tipos em outro pacote (ex: Zod local em `web/`
+vs `packages/shared-types/`), incluir subtarefa obrigatoria:
+
+```markdown
+- [ ] N.M.K Replicar tipo Foo em web/src/types/foo.ts
+- [ ] N.M.K+1 Verificar paridade EXATA com packages/shared-types/src/foo.ts
+- [ ] N.M.K+2 Teste smoke: comparar z.enum().options entre os dois pacotes
+```
+
+Razao: a execucao-fonte teve drift snake_case vs camelCase descoberta
+40 ondas depois porque os testes parseavam mocks (nao payload real),
+mascarando a divergencia. Paridade exigida explicitamente no backlog
+forca verificacao antes do drift se acumular.
+
+---
+
 ## Checklist de Qualidade
 
 Antes de finalizar o documento, verifique:

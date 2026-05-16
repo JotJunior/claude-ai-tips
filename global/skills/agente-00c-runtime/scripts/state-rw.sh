@@ -27,13 +27,23 @@
 #   state-rw.sh path-check --projeto-alvo-path PATH
 #                     — valida path: existe (ou cria), e diretorio, gravavel.
 #                       NAO valida zonas proibidas — isso e FR-024 (FASE 6.1).
+#   state-rw.sh infer-aspectos --state-dir DIR [--projeto-alvo-path PATH]
+#                     — infere aspectos tocados pela onda corrente a
+#                       partir de git diff --name-only HEAD~1..HEAD,
+#                       aplicando matcher fuzzy contra union das 3
+#                       camadas de aspectos (iniciais/tecnicos/operacionais).
+#                       Stdout: JSON array de aspectos detectados (pode
+#                       ser vazio). Nao escreve state.json — caller
+#                       decide se chama `set --field
+#                       '.ondas[-1].aspectos_chave_tocados' --value ...`.
+#                       Ref: docs/specs/agente-00c-evolucao/tasks.md §2.3.
 #
 # Exit codes:
 #   0  sucesso
 #   1  erro generico (jq ausente, FS error, validacao falhou)
 #   2  uso incorreto (flag invalida, subcomando desconhecido)
 #
-# POSIX sh + jq + sha256sum/shasum + mkdir/mv/touch.
+# POSIX sh + jq + sha256sum/shasum + mkdir/mv/touch + git.
 
 set -eu
 
@@ -422,6 +432,78 @@ _sr_cmd_path_check() {
   rm -f -- "$_probe" 2>/dev/null || :
 }
 
+# _sr_cmd_infer_aspectos: infere aspectos tocados pela onda corrente
+# a partir de `git diff --name-only` aplicando matcher fuzzy contra
+# union das 3 camadas de aspectos. Stdout: JSON array.
+_sr_cmd_infer_aspectos() {
+  _sd=""
+  _pap=""
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --state-dir)          _sd=$2;  shift 2 ;;
+      --projeto-alvo-path)  _pap=$2; shift 2 ;;
+      *) _sr_die "infer-aspectos: flag desconhecida: $1" 2 ;;
+    esac
+  done
+  [ -n "$_sd" ] || _sr_die "infer-aspectos: --state-dir obrigatorio" 2
+  command -v jq >/dev/null 2>&1 || _sr_die "infer-aspectos: jq ausente" 1
+  command -v git >/dev/null 2>&1 || _sr_die "infer-aspectos: git ausente" 1
+
+  _sf="$_sd/state.json"
+  [ -f "$_sf" ] || _sr_die "infer-aspectos: state.json ausente em $_sd" 1
+
+  # Resolver projeto-alvo: flag explicita > .execucao.projeto_alvo_path
+  if [ -z "$_pap" ]; then
+    _pap=$(jq -r '.execucao.projeto_alvo_path // ""' "$_sf")
+  fi
+  [ -n "$_pap" ] || _sr_die "infer-aspectos: nao consegui resolver projeto-alvo-path" 1
+  [ -d "$_pap" ] || _sr_die "infer-aspectos: projeto-alvo nao e diretorio: $_pap" 1
+
+  # Coletar arquivos modificados nesta onda. Estrategia:
+  #   1. Se HEAD~1 existe, usa `git diff --name-only HEAD~1..HEAD`
+  #   2. Caso contrario (primeira onda, repo sem historico), usa
+  #      `git diff --name-only --cached` + `git ls-files --others --exclude-standard`
+  _diff=$(
+    cd "$_pap" 2>/dev/null || exit 1
+    if git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
+      git diff --name-only HEAD~1..HEAD 2>/dev/null
+    else
+      git diff --name-only --cached 2>/dev/null
+      git ls-files --others --exclude-standard 2>/dev/null
+    fi
+  ) || _diff=""
+
+  # Aplicar matcher fuzzy: aspecto detectado se token-overlap com paths.
+  # Reusa logica do drift.sh (matcher bidirecional + tokens >=3 chars).
+  printf '%s\n' "$_diff" | jq -R -s --slurpfile state "$_sf" '
+    def tokenize($s):
+      ($s // "")
+      | ascii_downcase
+      | gsub("[^a-z0-9]+"; " ")
+      | split(" ")
+      | map(select(length >= 3));
+
+    def matches_aspecto($txt; $aspecto):
+      ($txt // "" | ascii_downcase) as $t
+      | ($aspecto | ascii_downcase) as $a
+      | ($t | contains($a))
+        or (
+          (tokenize($t)) as $tt
+          | (tokenize($aspecto)) as $ta
+          | any($tt[]; . as $x | any($ta[]; . == $x))
+        );
+
+    ($state[0]) as $st
+    | (($st.aspectos_chave_iniciais     // []) +
+       ($st.aspectos_chave_tecnicos     // []) +
+       ($st.aspectos_chave_operacionais // []) | unique) as $aspectos
+    | . as $diff
+    | $aspectos
+      | map(. as $a | select(matches_aspecto($diff; $a)))
+      | unique
+  '
+}
+
 # ---------- Dispatch ----------
 
 _sr_print_help() {
@@ -440,10 +522,11 @@ SUBCOMANDOS:
   sha256-update  Recalcula state.json.sha256
   sha256-verify  Compara hash atual com state.json.sha256 (FR-029)
   path-check     Valida --projeto-alvo-path (existe/cria/gravavel)
+  infer-aspectos Infere aspectos tocados via git diff + matcher fuzzy
 
 Flags variam por subcomando — consulte cabecalho do script para detalhes.
 
-Dependencia: jq (brew install jq | apt install jq).
+Dependencias: jq + git (brew install jq | apt install jq).
 HELP
 }
 
@@ -456,14 +539,15 @@ _sr_subcmd=$1
 shift
 
 case "$_sr_subcmd" in
-  init)           _sr_cmd_init "$@" ;;
-  read)           _sr_cmd_read "$@" ;;
-  write)          _sr_cmd_write "$@" ;;
-  get)            _sr_cmd_get "$@" ;;
-  set)            _sr_cmd_set "$@" ;;
-  sha256-update)  _sr_cmd_sha256_update "$@" ;;
-  sha256-verify)  _sr_cmd_sha256_verify "$@" ;;
-  path-check)     _sr_cmd_path_check "$@" ;;
-  -h|--help|help) _sr_print_help; exit 0 ;;
+  init)            _sr_cmd_init "$@" ;;
+  read)            _sr_cmd_read "$@" ;;
+  write)           _sr_cmd_write "$@" ;;
+  get)             _sr_cmd_get "$@" ;;
+  set)             _sr_cmd_set "$@" ;;
+  sha256-update)   _sr_cmd_sha256_update "$@" ;;
+  sha256-verify)   _sr_cmd_sha256_verify "$@" ;;
+  path-check)      _sr_cmd_path_check "$@" ;;
+  infer-aspectos)  _sr_cmd_infer_aspectos "$@" ;;
+  -h|--help|help)  _sr_print_help; exit 0 ;;
   *) _sr_die "subcomando desconhecido: $_sr_subcmd (use --help)" 2 ;;
 esac
