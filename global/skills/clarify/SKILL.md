@@ -20,6 +20,25 @@ allowed-tools:
 Identifique e resolva ambiguidades em uma feature spec existente via perguntas
 estruturadas, integrando as respostas diretamente no documento.
 
+## Modos de invocacao
+
+Esta skill suporta dois modos:
+
+1. **Interativo (default)** — humano executa `/clarify`; skill faz Q&A
+   direto com o usuario, uma pergunta por vez (ETAPA 4 deste documento).
+
+2. **Padrao de dois atores (apenas dentro de `agente-00c`)** — o
+   orquestrador spawna `agente-00c-clarify-asker` (gera perguntas) +
+   `agente-00c-clarify-answerer` (responde com scoring 0..3) como
+   subagentes irmaos. NAO chame esses subagentes diretamente via
+   `/clarify` — eles sao primitivas do orquestrador.
+
+   Dentro do modo dois-atores, se a tool Agent estiver indisponivel
+   no harness (sintoma: spawn falha com erro de tool, nao com erro
+   de prompt), o orquestrador faz downgrade EXPLICITO via Decisao
+   auditada — nao silently fallback. Ver
+   `agente-00c-orchestrator.md` §5.a (Dry-run da tool Agent).
+
 ## Pre-requisitos
 
 **Obrigatorio**: `spec.md` ja existente (criado via `/specify` ou manualmente).
@@ -123,6 +142,22 @@ Para cada categoria abaixo, marcar status: **Clear** / **Partial** / **Missing**
 - Restricoes tecnicas (linguagem, storage, hosting)
 - Tradeoffs explicitos ou alternativas rejeitadas
 
+**Decisoes de Infraestrutura Auditaveis (alta prioridade):**
+- Politica de scheduling (`autoSchedule = cron|wakeup|manual|auto`)
+- Politica de key rotation (versionamento `v1:<base64>` sim/nao)
+- Refresh policy (on-demand vs job periodico; gap window aceitavel)
+- Mutex multi-pod (lock advisory, redis, SELECT FOR UPDATE)
+- Idempotencia (chave, TTL, escopo)
+- Backup/restore (cron, retencao, RB-NNN de drill)
+
+Cada item ausente do spec mas RELEVANTE para a feature (i.e. feature
+tem runtime longo, persistencia, integracao com IdP) deve aparecer
+**no topo da fila** de perguntas — antes de UX e detalhes tecnicos.
+Razao: dec sobre key rotation ou scheduling descoberta apos `clarify`
+vira retrabalho urgente na onda-007 (`execute-task` sem premissa). Ver
+specify/SKILL.md §"Decisoes de Infraestrutura Auditaveis" para tabela
+completa.
+
 **Terminologia e Consistencia:**
 - Termos canonicos do glossario
 - Sinonimos evitados / termos deprecados
@@ -156,6 +191,19 @@ Gerar fila priorizada de **maximo 5 perguntas**. Criterios:
   decomposicao de tasks, design de testes, comportamento UX, prontidao operacional, ou compliance
 - Balancear cobertura de categorias: priorizar areas de alto impacto nao resolvidas
 - Se mais de 5 categorias nao resolvidas: selecionar top 5 por (Impacto x Incerteza)
+
+**Ordem de prioridade (alta → baixa):**
+
+1. **Decisoes de Infraestrutura Auditaveis** — scheduling, key rotation,
+   refresh policy, mutex multi-pod, idempotencia. Custo de descobrir
+   depois (`execute-task`) e alto.
+2. **Escopo funcional** — fora-de-escopo declarado, papeis distintos
+3. **Dominio e Modelo de Dados** — entidades, identidade, lifecycle
+4. **Qualidade nao-funcional** — performance, seguranca, compliance
+5. **UX e interacao** — jornadas criticas, edge cases
+6. **Constraints tecnicas** — linguagem, storage, hosting
+
+Aplicar essa ordem dentro do top-5 final.
 
 ### 3.2 Excluir
 

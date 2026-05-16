@@ -198,6 +198,32 @@ Para ver exemplos de spec bem escrita vs mal escrita:
 - **MAXIMO 3 marcadores [NEEDS CLARIFICATION]** no total
 - Prioridade de clarificacao: escopo > seguranca > UX > detalhes tecnicos
 
+**Decisoes de Infraestrutura Auditaveis (obrigatorio para features
+com runtime de longo prazo):**
+
+Features que envolvem schedulers, sessoes persistentes, refresh de
+tokens externos ou rotacao de chaves DEVEM declarar essas politicas
+como FRs explicitos no spec — NAO como divida descoberta na execucao.
+Razao: a execucao-fonte do agente-00c teve scheduling (sug-016),
+encryption key rotation (sug-011) e refresh policy (sug-015)
+descobertos na onda-007 como pendencias urgentes; deveriam ter sido
+FRs desde o spec.
+
+Checklist minimo (cada item vira FR explicito quando aplicavel):
+
+| Tipo de decisao | FR explicito sugerido | Quando aplicar |
+|-----------------|------------------------|----------------|
+| Politica de scheduling | `FR-NN-INFRA-SCHED: autoSchedule = 'cron' \| 'wakeup' \| 'manual' \| 'auto' (default <X>)` | Feature dispara trabalho periodico ou agendado |
+| Politica de key rotation | `FR-NN-INFRA-KEY: SESSION_ENCRYPTION_KEY suporta versionamento (v1:<base64>, v2:<base64>) — rotacao sem downtime` | Feature criptografa dados persistentes |
+| Refresh policy (token externo) | `FR-NN-INFRA-REFRESH: refresh on-demand + job periodico a cada Xmin; gap window aceitavel: Y min` | Feature consome IdP, OAuth, ou recurso com TTL |
+| Mutex multi-pod | `FR-NN-INFRA-LOCK: serializacao cross-pod via <pg_try_advisory_xact_lock\|redis lock\|SELECT FOR UPDATE>` | Deploy multi-replica + estado compartilhado |
+| Backup / restore | `FR-NN-INFRA-BACKUP: snapshot cron Xh, retencao Yd, restore tested via RB-NNN` | Feature persiste dados criticos |
+| Idempotencia | `FR-NN-INFRA-IDEMP: <chave de idempotencia, TTL, scope>` | Feature aceita request retry |
+
+Se a feature NAO toca nenhum desses, anotar explicitamente uma linha
+`> Decisoes de infraestrutura: N/A (feature stateless, sem scheduling)`.
+NAO deixar implicito — `N/A explicito > silencio`.
+
 **Success Criteria:**
 - DEVEM ser mensuráveis (tempo, porcentagem, contagem, taxa)
 - DEVEM ser technology-agnostic (sem frameworks, linguagens, databases)

@@ -201,6 +201,52 @@ ao menos um error case), no formato "1. Passo → 2. Passo → **Expected**: res
 
 **Output**: `docs/specs/{feature}/quickstart.md`
 
+**Obrigatorio para features com borda backend↔frontend**: incluir cenario
+"Roundtrip End-to-End" que faz uma chamada REAL ao backend (nao mock,
+nao fixture), captura o payload de resposta e compara o shape contra o
+contrato declarado em §5.4. Razao: 40 ondas historicas mascararam um
+drift snake_case vs camelCase porque os testes parseavam mocks (nao o
+payload real do backend) — apenas roundtrip empirico expoe esse tipo
+de divergencia antes do drift se acumular.
+
+### 5.4 Convencoes de Borda (obrigatorio para features com 2+ camadas)
+
+Quando a feature atravessa fronteiras (backend ↔ frontend, DB ↔
+backend, broker ↔ consumer), declarar EXPLICITAMENTE em uma tabela no
+`plan.md` qual e a fonte da verdade de cada convencao. Razao: dec-172
+e dec-173 da execucao-fonte resolveram em FASE 8 (onda-040) uma
+divergencia snake_case vs camelCase que existia desde o contrato
+(dec-064). 40 ondas de retrabalho porque a convencao nao foi declarada
+upfront.
+
+Estrutura obrigatoria do `plan.md` (secao nova entre "Project Structure"
+e "Complexity Tracking"):
+
+```markdown
+## Convencoes de Borda
+
+| Camada | Case style | Validacao | Fonte da verdade |
+|--------|------------|-----------|------------------|
+| DB columns (PostgreSQL) | snake_case | constraint check + migration | `migrations/*.sql` |
+| Backend DTO (Go/TS) | camelCase | json tags / Zod | `internal/dto/*.go` ou `src/types/*.ts` |
+| Frontend DTO (TS) | camelCase | Zod parse no fetch | `web/src/types/*.ts` (re-export de shared-types) |
+| API payload (request/response) | camelCase | Zod em ambos os lados | `contracts/*.md` |
+| URL query/path params | kebab-case | router | `routes.ts` ou equivalente |
+
+**Mapper layer (DB ↔ DTO)**: localizacao + responsavel:
+- Backend: `internal/repository/mapper.go` (snake_case ↔ camelCase)
+- ORM auto-mapping: SIM/NAO — se SIM, citar lib (gorm, sqlc, kysely)
+
+**Validacao Zod**:
+- Em qual borda? request, response, ambos?
+- Schema compartilhado? localizar em `packages/shared-types/`?
+```
+
+Se a feature e single-layer (ex: biblioteca pura, CLI tool, script),
+pular essa secao com nota explicita "N/A — single-layer".
+
+**Output**: `docs/specs/{feature}/plan.md` §Convencoes de Borda
+
 ---
 
 ## ETAPA 6: PLAN DOCUMENT

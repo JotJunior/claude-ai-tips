@@ -139,6 +139,14 @@ pass (o que flaggear, severidade tipica, exemplos) em
 - **D. Alinhamento com Constitution** — violacoes MUST sao automaticamente CRITICAL
 - **E. Gaps de Cobertura** — requisitos orfaos, tasks orfas
 - **F. Inconsistencia** — drift de terminologia, contradicoes entre artefatos
+- **G. Convencoes de Borda (case style)** — comparar `plan.md §Convencoes
+  de Borda` contra uso real em `data-model.md`, `contracts/*.md` e
+  payload examples. Se plan declara DB=snake_case mas `data-model.md`
+  cita coluna `userName`, flag MAJOR. Se contracts declara
+  camelCase mas exemplo de payload usa `user_name`, flag MAJOR.
+  Razao: dec-172/173 historicos resolveram em FASE 8 (onda-040) uma
+  divergencia que existia desde onda-014 — 40 ondas de retrabalho
+  porque a convencao nao foi cross-checked upfront.
 
 Focar em findings de alto sinal. Limite: **50 findings total**. Agregar
 restante em resumo de overflow.

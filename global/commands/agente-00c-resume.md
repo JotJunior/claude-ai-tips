@@ -4,7 +4,7 @@ description: |
   ou apos schedule entre ondas. Le o estado, valida hash de integridade
   (FR-029), aplica resposta a bloqueios pendentes (se aplicavel) e delega
   proxima onda ao agente-00c-orchestrator.
-argument-hint: "[--projeto-alvo-path <path>] [--resposta-bloqueio <id>:<resposta>]"
+argument-hint: "[--projeto-alvo-path <path>] [--resposta-bloqueio <id>:<resposta>] [--init-aspectos <json-array>] [--init-aspectos-tecnicos <json-array>] [--init-aspectos-operacionais <json-array>]"
 allowed-tools:
   - Agent
   - Read
@@ -35,6 +35,12 @@ de estado — nao manipule `state.json` diretamente com jq.
 Extrair:
 - `--projeto-alvo-path` (default = `cwd`)
 - `--resposta-bloqueio` opcional, formato `<block-id>:<resposta>`
+- `--init-aspectos` opcional, JSON array de 3..7 strings — usado para
+  re-inicializar `aspectos_chave_iniciais` em execucoes legadas (criadas
+  antes da FASE 3 da evolucao, com aspectos=null). Forca overwrite via
+  `drift.sh init --force`.
+- `--init-aspectos-tecnicos` opcional, JSON array 0..7 strings
+- `--init-aspectos-operacionais` opcional, JSON array 0..7 strings
 
 Defina `<SD> = <PAP>/.claude/agente-00c-state` para os comandos abaixo.
 
@@ -125,6 +131,38 @@ Apos `respond`, se `bloqueios.sh count --pending-only` retornar 0,
 `.execucao.status` ja esta de volta para `em_andamento` automaticamente.
 Caso contrario, ainda ha pendentes — liste-os e instrua o operador a
 chamar `/agente-00c-resume` novamente com mais respostas.
+
+### 5.c. Re-inicializar aspectos-chave (apenas se --init-aspectos passado)
+
+Aplicavel a execucoes legadas (anteriores a FASE 3 da evolucao) que
+nao tem `.aspectos_chave_iniciais` populado. Sem aspectos, `drift.sh
+check` fica permanentemente em modo `desabilitado` — re-inicializacao
+manual relaxa a idempotencia normal do `drift.sh init`.
+
+```bash
+drift.sh init --state-dir <SD> \
+  --aspectos "$init_aspectos" \
+  [--tecnicos "$init_aspectos_tecnicos"] \
+  [--operacionais "$init_aspectos_operacionais"] \
+  --force
+```
+
+Apos init, registre Decisao:
+
+```bash
+state-decisions.sh register --state-dir <SD> \
+  --agente "orquestrador-00c" --etapa "briefing" \
+  --contexto "Re-init de aspectos via /agente-00c-resume --init-aspectos
+  (execucao legada sem aspectos populados)" \
+  --opcoes '["init","nao-init"]' \
+  --escolha "init" \
+  --justificativa "Drift check desabilitado nesta execucao ate aspectos
+  serem gravados; operador autorizou re-init explicitamente"
+```
+
+Se `--init-aspectos` foi passado mas `.aspectos_chave_iniciais` ja
+existe, exibir aviso de overwrite e prosseguir (assume-se intencao
+explicita do operador).
 
 ### 6. Spawnar agente-orquestrador (continuacao da pipeline)
 
