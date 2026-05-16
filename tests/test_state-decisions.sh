@@ -138,10 +138,85 @@ scenario_score_valido_persiste() {
     --contexto "Q1: stack-sugerida — Go ou Node?" \
     --opcoes '["Go","Node"]' --escolha "Go" \
     --justificativa "Briefing menciona Go; stack-sugerida tambem" \
-    --score 3
+    --score 3 \
+    --evidencia "grep -r 'go.mod' . | head: ./services/auth/go.mod confirma Go"
   [ "$_CAPTURED_EXIT" = 0 ] || { _fail "register" "$_CAPTURED_STDERR"; return 1; }
   capture "$RW" get --state-dir "$_sd" --field '.decisoes[-1].score_justificativa'
   assert_stdout_contains "3" || return 1
+}
+
+scenario_score_3_sem_evidencia_rejeita() {
+  # FR-EVI-001: score=3 EXIGE --evidencia (>=20 chars). Sem evidencia, exit 1
+  # com mensagem clara. Razao: 3 falsos positivos `score=3` historicos onde
+  # agente afirmou premissa tecnica falsa sem rodar tsc/test/grep.
+  _sd="$TMPDIR_TEST/state"
+  _init_state "$_sd"
+  capture "$SCRIPT" register --state-dir "$_sd" \
+    --agente "x" --etapa "execute-task" \
+    --contexto "Afirmar que Express 5 embute tipos nativos" \
+    --opcoes '["Sim","Nao"]' --escolha "Sim" \
+    --justificativa "Conviccao baseada em changelog recente da v5" \
+    --score 3
+  if [ "$_CAPTURED_EXIT" != 1 ]; then
+    _fail "score=3 sem evidencia" "esperado 1, obtido $_CAPTURED_EXIT"
+    return 1
+  fi
+  assert_stderr_contains "score=3" || return 1
+  assert_stderr_contains "evidencia" || return 1
+}
+
+scenario_score_3_evidencia_curta_rejeita() {
+  _sd="$TMPDIR_TEST/state"
+  _init_state "$_sd"
+  capture "$SCRIPT" register --state-dir "$_sd" \
+    --agente "x" --etapa "execute-task" \
+    --contexto "Afirmar comportamento de runtime sem rodar" \
+    --opcoes '["A","B"]' --escolha "A" \
+    --justificativa "Conviccao baseada em leitura previa do codigo" \
+    --score 3 --evidencia "rodei tsc"
+  if [ "$_CAPTURED_EXIT" != 1 ]; then
+    _fail "evidencia curta" "esperado 1, obtido $_CAPTURED_EXIT"
+    return 1
+  fi
+  assert_stderr_contains "evidencia" || return 1
+}
+
+scenario_score_2_sem_evidencia_ainda_aceita() {
+  # Score 2 nao exige evidencia — apenas score 3 e cobrado.
+  _sd="$TMPDIR_TEST/state"
+  _init_state "$_sd"
+  capture "$SCRIPT" register --state-dir "$_sd" \
+    --agente "x" --etapa "clarify" \
+    --contexto "Decisao informada por briefing + stack" \
+    --opcoes '["A","B"]' --escolha "A" \
+    --justificativa "Briefing menciona explicitamente preferencia A" \
+    --score 2
+  [ "$_CAPTURED_EXIT" = 0 ] || { _fail "score=2 sem evi" "$_CAPTURED_STDERR"; return 1; }
+}
+
+scenario_score_3_persiste_evidencia_no_estado() {
+  _sd="$TMPDIR_TEST/state"
+  _init_state "$_sd"
+  _evi='npx tsc --noEmit: error TS2322 em src/foo.ts:12 confirma tipo nao bate'
+  capture "$SCRIPT" register --state-dir "$_sd" \
+    --agente "x" --etapa "execute-task" \
+    --contexto "Decisao tecnica empiricamente validada por TS" \
+    --opcoes '["Manter","Trocar"]' --escolha "Trocar" \
+    --justificativa "Output de tsc indica incompatibilidade real" \
+    --score 3 --evidencia "$_evi"
+  [ "$_CAPTURED_EXIT" = 0 ] || { _fail "register" "$_CAPTURED_STDERR"; return 1; }
+  capture "$RW" get --state-dir "$_sd" --field '.decisoes[-1].evidencia'
+  assert_stdout_contains "tsc" || return 1
+  assert_stdout_contains "TS2322" || return 1
+}
+
+scenario_score_baixo_evidencia_null_no_estado() {
+  # Score 0/1/2/null sem --evidencia -> campo evidencia=null no objeto.
+  _sd="$TMPDIR_TEST/state"
+  _init_state "$_sd"
+  _register_default "$_sd"
+  capture "$RW" get --state-dir "$_sd" --field '.decisoes[-1].evidencia'
+  assert_stdout_contains "null" || return 1
 }
 
 scenario_count_filtra_por_agente() {

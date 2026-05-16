@@ -82,4 +82,96 @@ scenario_check_input_limpo_exit_0() {
   [ "$_CAPTURED_EXIT" = 0 ] || { _fail "check limpo" "$_CAPTURED_EXIT"; return 1; }
 }
 
+# ===== allow-list de identificadores publicos (§1.3) =====
+
+scenario_allow_list_saml_issuer_baseline() {
+  # SAML_ISSUER esta na baseline `.secrets-filter-ignore` global do script.
+  # Valor longo (>=30 chars) — sem allow-list seria redatado; com,
+  # preservado.
+  _env="$TMPDIR_TEST/.env"
+  printf 'SAML_ISSUER=https://login.microsoftonline.com/abcde-12345-tenant/v2.0\n' > "$_env"
+  capture sh -c "printf '%s' 'metadata at https://login.microsoftonline.com/abcde-12345-tenant/v2.0 published' | '$SCRIPT' scrub --env-file '$_env'"
+  assert_stdout_contains "login.microsoftonline.com" || return 1
+  case "$_CAPTURED_STDOUT" in
+    *REDACTED-ENV*) _fail "SAML_ISSUER foi redacted" "$_CAPTURED_STDOUT"; return 1 ;;
+  esac
+}
+
+scenario_allow_list_public_wildcard_baseline() {
+  # PUBLIC_* na baseline → PUBLIC_API_URL nao deve ser redatado.
+  _env="$TMPDIR_TEST/.env"
+  printf 'PUBLIC_API_URL=https://api.example.com/v1/something/longer/than/threshold\n' > "$_env"
+  capture sh -c "printf '%s' 'frontend pings https://api.example.com/v1/something/longer/than/threshold daily' | '$SCRIPT' scrub --env-file '$_env'"
+  assert_stdout_contains "api.example.com" || return 1
+  case "$_CAPTURED_STDOUT" in
+    *REDACTED-ENV*) _fail "PUBLIC_API_URL redacted" ""; return 1 ;;
+  esac
+}
+
+scenario_allow_list_secret_real_ainda_redatado() {
+  # DB_PASSWORD nao esta na allow-list → ainda deve ser redatado.
+  _env="$TMPDIR_TEST/.env"
+  printf 'SAML_ISSUER=https://login.microsoftonline.com/abcde-12345-tenant/v2.0\n' > "$_env"
+  printf 'DB_PASSWORD=correcthorsebatterystaple\n' >> "$_env"
+  capture sh -c "printf '%s' 'leak: correcthorsebatterystaple should redact' | '$SCRIPT' scrub --env-file '$_env'"
+  assert_stdout_contains "[REDACTED-ENV]" || return 1
+  case "$_CAPTURED_STDOUT" in
+    *correcthorsebatterystaple*) _fail "secret real nao redacted" ""; return 1 ;;
+  esac
+}
+
+scenario_allow_list_override_explicito() {
+  # --ignore-file override permite adicionar chave nao-baseline.
+  _env="$TMPDIR_TEST/.env"
+  _ig="$TMPDIR_TEST/.ignore"
+  printf 'CUSTOM_PUBLIC_ID=projeto-foo-v1\n' > "$_env"
+  printf 'CUSTOM_PUBLIC_ID\n' > "$_ig"
+  capture sh -c "printf '%s' 'identifier projeto-foo-v1 publico' | '$SCRIPT' scrub --env-file '$_env' --ignore-file '$_ig'"
+  assert_stdout_contains "projeto-foo-v1" || return 1
+  case "$_CAPTURED_STDOUT" in
+    *REDACTED-ENV*) _fail "override falhou" ""; return 1 ;;
+  esac
+}
+
+scenario_allow_list_override_por_projeto_alvo() {
+  # Auto-descoberta: `.claude/agente-00c-state/secrets-filter-ignore`
+  # relativo ao diretorio do .env-file.
+  _proj="$TMPDIR_TEST/proj"
+  mkdir -p "$_proj/.claude/agente-00c-state"
+  _env="$_proj/.env"
+  printf 'INTERNAL_ID=tenant-abc-def-123\n' > "$_env"
+  printf 'INTERNAL_ID\n' > "$_proj/.claude/agente-00c-state/secrets-filter-ignore"
+  capture sh -c "printf '%s' 'tenant-abc-def-123 leakable?' | '$SCRIPT' scrub --env-file '$_env'"
+  assert_stdout_contains "tenant-abc-def-123" || return 1
+}
+
+scenario_heuristica_slug_publico_curto_nao_redatado() {
+  # Valor curto (<30 chars) e slug-like (apenas A-Z, 0-9, _.-) NAO deve
+  # ser redatado, mesmo sem allow-list explicita. Chave nao baseline.
+  _env="$TMPDIR_TEST/.env"
+  printf 'CUSTOM_SLUG=projeto-alpha-staging\n' > "$_env"
+  capture sh -c "printf '%s' 'env points to projeto-alpha-staging today' | '$SCRIPT' scrub --env-file '$_env'"
+  assert_stdout_contains "projeto-alpha-staging" || return 1
+  case "$_CAPTURED_STDOUT" in
+    *REDACTED-ENV*) _fail "slug curto redacted" ""; return 1 ;;
+  esac
+}
+
+scenario_heuristica_slug_valor_longo_ainda_redatado() {
+  # Valor que parece slug MAS tem >=30 chars NAO se beneficia da heuristica.
+  # (Sem allow-list, e redatado).
+  _env="$TMPDIR_TEST/.env"
+  printf 'CUSTOM_LONG=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n' > "$_env"
+  capture sh -c "printf '%s' 'cred=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa here' | '$SCRIPT' scrub --env-file '$_env'"
+  assert_stdout_contains "[REDACTED-ENV]" || return 1
+}
+
+scenario_heuristica_slug_valor_com_caractere_especial_redatado() {
+  # Valor curto mas com caractere fora de [A-Za-z0-9_.-] NAO se beneficia.
+  _env="$TMPDIR_TEST/.env"
+  printf 'WEIRD=pwd!@#$xyz\n' > "$_env"
+  capture sh -c "printf '%s' 'leak pwd!@#\$xyz here' | '$SCRIPT' scrub --env-file '$_env'"
+  assert_stdout_contains "[REDACTED-ENV]" || return 1
+}
+
 run_all_scenarios

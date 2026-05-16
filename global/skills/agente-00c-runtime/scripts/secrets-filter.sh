@@ -4,6 +4,7 @@
 # Ref: docs/specs/agente-00c/spec.md FR-030
 #      docs/specs/agente-00c/threat-model.md T4
 #      docs/specs/agente-00c/tasks.md FASE 6.6
+#      docs/specs/agente-00c-evolucao/tasks.md §1.3 (allow-list pos-execucao)
 #
 # Le stdin, escreve stdout com substituicao de cada match por [REDACTED].
 # Aplica em ordem (cada padrao independente, nao excludente):
@@ -14,15 +15,26 @@
 #   2. AWS access keys: `AKIA[A-Z0-9]{16,}`
 #   3. Bearer tokens: `Bearer\s+[A-Za-z0-9._-]+`
 #   4. Basic auth em URLs: `https?://[^:]+:[^@]+@`
-#   5. Valores de chaves do .env do projeto-alvo (carregado via --env-file).
-#      Para cada `CHAVE=VALOR` em .env, substitui `VALOR` por [REDACTED].
+#   5. Valores de chaves do .env do projeto-alvo (carregado via --env-file),
+#      EXCETO:
+#      a) chaves listadas na allow-list (`.secrets-filter-ignore` global do
+#         script + opcional override `--ignore-file FILE`). Suporta wildcard
+#         de sufixo (`PUBLIC_*` casa `PUBLIC_API_URL`, etc).
+#      b) valores curtos (<30 chars) que matchem padrao slug
+#         (`^[A-Za-z0-9_.-]+$`) — identificadores publicos por design
+#         (SAML_ISSUER, COOKIE_DOMAIN, etc) raramente sao secrets.
 #
 # Subcomandos:
-#   secrets-filter.sh scrub [--env-file FILE]
+#   secrets-filter.sh scrub [--env-file FILE] [--ignore-file FILE]
 #       — Le stdin, aplica filtros, escreve stdout.
 #       — `--env-file` opcional (se ausente, pula passo 5).
+#       — `--ignore-file` opcional (override do allow-list default).
+#         Se ausente, descobre automaticamente:
+#         (a) `<dir-do-script>/.secrets-filter-ignore` (baseline);
+#         (b) `<dir-de-FILE>/.claude/agente-00c-state/secrets-filter-ignore`
+#             (override do projeto-alvo, se existir).
 #
-#   secrets-filter.sh check [--env-file FILE]
+#   secrets-filter.sh check [--env-file FILE] [--ignore-file FILE]
 #       — Le stdin. Exit 0 se NAO contem secrets; exit 1 se contem (com
 #         conteudo dos matches em stderr — nao em stdout para evitar leak
 #         em pipelines).
@@ -43,11 +55,91 @@ _sf_die_usage() { printf '%s: %s\n' "$_SF_NAME" "$1" >&2; exit 2; }
 # Marcador unico usado durante substituicao multi-passo
 _SF_MARK="[REDACTED]"
 
-# _sf_apply_filters STDIN-via-pipe ENV_FILE
+# _sf_script_dir → diretorio absoluto do script (para localizar .secrets-filter-ignore baseline)
+_sf_script_dir() {
+  # POSIX-friendly: dirname do $0 resolvido
+  _d=$(dirname -- "$0")
+  (cd "$_d" 2>/dev/null && pwd) || printf '%s' "$_d"
+}
+
+# _sf_resolve_ignore_files EXPLICIT_IGNORE ENV_FILE
+# Imprime caminhos de allow-list (1 por linha) em ordem de carga.
+# Sem args, retorna apenas o baseline (se existir).
+_sf_resolve_ignore_files() {
+  _explicit=$1
+  _envf=$2
+  _base="$(_sf_script_dir)/.secrets-filter-ignore"
+  [ -f "$_base" ] && printf '%s\n' "$_base"
+  if [ -n "$_envf" ] && [ -f "$_envf" ]; then
+    _proj_dir=$(dirname -- "$_envf")
+    _proj_ignore="$_proj_dir/.claude/agente-00c-state/secrets-filter-ignore"
+    [ -f "$_proj_ignore" ] && printf '%s\n' "$_proj_ignore"
+  fi
+  if [ -n "$_explicit" ] && [ -f "$_explicit" ]; then
+    printf '%s\n' "$_explicit"
+  fi
+}
+
+# _sf_key_allowed KEY IGNORE_FILES_LIST
+# Exit 0 se KEY esta na allow-list; 1 caso contrario.
+# Suporta match exato ou wildcard de sufixo (`PUBLIC_*`).
+_sf_key_allowed() {
+  _key=$1
+  _files=$2
+  [ -z "$_files" ] && return 1
+  printf '%s\n' "$_files" | while IFS= read -r _ig_file; do
+    [ -z "$_ig_file" ] && continue
+    [ -f "$_ig_file" ] || continue
+    while IFS= read -r _pat || [ -n "$_pat" ]; do
+      # Pula comentarios e linhas vazias
+      case "$_pat" in
+        ''|\#*) continue ;;
+      esac
+      # Trim whitespace
+      _pat=$(printf '%s' "$_pat" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')
+      [ -z "$_pat" ] && continue
+      # Wildcard de sufixo
+      case "$_pat" in
+        *\*)
+          _prefix=${_pat%\*}
+          case "$_key" in
+            "${_prefix}"*) printf 'allow\n'; return 0 ;;
+          esac
+          ;;
+        *)
+          [ "$_key" = "$_pat" ] && { printf 'allow\n'; return 0; }
+          ;;
+      esac
+    done < "$_ig_file"
+  done | grep -q '^allow$'
+}
+
+# _sf_value_looks_public VAL
+# Exit 0 se VAL parece identificador publico (slug curto); 1 caso contrario.
+# Criterio:
+#   1. <30 chars
+#   2. match `^[A-Za-z0-9_.-]+$` (apenas chars slug-friendly)
+#   3. contem ao menos um SEPARADOR (`-`, `_`, ou `.`) — descarta strings
+#      como "mysupersecretpwd" (passphrase), "abcdef1234567890" (hex
+#      anonimo) ou "Tk7zPpQv9XwYbL" (token alfanumerico). Slugs
+#      publicos por design (tenant-abc-123, projeto.foo.v1, v1_release)
+#      sempre tem pelo menos 1 separador.
+_sf_value_looks_public() {
+  _val=$1
+  _len=$(printf '%s' "$_val" | wc -c | tr -d ' ')
+  [ "$_len" -lt 30 ] || return 1
+  printf '%s' "$_val" | grep -qE '^[A-Za-z0-9_.-]+$' || return 1
+  printf '%s' "$_val" | grep -qE '[-_.]' || return 1
+  return 0
+}
+
+# _sf_apply_filters STDIN-via-pipe ENV_FILE [IGNORE_FILE]
 # Imprime stdin filtrado em stdout. Aplicacao em sequencia via tempfiles
 # (mais simples e portavel que multiplas substituicoes em sed -e).
 _sf_apply_filters() {
   _env=$1
+  _explicit_ig=${2:-}
+  _ignore_files=$(_sf_resolve_ignore_files "$_explicit_ig" "$_env")
   _t1=$(mktemp); _t2=$(mktemp)
   cat > "$_t1"
 
@@ -75,25 +167,33 @@ _sf_apply_filters() {
     _t2=$(mktemp)
   fi
 
-  # 5. Valores de .env (se passado)
+  # 5. Valores de .env (se passado), respeitando allow-list e heuristica slug.
   if [ -n "$_env" ] && [ -f "$_env" ]; then
     while IFS= read -r _line || [ -n "$_line" ]; do
-      case "$_line" in
-        ''|\#*|export\ *=\ *|*=\ *) ;;
-      esac
       # Pula vazias/comentarios
       case "$_line" in
         ''|\#*) continue ;;
       esac
-      # Captura VALOR de KEY=VALUE (remove `export ` opcional, aspas)
+      # Remove `export ` opcional
       _l=$(printf '%s' "$_line" | sed -E 's/^export[[:space:]]+//')
+      # Captura KEY e VALOR
+      _key=$(printf '%s' "$_l" | sed -nE 's/^([A-Za-z_][A-Za-z0-9_]*)=.*/\1/p')
       _val=$(printf '%s' "$_l" | sed -nE 's/^[A-Za-z_][A-Za-z0-9_]*=//p')
+      [ -z "$_key" ] && continue
       [ -z "$_val" ] && continue
       # Remove aspas externas
       _val=$(printf '%s' "$_val" | sed -E 's/^"(.*)"$/\1/; s/^'"'"'(.*)'"'"'$/\1/')
-      # Comprimentos curtos sao ignorados (high false-positive rate)
+      # Comprimentos < 8 sao ignorados (high false-positive rate)
       _len=$(printf '%s' "$_val" | wc -c | tr -d ' ')
       [ "$_len" -lt 8 ] && continue
+      # Allow-list explicita por chave (SAML_ISSUER, PUBLIC_*, etc)
+      if _sf_key_allowed "$_key" "$_ignore_files"; then
+        continue
+      fi
+      # Heuristica slug publico: valor curto e sem caracteres especiais
+      if _sf_value_looks_public "$_val"; then
+        continue
+      fi
       # Escape de caracteres especiais para sed (path delimiter usado: ESC do RS)
       _esc=$(printf '%s' "$_val" | sed 's/[]\/$*.^[]/\\&/g')
       sed -E "s/${_esc}/[REDACTED-ENV]/g" "$_t1" > "$_t2"
@@ -107,20 +207,24 @@ _sf_apply_filters() {
 
 _sf_cmd_scrub() {
   _env=""
+  _ig=""
   while [ "$#" -gt 0 ]; do
     case "$1" in
-      --env-file) _env=$2; shift 2 ;;
+      --env-file)    _env=$2; shift 2 ;;
+      --ignore-file) _ig=$2;  shift 2 ;;
       *) _sf_die_usage "scrub: flag desconhecida: $1" ;;
     esac
   done
-  _sf_apply_filters "$_env"
+  _sf_apply_filters "$_env" "$_ig"
 }
 
 _sf_cmd_check() {
   _env=""
+  _ig=""
   while [ "$#" -gt 0 ]; do
     case "$1" in
-      --env-file) _env=$2; shift 2 ;;
+      --env-file)    _env=$2; shift 2 ;;
+      --ignore-file) _ig=$2;  shift 2 ;;
       *) _sf_die_usage "check: flag desconhecida: $1" ;;
     esac
   done
@@ -128,7 +232,7 @@ _sf_cmd_check() {
   _orig=$(mktemp); _filt=$(mktemp)
   cat > "$_orig"
   # Re-injetar via pipe
-  _sf_apply_filters "$_env" < "$_orig" > "$_filt"
+  _sf_apply_filters "$_env" "$_ig" < "$_orig" > "$_filt"
   if cmp -s "$_orig" "$_filt"; then
     rm -f -- "$_orig" "$_filt"
     exit 0
@@ -145,11 +249,14 @@ if [ "$#" -lt 1 ]; then
 secrets-filter.sh — filtro de secrets em report/suggestions/issue (FR-030).
 
 USO:
-  secrets-filter.sh scrub [--env-file FILE]   < input > output
-  secrets-filter.sh check [--env-file FILE]   < input
+  secrets-filter.sh scrub [--env-file FILE] [--ignore-file FILE]   < input > output
+  secrets-filter.sh check [--env-file FILE] [--ignore-file FILE]   < input
 
 Aplica em sequencia: tokens com palavra-chave proxima, AWS keys, Bearer
-tokens, basic auth em URLs, valores de .env (se --env-file).
+tokens, basic auth em URLs, valores de .env (se --env-file) — respeitando
+allow-list de chaves publicas (`.secrets-filter-ignore` global + override
+opcional via --ignore-file ou auto-descoberta em
+`<env-dir>/.claude/agente-00c-state/secrets-filter-ignore`).
 
 EXIT (check):
   0 nenhum secret detectado

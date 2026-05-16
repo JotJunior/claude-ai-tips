@@ -2,50 +2,74 @@
 # drift.sh — drift detection / goal alignment (FR-027).
 #
 # Ref: docs/specs/agente-00c/spec.md FR-027
-#      docs/specs/agente-00c/threat-model.md T1
+#      docs/specs/agente-00c/threat-model.md T4
 #      docs/specs/agente-00c/tasks.md FASE 5.4
+#      docs/specs/agente-00c-evolucao/tasks.md §1.2 (refactor pos-execucao)
 #
-# Modelo: na primeira onda o orquestrador extrai 3-7 aspectos-chave
-# do projeto-alvo via prompt de auto-reflexao (palavras curtas
-# normalizadas — ex: para "POC de bot Slack que sumariza threads",
-# resultado: ["slack","bot","sumarizacao","threads","poc"]). Esses
-# aspectos sao gravados via `drift.sh init` e CONGELADOS no estado
-# (.aspectos_chave_iniciais — nao mudam mais).
+# Modelo: na primeira onda o orquestrador extrai aspectos-chave do
+# projeto-alvo e grava em 3 camadas:
 #
-# A cada onda, `drift.sh check` compara o conteudo das decisoes
-# (campos `contexto` e `escolha`) contra os aspectos. Conta ondas
-# consecutivas sem tocar nenhum aspecto:
-#   - 0..2 ondas: OK (exit 0)
-#   - 3 ondas: aviso (exit 0 mas mensagem em stderr)
-#   - >=5 ondas: aborto `desvio_de_finalidade` (exit 3)
+#   .aspectos_chave_iniciais     — UCs / objetivos de produto (obrigatorio)
+#   .aspectos_chave_tecnicos     — backbone tecnico (auth, sessao, db, infra)
+#   .aspectos_chave_operacionais — fases operacionais (runbooks, CI/CD)
+#
+# A cada onda, `drift.sh check` decide se a execucao esta desviada
+# olhando uma JANELA MOVEL das ultimas 12 ondas (configuravel via
+# DRIFT_WINDOW_SIZE). Uma onda e "tocada" se:
+#   a) Qualquer decisao da onda menciona qualquer aspecto (qualquer
+#      camada), via match bidirecional (texto contem aspecto OU aspecto
+#      contem token do texto, ambos case-insensitive, tokens >=3 chars).
+#   b) OU `.ondas[i].aspectos_chave_tocados` foi populado explicitamente
+#      (via `drift.sh mark-touched` quando inferencia falha).
+#
+# Thresholds default (sobre untouched na janela):
+#   < 5  : OK (exit 0)
+#   5..7 : WARN (exit 0, stderr)
+#   >= 8 : ABORT desvio_de_finalidade (exit 3)
+#
+# A janela movel substitui o gatilho antigo "5 ondas consecutivas =
+# abort", que classificava backbone tecnico legitimo (ex: FASE 4.x infra)
+# como desvio mesmo quando intercalado com UCs de produto.
 #
 # Subcomandos:
 #   drift.sh init --state-dir DIR --aspectos JSON-ARRAY
-#       — Grava aspectos no estado. Falha se ja foi inicializado
-#         (idempotente para erro, NAO sobrescreve — congelado).
-#       — JSON-ARRAY de strings, 3..7 itens.
+#                 [--tecnicos JSON-ARRAY] [--operacionais JSON-ARRAY]
+#                 [--force]
+#       — Grava aspectos no estado. `--aspectos` (iniciais) e obrigatorio,
+#         3..7 strings nao-vazias. `--tecnicos` e `--operacionais` sao
+#         opcionais, 0..7 strings cada. Falha se ja foi inicializado
+#         (a menos que --force seja passado).
 #
 #   drift.sh check --state-dir DIR
-#       — Avalia ondas consecutivas sem aspecto tocado.
-#       — Stdout: numero de ondas consecutivas sem aspecto + warn|abort se aplicavel.
-#       — Exit 0 (ok ou warn), Exit 3 (abort).
+#       — Avalia janela movel de ondas. Stdout: numero de ondas SEM
+#         aspecto na janela. Exit 0 (ok/warn), exit 3 (abort).
 #
-#   drift.sh aspectos --state-dir DIR
-#       — Lista aspectos em stdout (um por linha).
+#   drift.sh aspectos --state-dir DIR [--camada iniciais|tecnicos|operacionais|all]
+#       — Lista aspectos em stdout (um por linha). Default: all.
+#
+#   drift.sh mark-touched --state-dir DIR --aspecto X
+#       — Registra que a onda corrente tocou aspecto X explicitamente.
+#         Usado quando inferencia automatica via decisoes falhar.
+#
+#   drift.sh debug --state-dir DIR [--onda ID]
+#       — Diagnostico: lista aspectos por camada + para cada onda
+#         (ou onda especifica), mostra quais aspectos foram detectados
+#         e por qual mecanismo (decisao vs mark-touched).
 #
 # Exit codes:
 #   0 alinhado (ou warn)
-#   1 erro generico (init duplicado, ja foi gravado)
+#   1 erro generico
 #   2 uso incorreto
-#   3 desvio_de_finalidade — aborto (5+ ondas consecutivas sem tocar nenhum aspecto)
+#   3 desvio_de_finalidade — aborto
 #
 # POSIX sh + jq.
 
 set -eu
 
 _DR_NAME="drift"
-_DR_WARN_THRESHOLD=3
-_DR_ABORT_THRESHOLD=5
+_DR_WINDOW_SIZE="${DRIFT_WINDOW_SIZE:-12}"
+_DR_WARN_THRESHOLD="${DRIFT_WARN_THRESHOLD:-5}"
+_DR_ABORT_THRESHOLD="${DRIFT_ABORT_THRESHOLD:-8}"
 
 _dr_die_usage() { printf '%s: %s\n' "$_DR_NAME" "$1" >&2; exit 2; }
 _dr_die()       { printf '%s: %s\n' "$_DR_NAME" "$1" >&2; exit "${2:-1}"; }
@@ -75,13 +99,32 @@ _dr_update_sha() {
   printf '%s\n' "$_h" > "$_shf"
 }
 
+# _dr_validate_aspectos_array JSON-STR MIN MAX LABEL
+# Exit 0 valido; 1 invalido (escreve mensagem em stderr).
+_dr_validate_aspectos_array() {
+  _arr=$1; _min=$2; _max=$3; _label=$4
+  if ! printf '%s' "$_arr" | jq -e "
+    type == \"array\"
+    and length >= $_min and length <= $_max
+    and all(.[]; type == \"string\" and (. | length) > 0)
+  " >/dev/null 2>&1; then
+    _dr_die "init: $_label precisa ser JSON array com $_min..$_max strings nao-vazias" 1
+  fi
+}
+
 _dr_cmd_init() {
   _sd=""
   _asp=""
+  _tec="[]"
+  _ope="[]"
+  _force=0
   while [ "$#" -gt 0 ]; do
     case "$1" in
-      --state-dir) _sd=$2;  shift 2 ;;
-      --aspectos)  _asp=$2; shift 2 ;;
+      --state-dir)    _sd=$2;  shift 2 ;;
+      --aspectos)     _asp=$2; shift 2 ;;
+      --tecnicos)     _tec=$2; shift 2 ;;
+      --operacionais) _ope=$2; shift 2 ;;
+      --force)        _force=1; shift ;;
       *) _dr_die_usage "init: flag desconhecida: $1" ;;
     esac
   done
@@ -92,61 +135,109 @@ _dr_cmd_init() {
   _sf=$(_dr_state_file "$_sd")
   [ -f "$_sf" ] || _dr_die "init: state.json ausente em $_sd" 1
 
-  # Validacao do array
-  if ! printf '%s' "$_asp" | jq -e '
-    type == "array" and length >= 3 and length <= 7
-    and all(.[]; type == "string" and (. | length) > 0)
-  ' >/dev/null 2>&1; then
-    _dr_die "init: --aspectos precisa ser JSON array com 3..7 strings nao-vazias" 1
-  fi
+  _dr_validate_aspectos_array "$_asp" 3 7 "--aspectos"
+  _dr_validate_aspectos_array "$_tec" 0 7 "--tecnicos"
+  _dr_validate_aspectos_array "$_ope" 0 7 "--operacionais"
 
-  # Verifica se ja foi inicializado (cravado, nao sobrescreve)
+  # Verifica se ja foi inicializado. Com --force, sobrescreve; sem,
+  # falha (congelado pos-primeira-onda como antes).
   _existing=$(jq -r '.aspectos_chave_iniciais // [] | length' "$_sf")
-  if [ "$_existing" -gt 0 ]; then
-    _dr_die "init: aspectos_chave_iniciais ja foi gravado ($_existing aspectos). Nao sobrescreve (congelado pos-primeira-onda)." 1
+  if [ "$_existing" -gt 0 ] && [ "$_force" -eq 0 ]; then
+    _dr_die "init: aspectos_chave_iniciais ja foi gravado ($_existing aspectos). Use --force para sobrescrever (relaxado para retomada de execucoes legadas com aspectos=null)." 1
   fi
 
   _new_state=$(mktemp) || _dr_die "mktemp falhou" 1
-  jq --argjson a "$_asp" '.aspectos_chave_iniciais = $a' "$_sf" > "$_new_state" \
+  jq \
+    --argjson a "$_asp" \
+    --argjson t "$_tec" \
+    --argjson o "$_ope" \
+    '
+    .aspectos_chave_iniciais     = $a
+    | .aspectos_chave_tecnicos     = $t
+    | .aspectos_chave_operacionais = $o
+    ' "$_sf" > "$_new_state" \
     || { rm -f -- "$_new_state"; _dr_die "jq update falhou" 1; }
   _dr_atomic_write "$_sf" "$_new_state"
   rm -f -- "$_new_state" 2>/dev/null || :
   _dr_update_sha "$_sd"
 }
 
-# _dr_count_drift_waves STATE_FILE
-# Stdout: numero de ondas consecutivas (do fim para o inicio) onde NENHUMA
-# decisao da onda menciona qualquer aspecto-chave (case-insensitive).
-_dr_count_drift_waves() {
-  _sf=$1
-  jq -r '
-    def matches_aspecto($txt; $aspectos):
-      ($txt // "" | ascii_downcase) as $t
-      | any($aspectos[]; . as $a | $t | contains($a | ascii_downcase));
+# Programa jq compartilhado pelas funcoes check/debug:
+# define todos os aspectos (union das 3 camadas) e a funcao de match
+# bidirecional via tokens.
+_dr_jq_lib() {
+  cat <<'JQ'
+def all_aspectos:
+  ((.aspectos_chave_iniciais     // []) +
+   (.aspectos_chave_tecnicos     // []) +
+   (.aspectos_chave_operacionais // []))
+  | unique;
 
-    (.aspectos_chave_iniciais // []) as $aspectos
-    | (.ondas // []) as $ondas
-    | (.decisoes // []) as $decs
-    | if ($aspectos | length) == 0 then 0
+# Tokeniza string em palavras alfanumericas >= 3 chars, lowercase.
+def tokenize($s):
+  ($s // "")
+  | ascii_downcase
+  | gsub("[^a-z0-9]+"; " ")
+  | split(" ")
+  | map(select(length >= 3));
+
+# Match bidirecional case-insensitive:
+#   1. texto inteiro (lowercased) CONTEM aspecto inteiro (lowercased)
+#   2. OU qualquer token do texto e igual a qualquer token do aspecto
+#      (cobre o caso "mcp-jira" vs "integracao-bidirecional-mcp-jira")
+def matches_aspecto($txt; $aspecto):
+  ($txt // "" | ascii_downcase) as $t
+  | ($aspecto | ascii_downcase) as $a
+  | ($t | contains($a))
+    or (
+      (tokenize($t)) as $tt
+      | (tokenize($aspecto)) as $ta
+      | any($tt[]; . as $x | any($ta[]; . == $x))
+    );
+
+# Para uma decisao, retorna lista de aspectos detectados (qualquer
+# aspecto que dispare match contra contexto/escolha/justificativa).
+def aspectos_hit_in_dec($dec; $aspectos):
+  $aspectos
+  | map(. as $a
+        | select(matches_aspecto($dec.contexto; $a)
+                 or matches_aspecto($dec.escolha; $a)
+                 or matches_aspecto($dec.justificativa; $a)));
+
+# Para uma onda, retorna { hits_decisao: [...], hits_marcado: [...] }.
+def aspectos_hit_in_onda($onda; $decs; $aspectos):
+  ($decs | map(select(.onda_id == $onda.id))) as $wave_decs
+  | ($wave_decs | map(aspectos_hit_in_dec(.; $aspectos)) | flatten | unique) as $hd
+  | (($onda.aspectos_chave_tocados // []) | unique) as $hm
+  | { hits_decisao: $hd, hits_marcado: $hm };
+
+# Onda esta "tocada" se hits_decisao OR hits_marcado tem ao menos 1 item.
+def onda_tocada($onda; $decs; $aspectos):
+  (aspectos_hit_in_onda($onda; $decs; $aspectos))
+  | (.hits_decisao | length) + (.hits_marcado | length) > 0;
+JQ
+}
+
+# _dr_count_untouched_in_window STATE_FILE WINDOW_SIZE
+# Stdout: numero de ondas SEM aspecto na janela das ultimas N ondas.
+_dr_count_untouched_in_window() {
+  _sf=$1; _win=$2
+  _lib=$(_dr_jq_lib)
+  jq -r --argjson win "$_win" "
+    $_lib
+
+    all_aspectos as \$aspectos
+    | (.ondas // []) as \$ondas
+    | (.decisoes // []) as \$decs
+    | if (\$aspectos | length) == 0 then 0
       else
-        ($ondas | map(.id)) as $oids
-        | reduce ($oids | reverse | .[]) as $oid (
-            {count: 0, broken: false};
-            if .broken then .
-            else
-              ($decs | map(select(.onda_id == $oid))) as $wave_decs
-              | (any($wave_decs[]?;
-                    matches_aspecto(.contexto; $aspectos)
-                    or matches_aspecto(.escolha; $aspectos)
-                    or matches_aspecto(.justificativa; $aspectos))) as $touched
-              | if $touched then . + {broken: true}
-                else . + {count: (.count + 1)}
-                end
-            end
-          )
-        | .count
+        (\$ondas | length) as \$total
+        | (if \$total > \$win then \$ondas[(\$total - \$win):] else \$ondas end) as \$window
+        | \$window
+          | map(select(onda_tocada(.; \$decs; \$aspectos) | not))
+          | length
       end
-  ' "$_sf"
+  " "$_sf"
 }
 
 _dr_cmd_check() {
@@ -162,33 +253,40 @@ _dr_cmd_check() {
   _sf=$(_dr_state_file "$_sd")
   [ -f "$_sf" ] || _dr_die "check: state.json ausente" 1
 
-  _aspectos_count=$(jq -r '.aspectos_chave_iniciais // [] | length' "$_sf")
+  _aspectos_count=$(jq -r '
+    ((.aspectos_chave_iniciais // []) +
+     (.aspectos_chave_tecnicos // []) +
+     (.aspectos_chave_operacionais // []))
+    | unique | length
+  ' "$_sf")
   if [ "$_aspectos_count" = 0 ]; then
     printf '0\n'
-    printf '%s: aspectos_chave_iniciais nao inicializado — drift check desabilitado.\n' "$_DR_NAME" >&2
+    printf '%s: aspectos_chave (todas camadas) vazios — drift check desabilitado.\n' "$_DR_NAME" >&2
     return 0
   fi
 
-  _drift_count=$(_dr_count_drift_waves "$_sf")
-  printf '%s\n' "$_drift_count"
+  _untouched=$(_dr_count_untouched_in_window "$_sf" "$_DR_WINDOW_SIZE")
+  printf '%s\n' "$_untouched"
 
-  if [ "$_drift_count" -ge "$_DR_ABORT_THRESHOLD" ]; then
-    printf '%s: desvio_de_finalidade — %s ondas consecutivas sem tocar aspectos-chave (>= %s)\n' \
-      "$_DR_NAME" "$_drift_count" "$_DR_ABORT_THRESHOLD" >&2
+  if [ "$_untouched" -ge "$_DR_ABORT_THRESHOLD" ]; then
+    printf '%s: desvio_de_finalidade — %s ondas sem tocar aspectos-chave em janela de %s (abort >= %s)\n' \
+      "$_DR_NAME" "$_untouched" "$_DR_WINDOW_SIZE" "$_DR_ABORT_THRESHOLD" >&2
     exit 3
   fi
-  if [ "$_drift_count" -ge "$_DR_WARN_THRESHOLD" ]; then
-    printf '%s: AVISO — %s ondas consecutivas sem tocar aspectos-chave (warn >= %s, abort >= %s)\n' \
-      "$_DR_NAME" "$_drift_count" "$_DR_WARN_THRESHOLD" "$_DR_ABORT_THRESHOLD" >&2
+  if [ "$_untouched" -ge "$_DR_WARN_THRESHOLD" ]; then
+    printf '%s: AVISO — %s ondas sem tocar aspectos-chave em janela de %s (warn >= %s, abort >= %s)\n' \
+      "$_DR_NAME" "$_untouched" "$_DR_WINDOW_SIZE" "$_DR_WARN_THRESHOLD" "$_DR_ABORT_THRESHOLD" >&2
   fi
   exit 0
 }
 
 _dr_cmd_aspectos() {
   _sd=""
+  _cam="all"
   while [ "$#" -gt 0 ]; do
     case "$1" in
       --state-dir) _sd=$2; shift 2 ;;
+      --camada)    _cam=$2; shift 2 ;;
       *) _dr_die_usage "aspectos: flag desconhecida: $1" ;;
     esac
   done
@@ -196,26 +294,119 @@ _dr_cmd_aspectos() {
   _dr_require_jq
   _sf=$(_dr_state_file "$_sd")
   [ -f "$_sf" ] || _dr_die "aspectos: state.json ausente" 1
-  jq -r '.aspectos_chave_iniciais // [] | .[]' "$_sf"
+
+  case "$_cam" in
+    iniciais)     jq -r '.aspectos_chave_iniciais     // [] | .[]' "$_sf" ;;
+    tecnicos)     jq -r '.aspectos_chave_tecnicos     // [] | .[]' "$_sf" ;;
+    operacionais) jq -r '.aspectos_chave_operacionais // [] | .[]' "$_sf" ;;
+    all)
+      jq -r '
+        ((.aspectos_chave_iniciais     // []) +
+         (.aspectos_chave_tecnicos     // []) +
+         (.aspectos_chave_operacionais // []))
+        | unique | .[]
+      ' "$_sf"
+      ;;
+    *) _dr_die_usage "aspectos: --camada deve ser iniciais|tecnicos|operacionais|all" ;;
+  esac
+}
+
+_dr_cmd_mark_touched() {
+  _sd=""
+  _aspecto=""
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --state-dir) _sd=$2;        shift 2 ;;
+      --aspecto)   _aspecto=$2;   shift 2 ;;
+      *) _dr_die_usage "mark-touched: flag desconhecida: $1" ;;
+    esac
+  done
+  [ -n "$_sd" ]        || _dr_die_usage "mark-touched: --state-dir obrigatorio"
+  [ -n "$_aspecto" ]   || _dr_die_usage "mark-touched: --aspecto obrigatorio"
+  _dr_require_jq
+
+  _sf=$(_dr_state_file "$_sd")
+  [ -f "$_sf" ] || _dr_die "mark-touched: state.json ausente" 1
+
+  _has_onda=$(jq -r '(.ondas // []) | length' "$_sf")
+  if [ "$_has_onda" -eq 0 ]; then
+    _dr_die "mark-touched: nenhuma onda existe em state.json (chame state-ondas.sh start primeiro)" 1
+  fi
+
+  _new_state=$(mktemp) || _dr_die "mktemp falhou" 1
+  jq --arg a "$_aspecto" '
+    .ondas[-1].aspectos_chave_tocados =
+      ((.ondas[-1].aspectos_chave_tocados // []) + [$a] | unique)
+  ' "$_sf" > "$_new_state" \
+    || { rm -f -- "$_new_state"; _dr_die "jq update falhou" 1; }
+  _dr_atomic_write "$_sf" "$_new_state"
+  rm -f -- "$_new_state" 2>/dev/null || :
+  _dr_update_sha "$_sd"
+}
+
+_dr_cmd_debug() {
+  _sd=""
+  _onda=""
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --state-dir) _sd=$2;   shift 2 ;;
+      --onda)      _onda=$2; shift 2 ;;
+      *) _dr_die_usage "debug: flag desconhecida: $1" ;;
+    esac
+  done
+  [ -n "$_sd" ] || _dr_die_usage "debug: --state-dir obrigatorio"
+  _dr_require_jq
+  _sf=$(_dr_state_file "$_sd")
+  [ -f "$_sf" ] || _dr_die "debug: state.json ausente" 1
+
+  _lib=$(_dr_jq_lib)
+  jq -r --arg only "$_onda" "
+    $_lib
+
+    \"=== aspectos_chave (por camada) ===\",
+    \"iniciais: \"     + ((.aspectos_chave_iniciais     // []) | join(\", \")),
+    \"tecnicos: \"     + ((.aspectos_chave_tecnicos     // []) | join(\", \")),
+    \"operacionais: \" + ((.aspectos_chave_operacionais // []) | join(\", \")),
+    \"\",
+    \"=== ondas (janela=$_DR_WINDOW_SIZE, warn>=$_DR_WARN_THRESHOLD untouched, abort>=$_DR_ABORT_THRESHOLD untouched) ===\",
+    (
+      all_aspectos as \$aspectos
+      | (.decisoes // []) as \$decs
+      | (.ondas // [])
+        | map(select(\$only == \"\" or .id == \$only))
+        | .[]
+        | . as \$o
+        | aspectos_hit_in_onda(\$o; \$decs; \$aspectos) as \$h
+        | (if (\$h.hits_decisao | length) + (\$h.hits_marcado | length) > 0
+            then \"TOUCHED\"
+            else \"untouched\"
+           end) as \$state
+        | \"\\(\$o.id) [\\(\$state)] decisao=\\(\$h.hits_decisao | join(\",\")) marcado=\\(\$h.hits_marcado | join(\",\"))\"
+    )
+  " "$_sf"
 }
 
 # ---------- Dispatch ----------
 
 if [ "$#" -lt 1 ]; then
-  cat >&2 <<'HELP'
+  cat >&2 <<HELP
 drift.sh — drift detection / goal alignment (FR-027).
 
 USO:
-  drift.sh init     --state-dir DIR --aspectos JSON-ARRAY
-  drift.sh check    --state-dir DIR
-  drift.sh aspectos --state-dir DIR
+  drift.sh init         --state-dir DIR --aspectos JSON-ARRAY
+                        [--tecnicos JSON-ARRAY] [--operacionais JSON-ARRAY]
+                        [--force]
+  drift.sh check        --state-dir DIR
+  drift.sh aspectos     --state-dir DIR [--camada iniciais|tecnicos|operacionais|all]
+  drift.sh mark-touched --state-dir DIR --aspecto X
+  drift.sh debug        --state-dir DIR [--onda ID]
 
-Aspectos: 3..7 strings, congelados apos init. Check conta ondas
-consecutivas (do fim para o inicio) sem decisao mencionando aspecto.
+Janela movel: ${_DR_WINDOW_SIZE} ultimas ondas. Untouched na janela:
+  >= ${_DR_WARN_THRESHOLD} = warn (exit 0 + stderr)
+  >= ${_DR_ABORT_THRESHOLD} = abort exit 3 (desvio_de_finalidade)
 
-EXIT (check):
-  0 alinhado (ou warn em stderr para drift_count >= 3)
-  3 desvio_de_finalidade (drift_count >= 5)
+Override via env: DRIFT_WINDOW_SIZE, DRIFT_WARN_THRESHOLD,
+DRIFT_ABORT_THRESHOLD.
 HELP
   exit 2
 fi
@@ -227,6 +418,8 @@ case "$_DR_SUBCMD" in
   init)            _dr_cmd_init "$@" ;;
   check)           _dr_cmd_check "$@" ;;
   aspectos)        _dr_cmd_aspectos "$@" ;;
+  mark-touched)    _dr_cmd_mark_touched "$@" ;;
+  debug)           _dr_cmd_debug "$@" ;;
   -h|--help|help)  exit 0 ;;
   *) _dr_die_usage "subcomando desconhecido: $_DR_SUBCMD" ;;
 esac

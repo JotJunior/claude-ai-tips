@@ -51,6 +51,9 @@ $ARGUMENTS
 **IMPORTANTE**: Siga TODAS as etapas na ordem. Nao pule etapas. Ao final de cada etapa, faca um mini-resumo do que foi feito e revise o fluxo de execucao.
 
 ```
+0. VALIDACAO        Validacao empirica de premissas (so quando aplicavel)
+   EMPIRICA
+     |
 1. ANALISE          Detectar contexto e ler documentacao
      |
 2. LOCALIZACAO      Encontrar tarefa no arquivo de tarefas
@@ -69,6 +72,69 @@ $ARGUMENTS
      |
 9. ATUALIZACAO      Marcar tarefa como [x] no arquivo de tarefas
 ```
+
+---
+
+## ETAPA 0: VALIDACAO EMPIRICA DE PREMISSAS
+
+**Quando aplicar:** sempre que voce esta prestes a afirmar um problema
+tecnico, comportamento de runtime, contrato de API, presenca/ausencia de
+simbolo, versao de dependencia ou tipo no codigo — antes de tomar
+decisao baseada nessa afirmacao.
+
+**Raiz do gate:** historicamente, 3 decisoes `score=3` (decide sem
+clarificar) foram emitidas com conviccao mas sem evidencia, e as 3
+estavam erradas — custaram ondas adicionais de fix-reveal-fix:
+
+- "Express 5 embute tipos nativos" → falso, criou shims.d.ts
+- "Estados expirada/aprovada_pendente_jira nao existem" → falso, eram 8
+- "Regressao web" → bug nao existia
+
+A regra abaixo previne re-incidencia:
+
+> **Antes de afirmar problema tecnico com score >= 2, voce DEVE executar
+> pelo menos uma sonda empirica abaixo e citar o output LITERAL no campo
+> `--evidencia` da Decisao.**
+
+### Sondas aceitas
+
+| Tipo da afirmacao | Comando empirico |
+|-------------------|------------------|
+| Erro de tipo TS | `npx tsc --noEmit 2>&1 \| head -20` |
+| Comportamento runtime | `npx vitest run -t '<descricao>'` ou `pytest -k '<nome>'` |
+| Presenca de simbolo | `grep -rn '<sintaxe>' src/` ou `rg '<sintaxe>'` |
+| Forma de modulo | inspecionar `node_modules/<pkg>/package.json` (`types`, `exports`) |
+| Forma de payload | curl/fetch real, NUNCA fixture/mock |
+| Schema de DB | `psql -c '\d <tabela>'` ou query introspectiva |
+| Saida de comando | `<cmd> 2>&1 \| head` (citar fragmento no output) |
+
+### Formato da evidencia
+
+Citar comando executado + fragmento literal do output (>=20 chars). Nao
+parafrasear. Nao "achei que fosse". Output literal:
+
+```
+--evidencia "npx tsc --noEmit: error TS2322 em src/foo.ts:12 'string' is not assignable to 'number'"
+```
+
+### Score maximo permitido sem evidencia: 2
+
+Score 3 = "decide sem clarificar PORQUE tenho evidencia empirica
+registrada". Score 2 = "decide sem clarificar porque o contexto
+(briefing/constitution/stack-sugerida) suporta". Score 1/0 = pause.
+
+Se voce nao executou sonda empirica, registre score 2 ou menos. A
+runtime (`state-decisions.sh register --score 3`) REJEITA score 3 sem
+campo `--evidencia` >=20 chars — exit 1 com violacao de Principio I.
+
+### Quando ETAPA 0 NAO se aplica
+
+- Tarefas puramente de documentacao (criar UC, atualizar ADR) onde nao
+  ha afirmacao tecnica empirica em jogo.
+- Reformatacao/lint sem mudanca semantica.
+- Geracao de boilerplate por template ja validado.
+
+Nesses casos, pule direto para ETAPA 1.
 
 ---
 
@@ -367,6 +433,38 @@ esses — nao inventar comandos fora da convencao do projeto.
 ### 9.2 Atualizar Subtarefas
 
 Se houver subtarefas, marque TODAS como concluidas.
+
+### 9.3 Sincronizar com Codigo (Cross-check git diff vs checkbox)
+
+Antes de declarar a tarefa concluida, comparar arquivos modificados na
+sessao contra checkboxes do `tasks.md`. Razao: 11 ondas consecutivas
+historicas tiveram codigo entregue sem marcar `[x]` — drift documental
+caro.
+
+Protocolo:
+
+```bash
+# 1. Listar arquivos modificados nesta sessao
+git diff --name-only HEAD~1..HEAD 2>/dev/null || git diff --name-only --cached
+
+# 2. Para cada checkbox [ ] da tarefa-alvo, grep o arquivo canonico
+#    Se existe e foi tocado, marcar com nota "validado empiricamente"
+```
+
+Se voce identificar checkboxes `[ ]` cujo codigo JA existe no repo
+(mesmo que de sessoes anteriores), marcar `[x]` com nota inline:
+
+```markdown
+- [x] 1.1.3 Implementar UserRepository <!-- validado empiricamente sessao -->
+```
+
+Se a tarefa criou trabalho emergente nao previsto (ex: decidiu criar
+um helper extra), INSERIR esse trabalho como sub-FASE nova no
+`tasks.md` ANTES de finalizar — nao deixar para depois (intencao morre
+na proxima onda). Ver `create-tasks/SKILL.md` §Sincronizacao com Codigo.
+
+**Gate de aceitacao**: ao final da Etapa 9, drift entre `git diff` e
+checkboxes ≤ 1 subtarefa (preferivelmente zero).
 
 ---
 

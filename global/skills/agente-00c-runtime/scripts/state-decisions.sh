@@ -10,9 +10,16 @@
 #   state-decisions.sh register --state-dir DIR
 #       --agente A --etapa S
 #       --contexto T --opcoes JSON-ARR --escolha STR --justificativa STR
-#       [--score N] [--referencias JSON-ARR] [--artefato-originador STR]
+#       [--score N] [--evidencia STR] [--referencias JSON-ARR]
+#       [--artefato-originador STR]
 #       — Valida 5 campos obrigatorios (contexto>=20, opcoes >=1, escolha,
 #         justificativa>=20, agente). Falta = exit 1 (sem auto-correcao).
+#       — Score 3 (decide_sem_clarificar) EXIGE --evidencia >=20 chars com
+#         comando + fragmento literal do output (FR-EVI-001, ref licoes
+#         pos-execucao §4.6/§5.5). Sem evidencia, exit 1. Para evitar
+#         convicção sem prova, score 3 nao pode ser atribuido em modo
+#         "tenho certeza" — apenas com `tsc --noEmit`, `vitest -t`,
+#         `grep -r`, inspecao de `package.json` ou similar registrado.
 #       — Gera id `dec-NNN` sequencial dentro da execucao.
 #       — Linka a `onda_id` da onda corrente (.ondas[-1].id; init = "init").
 #       — Append em .decisoes; persiste via state-rw write (com backup).
@@ -125,6 +132,7 @@ _sd_cmd_register() {
   _score="null"
   _refs="[]"
   _arto="null"
+  _evi=""
   while [ "$#" -gt 0 ]; do
     case "$1" in
       --state-dir)            _sdir=$2; shift 2 ;;
@@ -135,6 +143,7 @@ _sd_cmd_register() {
       --escolha)              _esc=$2;  shift 2 ;;
       --justificativa)        _just=$2; shift 2 ;;
       --score)                _score=$2; shift 2 ;;
+      --evidencia)            _evi=$2;  shift 2 ;;
       --referencias)          _refs=$2;  shift 2 ;;
       --artefato-originador)  _arto=$2;  shift 2 ;;
       *) _sd_die_usage "register: flag desconhecida: $1" ;;
@@ -171,6 +180,19 @@ _sd_cmd_register() {
     *) _sd_die "register: --score deve ser null|0|1|2|3 (recebido $_score)" 2 ;;
   esac
 
+  # Score 3 (decide_sem_clarificar) EXIGE evidencia empirica (FR-EVI-001).
+  # Razao: 3 falsos positivos `score=3` documentados (sug-037, dec-048,
+  # dec-123/dec-126) onde agente afirmou premissa tecnica falsa sem rodar
+  # tsc/test/grep. Trilha auditava conviccao, nao evidencia.
+  if [ "$_score" = 3 ]; then
+    if [ -z "$_evi" ]; then
+      _sd_die "register: violacao Principio I — score=3 (decide_sem_clarificar) EXIGE --evidencia com comando + fragmento literal do output (sem evidencia, score maximo permitido e 2)" 1
+    fi
+    if [ "$(printf '%s' "$_evi" | wc -c | tr -d ' ')" -lt 20 ]; then
+      _sd_die "register: violacao Principio I — --evidencia < 20 chars (precisa conter comando executado + fragmento do output literal)" 1
+    fi
+  fi
+
   _sf=$(_sd_state_file "$_sdir")
   [ -f "$_sf" ] || _sd_die "register: state.json ausente em $_sdir" 1
 
@@ -193,6 +215,7 @@ _sd_cmd_register() {
     --argjson refs "$_refs" \
     --argjson score "$_score" \
     --arg arto "$_arto" \
+    --arg evi "$_evi" \
     '
     .decisoes += [{
       id: $id,
@@ -205,6 +228,7 @@ _sd_cmd_register() {
       escolha: $esc,
       justificativa: $just,
       score_justificativa: $score,
+      evidencia: (if $evi == "" then null else $evi end),
       referencias: $refs,
       artefato_originador: (if $arto == "null" then null else $arto end)
     }]
@@ -285,10 +309,15 @@ state-decisions.sh — registra Decisoes auditaveis (Principio I).
 USO:
   state-decisions.sh register --state-dir DIR --agente A --etapa S \
     --contexto T --opcoes JSON-ARR --escolha STR --justificativa STR \
-    [--score N] [--referencias JSON-ARR] [--artefato-originador STR]
+    [--score N] [--evidencia STR] [--referencias JSON-ARR] \
+    [--artefato-originador STR]
   state-decisions.sh count --state-dir DIR [--agente A]
   state-decisions.sh next-id --state-dir DIR
   state-decisions.sh list --state-dir DIR [--agente A] [--etapa S]
+
+NOTA: --score 3 EXIGE --evidencia (>=20 chars) com comando empirico
+executado + fragmento literal do output. Sem evidencia empirica,
+score maximo permitido e 2 (FR-EVI-001).
 
 EXIT:
   0 sucesso
