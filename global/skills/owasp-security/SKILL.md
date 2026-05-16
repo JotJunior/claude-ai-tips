@@ -3,16 +3,33 @@ name: owasp-security
 description: |
   Use when reviewing code for security vulnerabilities, implementing
   authentication/authorization, handling user input, building cryptography,
-  designing API endpoints, or working on AI agent systems. Also when the user
-  mentions "security review", "OWASP", "vulnerability check", "auth code",
-  "input validation", "threat model". Covers OWASP Top 10:2025, ASVS 5.0, and
-  Agentic AI security (2026). Do NOT use for general code review without a
-  security focus — use a general review flow for those.
+  designing API endpoints, or working on AI agent / LLM / MCP systems. Also
+  when the user mentions "security review", "OWASP", "vulnerability check",
+  "auth code", "input validation", "threat model", "passkey", "FAPI",
+  "post-quantum", "prompt injection", "MCP security". Covers OWASP Top 10:2025,
+  ASVS 5.0, Agentic AI 2026, LLM Top 10:2025, API Security Top 10:2023,
+  CI/CD Top 10, CWE Top 25:2025, NIST SP 800-63B-4, WebAuthn/Passkeys,
+  OAuth 2.1, FAPI 2.0, and post-quantum cryptography. Do NOT use for general
+  code review without a security focus — use a general review flow for those.
 ---
 
 # OWASP Security Best Practices Skill
 
 Apply these security standards when writing or reviewing code.
+
+## Deep references
+
+This file is the **operational entry point** — quick checklists and code patterns. For deep coverage of any topic below, open the matching file in [`references/`](./references/):
+
+| Topic | File |
+|-------|------|
+| LLM Top 10:2025 + Agentic 2026 deep dive + MCP security + modern prompt injection + MAESTRO | [`references/llm-agentic.md`](./references/llm-agentic.md) |
+| OWASP API Security Top 10:2023 + OWASP CI/CD Top 10 (PPE, OIDC federation, signing) | [`references/api-cicd.md`](./references/api-cicd.md) |
+| NIST SP 800-63B-4 + WebAuthn/Passkeys + OAuth 2.1 + FAPI 2.0 | [`references/auth-modern.md`](./references/auth-modern.md) |
+| Post-quantum crypto (FIPS 203/204/205) + crypto agility + 2026 secrets management | [`references/crypto-modern.md`](./references/crypto-modern.md) |
+| CWE Top 25:2025 + Mobile Top 10:2024 + Kubernetes/Docker Top 10 + EU AI Act mapping | [`references/extras.md`](./references/extras.md) |
+
+The full historical reference document with deeper background on Top 10:2025, ASVS 5.0, and Agentic 2026 is in [`OWASP-2025-2026-Report.md`](./OWASP-2025-2026-Report.md).
 
 ## Quick Reference: OWASP Top 10:2025
 
@@ -40,10 +57,19 @@ When reviewing code, check for these issues:
 - [ ] Allowlist validation preferred over denylist
 
 ### Authentication & Sessions
-- [ ] Passwords hashed with Argon2/bcrypt (not MD5/SHA1)
-- [ ] Session tokens have sufficient entropy (128+ bits)
-- [ ] Sessions invalidated on logout
-- [ ] MFA available for sensitive operations
+- [ ] Passwords hashed with Argon2id / bcrypt cost ≥ 12 (never MD5/SHA1)
+- [ ] Passwords ≥ 15 chars at AAL2, no composition rules, no periodic rotation (NIST 800-63B-4)
+- [ ] Breached-password check on registration / change (haveibeenpwned k-anonymity API)
+- [ ] **Passkeys (WebAuthn)** offered as primary; password as fallback
+- [ ] Session tokens ≥ 128 bits entropy; HTTPOnly + Secure + SameSite cookies
+- [ ] Sessions invalidated server-side on logout (not just cookie cleared)
+- [ ] Reauthentication every 12h / 30min idle for AAL2
+- [ ] Step-up auth for high-risk operations
+- [ ] OAuth 2.1 baseline (no implicit, no password grant); PKCE everywhere
+- [ ] DPoP or mTLS sender-constraining for sensitive APIs
+- [ ] FAPI 2.0 for financial / healthcare / government APIs
+
+Deep dive: [`references/auth-modern.md`](./references/auth-modern.md)
 
 ### Access Control
 - [ ] Check for framework-level auth middleware (e.g., Next.js middleware.ts, proxy.ts, Express middleware) before flagging missing per-route auth
@@ -53,10 +79,15 @@ When reviewing code, check for these issues:
 - [ ] Privilege escalation paths reviewed
 
 ### Data Protection
-- [ ] Sensitive data encrypted at rest
-- [ ] TLS for all data in transit
-- [ ] No sensitive data in URLs/logs
-- [ ] Secrets in environment/vault (not code)
+- [ ] Sensitive data encrypted at rest (AES-256-GCM or ChaCha20-Poly1305)
+- [ ] TLS 1.2+ everywhere; TLS 1.3 + hybrid PQC for long-lived secrets (HNDL risk)
+- [ ] No sensitive data in URLs / logs / error messages / container images
+- [ ] **No static long-lived secrets** — prefer OIDC federation, Workload Identity, dynamic credentials
+- [ ] Secret scanning (gitleaks / trufflehog) in pre-commit + push protection
+- [ ] Crypto-agile design — algorithm IDs on the data, no hard-coded constants
+- [ ] PQC migration plan for systems handling secrets that must survive past ~2035
+
+Deep dive: [`references/crypto-modern.md`](./references/crypto-modern.md)
 
 ### Error Handling
 - [ ] No stack traces exposed to users
@@ -143,58 +174,113 @@ def check_permission(user, resource):
         return False  # Deny on error
 ```
 
-## Agentic AI Security (OWASP 2026)
+## LLM & Agentic AI Security
 
-When building or reviewing AI agent systems, check for:
+Two complementary OWASP lists apply when building AI-powered systems:
 
-| Risk | Description | Mitigation |
-|------|-------------|------------|
-| ASI01: Goal Hijack | Prompt injection alters agent objectives | Input sanitization, goal boundaries, behavioral monitoring |
-| ASI02: Tool Misuse | Tools used in unintended ways | Least privilege, fine-grained permissions, validate I/O |
-| ASI03: Privilege Abuse | Credential escalation across agents | Short-lived scoped tokens, identity verification |
-| ASI04: Supply Chain | Compromised plugins/MCP servers | Verify signatures, sandbox, allowlist plugins |
-| ASI05: Code Execution | Unsafe code generation/execution | Sandbox execution, static analysis, human approval |
-| ASI06: Memory Poisoning | Corrupted RAG/context data | Validate stored content, segment by trust level |
-| ASI07: Agent Comms | Spoofing between agents | Authenticate, encrypt, verify message integrity |
-| ASI08: Cascading Failures | Errors propagate across systems | Circuit breakers, graceful degradation, isolation |
-| ASI09: Trust Exploitation | Social engineering via AI | Label AI content, user education, verification steps |
-| ASI10: Rogue Agents | Compromised agents acting maliciously | Behavior monitoring, kill switches, anomaly detection |
+**OWASP Top 10 for LLM Applications 2025** — model-boundary risks:
 
-### Agent Security Checklist
+| ID | Risk | One-line |
+|----|------|----------|
+| LLM01 | Prompt Injection | Direct or indirect (via tool output / RAG / docs) |
+| LLM02 | Sensitive Info Disclosure | PII / secrets leaked via outputs |
+| LLM03 | Supply Chain | Compromised models, fine-tunes, LoRA adapters |
+| LLM04 | Data / Model Poisoning | Training-data tampering, backdoors |
+| LLM05 | Improper Output Handling | Downstream systems trust LLM output unchecked |
+| LLM06 | Excessive Agency | Too much functionality / permission / autonomy |
+| LLM07 | System Prompt Leakage | System prompts treated as secrets, but extractable |
+| LLM08 | Vector / Embedding Weaknesses | RAG poisoning, embedding inversion, cross-tenant leak |
+| LLM09 | Misinformation | Hallucinations propagated as fact |
+| LLM10 | Unbounded Consumption | Token / resource / cost exhaustion |
 
-- [ ] All agent inputs sanitized and validated
-- [ ] Tools operate with minimum required permissions
-- [ ] Credentials are short-lived and scoped
-- [ ] Third-party plugins verified and sandboxed
-- [ ] Code execution happens in isolated environments
-- [ ] Agent communications authenticated and encrypted
-- [ ] Circuit breakers between agent components
-- [ ] Human approval for sensitive operations
-- [ ] Behavior monitoring for anomaly detection
-- [ ] Kill switch available for agent systems
+**OWASP Top 10 for Agentic Applications 2026** — system-level risks:
+
+| ID | Risk | Mitigation |
+|----|------|------------|
+| ASI01 | Goal Hijack | Boundaries, output schemas, behavior monitoring |
+| ASI02 | Tool Misuse | Least privilege, schemas on I/O, audit |
+| ASI03 | Privilege Abuse | Short-lived scoped tokens, delegated identity |
+| ASI04 | Supply Chain | Sign packages, sandbox MCP servers, allowlist |
+| ASI05 | Code Execution | Sandbox, static analysis, human approval |
+| ASI06 | Memory Poisoning | Validate at ingest + retrieve, trust segmentation |
+| ASI07 | Inter-Agent Comms | Authenticate, encrypt, message integrity |
+| ASI08 | Cascading Failures | Circuit breakers, degradation, isolation |
+| ASI09 | Trust Exploitation | Label AI content, verification steps |
+| ASI10 | Rogue Agents | Behavior baseline, kill switch, anomaly alerts |
+
+### Modern attack patterns to watch (2025-2026)
+
+- **Indirect prompt injection** — Google reported +32% rise in indirect injection attempts targeting AI browsers / agents (Nov-2025 → Feb-2026). Carriers: web pages, PDFs, calendar invites, emails.
+- **Many-shot jailbreaking** — exploits long context (>128k tokens) by stuffing fake "user/assistant" turns. Cap effective context for safety decisions; classify the full assembled prompt.
+- **Tool-empowered jailbreaks** — model refuses individual harmful asks but chains tools (`fetch` → `write_file` → `send_email`) where no single call looks malicious. Model **trajectories**, not just calls.
+
+### Agent / LLM Security Checklist
+
+- [ ] User input separated from retrieved / tool-output content in prompt structure
+- [ ] Retrieved content treated as untrusted (don't rely on markers alone)
+- [ ] No production secrets in system prompts (LLM07 makes them extractable)
+- [ ] Output schemas constrain model responses (JSON Schema / function-calling args)
+- [ ] Each tool has minimum permissions + input/output schema validation
+- [ ] Dangerous tools gated by human approval or policy filter
+- [ ] All tool calls audit-logged with session ID + prompt hash + args + result
+- [ ] Short-lived scoped credentials; user identity delegated (not just agent identity)
+- [ ] MCP servers: OAuth 2.1 + PKCE + RFC 8707 resource indicators + DPoP
+- [ ] MCP tool descriptions sanitized (no prompt-injection vector)
+- [ ] RAG: trust-level metadata per chunk; per-tenant indices; integrity hashes
+- [ ] Behavior baseline + anomaly alerts; kill switch wired up and tested
+
+Deep dive: [`references/llm-agentic.md`](./references/llm-agentic.md)
 
 ## ASVS 5.0 Key Requirements
 
+ASVS 5.0 has 17 categories (V1-V17). V15 OAuth/OIDC, V16 Self-Contained Tokens, V17 WebSockets are new in 5.0.
+
 ### Level 1 (All Applications)
-- Passwords minimum 12 characters
-- Check against breached password lists
+- Passwords minimum 15 characters at AAL2 (NIST 800-63B-4); 8 at AAL1
+- Check against breached password lists (mandatory, was "should" in 800-63B-3)
 - Rate limiting on authentication
 - Session tokens 128+ bits entropy
-- HTTPS everywhere
+- HTTPS everywhere; HSTS
 
 ### Level 2 (Sensitive Data)
 - All L1 requirements plus:
-- MFA for sensitive operations
-- Cryptographic key management
-- Comprehensive security logging
-- Input validation on all parameters
+- Passkeys (WebAuthn) or hardware-bound MFA preferred over TOTP/SMS
+- Cryptographic key management with rotation
+- Comprehensive security logging (structured, tamper-evident)
+- Input validation on all parameters (server-side, schema-based)
+- Session monitoring (anomaly detection, step-up auth)
 
 ### Level 3 (Critical Systems)
 - All L1/L2 requirements plus:
 - Hardware security modules for keys
-- Threat modeling documentation
+- FAPI 2.0 for high-stakes APIs
+- Threat modeling documentation (STRIDE / MAESTRO for AI systems)
 - Advanced monitoring and alerting
 - Penetration testing validation
+- Crypto-agility for post-quantum migration readiness
+
+## API & CI/CD Quick Refs
+
+When the review focuses on **APIs** or **build/deploy pipelines**, the general Top 10 isn't enough. Use the dedicated lists:
+
+**OWASP API Security Top 10:2023** (still current in 2026):
+- API1 BOLA · API2 Broken Auth · API3 BOPLA (mass assignment) · API4 Unrestricted Resource Consumption · API5 BFLA · API6 Sensitive Business Flow Abuse · API7 SSRF · API8 Misconfiguration · API9 Improper Inventory · API10 Unsafe Third-Party Consumption
+
+**OWASP CI/CD Top 10**:
+- CICD-SEC-1 Flow Control · -2 IAM · -3 Dependency Chain Abuse · -4 Poisoned Pipeline Execution (PPE) · -5 Pipeline-Based Access · -6 Credential Hygiene · -7 System Misconfig · -8 3rd-Party Usage · -9 Artifact Integrity · -10 Logging
+
+Deep dive: [`references/api-cicd.md`](./references/api-cicd.md)
+
+## CWE Top 25:2025 (CISA / MITRE, Dec-2025)
+
+Top 5 most-exploited weaknesses observed in CVEs over 24 months:
+1. CWE-79 Cross-site Scripting
+2. CWE-787 Out-of-bounds Write
+3. CWE-89 SQL Injection
+4. CWE-352 CSRF
+5. CWE-862 Missing Authorization (+5 positions vs 2024)
+
+Use to prioritize SAST rules and developer training. Full list + OWASP mapping: [`references/extras.md`](./references/extras.md)
 
 ## Language-Specific Security Quirks
 
@@ -554,18 +640,42 @@ Client-side validation is UX, not security. Every reference to "validated input"
 
 ### Agentic AI threats are not hypothetical
 
-Prompt injection (ASI01), tool misuse (ASI02), memory poisoning (ASI06) are actively exploited in 2026. When reviewing agent code, apply the ASI checklist — do not treat it as forward-looking only.
+Prompt injection (ASI01), tool misuse (ASI02), memory poisoning (ASI06) are actively exploited in 2026. When reviewing agent code, apply the ASI checklist — do not treat it as forward-looking only. **Indirect** prompt injection (via fetched web pages / docs / tool output) is the dominant vector — it bypasses input-sanitization mindsets built for user-typed prompts.
+
+### Don't require periodic password rotation
+
+NIST SP 800-63B-4 (final 31-Jul-2025) says passwords **SHALL NOT** be required to rotate on a schedule. Rotate only on evidence of compromise. Also: no composition rules ("must have a digit"), no password hints, no knowledge-based recovery. If you see "change your password every 90 days" in a fresh design, flag it.
+
+### Passkeys before generic MFA
+
+When recommending "add MFA", first ask whether passkeys (WebAuthn) fit. Passkeys are phishing-resistant and AAL2 by themselves (with userVerification). Password + TOTP is still relayable via reverse-proxy phishing kits — it's better than nothing, but not the default recommendation for new builds anymore.
+
+### MCP servers need OAuth 2.1 + RFC 8707 + DPoP
+
+MCP authorization spec (Jun-2025) is not optional theory. Tokens must carry resource indicators (RFC 8707) scoped to the specific MCP server, and DPoP sender-constraining prevents stolen-token replay. "Confused deputy" attacks in MCP proxies are the canonical failure mode.
+
+### Start PQC inventory now if you store long-lived secrets
+
+Harvest-now-decrypt-later means anything encrypted today with RSA / ECDH and stored by an adversary is at risk once a sufficient quantum computer arrives (~2030-2035 mainstream estimate). For new systems handling secrets that must remain confidential past 2035, plan crypto-agility now; for systems already in production, inventory and prioritize. FIPS 203/204/205 are the standards.
+
+### LLM Top 10:2025 and Agentic 2026 are complementary, not alternative
+
+A real agent application has BOTH model-boundary risks (LLM Top 10 — prompt injection, output handling, system prompt leakage, RAG poisoning) AND system-level risks (Agentic — tool misuse, privilege abuse, cascading failures). Applying only one list leaves the other surface unreviewed.
 
 ## When to Apply This Skill
 
 Use this skill when:
-- Writing authentication or authorization code
+- Writing authentication / authorization code (→ [`references/auth-modern.md`](./references/auth-modern.md))
 - Handling user input or external data
-- Implementing cryptography or password storage
+- Implementing cryptography or password storage (→ [`references/crypto-modern.md`](./references/crypto-modern.md))
 - Reviewing code for security vulnerabilities
-- Designing API endpoints
-- Building AI agent systems
-- Configuring application security settings
+- Designing API endpoints (→ [`references/api-cicd.md`](./references/api-cicd.md))
+- Building AI agent / LLM / RAG / MCP systems (→ [`references/llm-agentic.md`](./references/llm-agentic.md))
+- Configuring CI/CD pipelines or build systems (→ [`references/api-cicd.md`](./references/api-cicd.md))
+- Reviewing container / Kubernetes / IaC configs (→ [`references/extras.md`](./references/extras.md))
+- Reviewing mobile (iOS / Android) apps (→ [`references/extras.md`](./references/extras.md))
+- Planning post-quantum migration (→ [`references/crypto-modern.md`](./references/crypto-modern.md))
 - Handling errors and exceptions
 - Working with third-party dependencies
-- **Working in any language** - apply the deep analysis mindset above
+- Mapping compliance (EU AI Act, NIST, FAPI) to engineering controls
+- **Working in any language** — apply the deep analysis mindset above

@@ -101,7 +101,7 @@ Skills independentes que podem ser usados em qualquer momento:
 | **image-generation** | Ao gerar imagens | Aprimora prompts de geração de imagens usando estrutura Subject-Context-Style |
 | **initialize-docs** | "inicializar docs", "setup documentação" | Cria hierarquia padrão de documentação com 9 níveis |
 | **apply-insights** | "aplicar insights", "aplicar playbook", "melhorar claude.md" | Analisa o projeto e aplica insights de uso comprovados ao CLAUDE.md, hooks e workflows. Renomeada de `insights` na 2.0.0 para evitar colisão com o `/insights` nativo do Claude Code (que tem função diferente — analisa suas sessões) |
-| **owasp-security** | Ao revisar segurança | Revisão de segurança cobrindo OWASP Top 10:2025, ASVS 5.0 e segurança de IA Agêntica (2026) |
+| **owasp-security** | Ao revisar segurança | Revisão de segurança cobrindo OWASP Top 10:2025, API Security Top 10:2023, CI/CD Top 10, ASVS 5.0, LLM Top 10:2025, Agentic AI 2026, CWE Top 25:2025, NIST SP 800-63B-4, WebAuthn/Passkeys, OAuth 2.1, FAPI 2.0 e Post-Quantum Cryptography |
 | **review-features** | "review features", "status global", "comparar features", "quais features priorizar" | Relatório comparativo de TODAS as features (cross-feature) com tabela agregada e sugestão de arquivar/abandonar/priorizar/continuar por feature |
 | **validate-documentation** | "validar documentação", "verificar UC" | Valida documentos individuais contra padrões de qualidade estrutural |
 | **validate-docs-rendered** | "validar renderização", "verificar diagramas" | Valida que a documentação Markdown renderiza corretamente (Mermaid, links internos, frontmatter, tabelas) |

@@ -7,6 +7,118 @@ este projeto adere a [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ## [Unreleased]
 
+## [3.7.0] - 2026-05-16
+
+Enriquecimento significativo da skill `owasp-security` com atualizacoes
+posteriores a Janeiro/2026, incorporando 9 novas listas/standards e 6
+mencoes de cobertura complementar. Reestruturada em `SKILL.md` (entry
+point operacional) + 5 arquivos de referencia profunda em
+`references/`, mantendo carregamento de contexto enxuto sem perder
+profundidade.
+
+### Added
+
+- **OWASP LLM Top 10:2025**: nova secao irma a Agentic 2026 cobrindo
+  riscos a nivel-modelo (LLM01 Prompt Injection, ..., LLM07 System
+  Prompt Leakage, LLM08 Vector/Embedding Weaknesses, LLM10 Unbounded
+  Consumption). Detalha indirect prompt injection (+32% Nov-2025 a
+  Feb-2026 per Google), poisoning de RAG e inversao de embeddings.
+- **OWASP API Security Top 10:2023**: secao completa com API1 BOLA,
+  API3 BOPLA (mass assignment + excessive exposure), API6 Sensitive
+  Business Flow Abuse, API7 SSRF (incluindo metadata-service guards) e
+  API10 Unsafe Third-Party Consumption. Inclui patterns Python para
+  cada risco.
+- **OWASP CI/CD Top 10**: CICD-SEC-1..10 com deep dive em PPE (Direct,
+  Indirect, Public), modern credential hygiene (OIDC federation, ESO,
+  dynamic creds via Vault) e SLSA/Sigstore para integridade de
+  artefato.
+- **NIST SP 800-63B-4 (Final 31-Jul-2025)**: substitui aluso vaga por
+  regras concretas — passwords 15 chars no AAL2, SHALL NOT impor
+  composition rules, SHALL NOT requerer rotacao periodica, SHALL
+  checar contra breached-password lists, SHALL NOT usar KBA recovery.
+  Nova Section 5.3 Session Monitoring com reauth 12h/30min e
+  step-up auth.
+- **WebAuthn / Passkeys**: nova subsecao substituindo "MFA generico".
+  Cobre WebAuthn L3 Working Draft (Jan-2025), passkeys como AAL2
+  syncable authenticators, server-side requirements e armadilhas
+  (origin check, sign-count monotonicity, cross-origin iframes).
+- **OAuth 2.1 + FAPI 2.0**: cobertura de OAuth 2.1 (PKCE mandatory,
+  implicit/password grants removidos), DPoP (RFC 9449) sender-
+  constraining, PAR (RFC 9126), JAR (RFC 9101) e FAPI 2.0 Security
+  Profile Final (19-Feb-2025) para APIs high-stakes.
+- **MCP Authorization Spec (Jun-2025)**: expansao do ASI04 cobrindo
+  RFC 8707 Resource Indicators, DPoP em MCP, ataque "confused deputy"
+  em proxy servers e sanitizacao de tool descriptions. Checklist
+  especifico para review de servidores MCP.
+- **Post-Quantum Cryptography**: nova secao cobrindo FIPS 203 ML-KEM,
+  204 ML-DSA, 205 SLH-DSA (publicadas 13-Ago-2024). Estrategia HNDL
+  (Harvest-Now-Decrypt-Later), crypto agility, hybrid TLS
+  (X25519+ML-KEM-768), timeline NIST IR 8547 e CNSA 2.0 (mandatory
+  US-gov 2030-01-02).
+- **Secrets Management 2026**: OIDC federation (GitHub Actions ↔ AWS
+  STS), Workload Identity, External Secrets Operator, dynamic
+  database credentials via Vault, SOPS/Sealed Secrets para GitOps,
+  gitleaks/trufflehog em pre-commit + push protection.
+- **CWE Top 25:2025 (CISA/MITRE, Dez-2025)**: tabela com top 25 + 
+  mapeamento para OWASP Top 10:2025. Destaques: CWE-862 Missing
+  Authorization subiu 5 posicoes, CWE-79 XSS retomou #1.
+- **Modern prompt injection patterns**: indirect injection no wild
+  (+32% trimestre), many-shot jailbreaking (exploits >128k context),
+  tool-empowered jailbreaks (chains que individualmente parecem
+  benignas). Cita pesquisa do Google e Anthropic.
+- **MAESTRO threat modeling**: framework do Cloud Security Alliance
+  (Fev-2025) estendendo STRIDE com camada AI-agent-specific. 7 layers
+  de modelagem: foundation model, data, agent framework, tools,
+  multi-agent orchestration, application logic, user/UI.
+- **OWASP Mobile Top 10:2024 + MASVS 2.1**: cobertura M1-M10 com
+  exemplos plataforma-especificos (Keychain iOS, EncryptedSharedPrefs
+  Android, cert pinning OkHttp com backup pin).
+- **OWASP Kubernetes Top 10 + Docker Top 10**: K01-K10 com Pod
+  Security Standards (`restricted`), NetworkPolicy default deny,
+  OPA/Kyverno admission policies, Falco runtime, distroless base
+  images.
+- **EU AI Act mapping**: regulation 2024/1689 com risk tiers
+  (unacceptable/high-risk/limited/minimal/GPAI), obrigacoes vigentes
+  desde 2-Ago-2025, multas ate EUR35M ou 7% turnover. Overlap com
+  OWASP LLM Top 10 e Agentic 2026.
+
+### Changed
+
+- **`SKILL.md` reorganizado**: cabecalho `description` expandido para
+  incluir 12+ novos triggers (passkey, FAPI, post-quantum, MCP
+  security, prompt injection). Adicionada secao "Deep references"
+  no topo apontando para `references/*.md`. Checklists de Auth,
+  Data Protection e Agentic AI reescritos para refletir 2026 best
+  practices (passkeys-first, OIDC federation, MCP OAuth 2.1).
+  Gotchas atualizados com 5 regras novas (NIST 800-63B-4 no-rotation,
+  passkey-first, MCP OAuth 2.1+RFC 8707+DPoP, PQC inventory now,
+  LLM+Agentic complementares).
+- **`OWASP-2025-2026-Report.md` expandido**: TOC reorganizado em 11
+  secoes (era 5). ASVS V2.1.1 atualizado de "12 chars" para "12+
+  (NIST 800-63B-4 raises to 15 for AAL2)". 6 novas secoes inseridas:
+  API Security Top 10:2023, CI/CD Top 10, LLM Top 10:2025, NIST
+  SP 800-63B-4 highlights, Post-Quantum Cryptography, CWE Top 25:2025.
+  Sources reorganizadas por categoria (OWASP / Auth / Crypto / AI /
+  Regulatory / Standards). Data atualizada para Maio/2026.
+- **`README.md` linha de descricao da skill**: expandida para listar
+  todas as 12 listas/standards cobertas (era apenas 3).
+
+### Files
+
+- `global/skills/owasp-security/SKILL.md` — 680 linhas (+110 vs 3.6.0)
+- `global/skills/owasp-security/OWASP-2025-2026-Report.md` — 1061
+  linhas (+269 vs 3.6.0)
+- `global/skills/owasp-security/references/llm-agentic.md` — NOVO,
+  273 linhas
+- `global/skills/owasp-security/references/api-cicd.md` — NOVO,
+  275 linhas
+- `global/skills/owasp-security/references/auth-modern.md` — NOVO,
+  277 linhas
+- `global/skills/owasp-security/references/crypto-modern.md` — NOVO,
+  198 linhas
+- `global/skills/owasp-security/references/extras.md` — NOVO,
+  223 linhas
+
 ## [3.6.0] - 2026-05-15
 
 Evolucao pos-execucao do agente-00c — 14 recomendacoes priorizadas
