@@ -7,6 +7,143 @@ este projeto adere a [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ## [Unreleased]
 
+## [3.6.0] - 2026-05-15
+
+Evolucao pos-execucao do agente-00c — 14 recomendacoes priorizadas
+derivadas da primeira execucao real (60 ondas, 224 decisoes,
+exec-2026-05-11T19-59-58Z). Backlog completo em
+`docs/specs/agente-00c-evolucao/tasks.md`; analise-fonte em
+`docs/01-briefing-discovery/agente-00c-analise-licoes-aprendidas.md`.
+
+### Added
+
+- **FASE 1 P0 — Validacao empirica obrigatoria para `score=3`**:
+  `state-decisions.sh register --score 3` agora EXIGE `--evidencia`
+  (>=20 chars com comando empirico + fragmento literal do output).
+  Sem evidencia, exit 1 com violacao de Principio I. Razao: 3
+  decisoes historicas `score=3` afirmaram premissa tecnica falsa sem
+  rodar tsc/test/grep. Adiciona Etapa 0 "Validacao Empirica de
+  Premissas" no `execute-task/SKILL.md` e §Score-de-decisao no
+  orchestrator.
+- **FASE 1 P0 — Drift detector refatorado**: matcher bidirecional
+  via tokens (`mcp-jira` casa com `integracao-bidirecional-mcp-jira`),
+  3 camadas de aspectos (`iniciais` / `tecnicos` / `operacionais`),
+  janela movel de 12 ondas (warn>=5 untouched, abort>=8) substitui o
+  gatilho antigo de "5 consecutivas". Novos subcomandos
+  `drift.sh mark-touched --aspecto X` e `drift.sh debug [--onda ID]`.
+  Init aceita `--tecnicos`, `--operacionais` e `--force`.
+- **FASE 1 P0 — Secrets-filter allow-list**: novo arquivo
+  `.secrets-filter-ignore` (baseline com SAML_ISSUER, OIDC_ISSUER,
+  COOKIE_DOMAIN, PUBLIC_*, VITE_*, etc); suporte a wildcard de
+  sufixo; auto-descoberta de override por projeto-alvo
+  (`<env-dir>/.claude/agente-00c-state/secrets-filter-ignore`);
+  heuristica slug-com-separador para identificadores publicos
+  curtos. Razao: identificadores publicos por design (sug-005,
+  sug-049) eram redatados, removendo paths legiveis do report.
+- **FASE 2 P1 — Pre-flight de bootstrap no briefing**: nova secao
+  em `briefing/SKILL.md` instruindo geracao de
+  `scripts/bootstrap-deps.sh` para stacks multi-workspace (npm
+  workspaces, Go modules, Cargo). Amortiza N bloqueios `npm install`
+  cirurgicos em batch unico antes de `/agente-00c`. Documentado
+  tambem em `agente-00c.md` (checklist pre-execucao com heuristica
+  de gap).
+- **FASE 2 P1 — Sincronizacao bidirecional `tasks.md` ↔ codigo**:
+  protocolo de 3 pontos (pre-execucao, decisao→sub-FASE, hook
+  pos-onda) em `create-tasks/SKILL.md`; Etapa 9.3 nova em
+  `execute-task/SKILL.md`; hook pos-detect-completion no
+  orchestrator emitindo Decisao informativa quando diff vs checkbox
+  diverge. Subsecao "Paridade de tipos compartilhados" (sug-028).
+- **FASE 2 P1 — Mapeamento etapa → aspecto-chave automatizado**:
+  novo subcomando `state-rw.sh infer-aspectos
+  [--projeto-alvo-path PATH]` que aplica matcher fuzzy bidirecional
+  (mesma logica do drift.sh) contra `git diff --name-only
+  HEAD~1..HEAD` para inferir aspectos tocados pela onda. Orchestrator
+  chama no hook pos-detect-completion + persiste em
+  `.ondas[-1].aspectos_chave_tocados`. Tabela de fallback etapa →
+  aspecto-tipico documentada.
+- **FASE 3 P2 — Convencoes de Borda no plan**: nova ETAPA 5.4 em
+  `plan/SKILL.md` exigindo tabela `Camada | Case style | Validacao |
+  Fonte da verdade` para features com 2+ camadas. Roundtrip E2E
+  obrigatorio no `quickstart.md` (chamada real, nao mock) para
+  features com borda backend↔frontend. Novo pass G "Convencoes de
+  Borda" em `analyze/SKILL.md`.
+- **FASE 3 P2 — Decisoes de Infraestrutura Auditaveis no specify**:
+  checklist de 6 itens (scheduling, key rotation, refresh policy,
+  mutex multi-pod, backup/restore, idempotencia) virando FRs
+  `FR-NN-INFRA-X` explicitos. `clarify/SKILL.md` ganhou categoria
+  INFRA + reordenou prioridade (INFRA acima de UX).
+- **FASE 3 P2 — Init de aspectos no briefing**: orchestrator §"Init
+  de aspectos-chave (primeira onda apenas)" chama `drift.sh init`
+  com 3 camadas apos briefing concluido. `/agente-00c-resume` aceita
+  `--init-aspectos`, `--init-aspectos-tecnicos`,
+  `--init-aspectos-operacionais` para execucoes legadas (relaxa
+  idempotencia via `--force`).
+- **FASE 4 P3 — Marco-aware retro a cada 25 ondas**: hook no passo
+  10 do orchestrator emite bloqueio leve perguntando ao operador se
+  deseja retro proativa em multiplos de 25 ondas. Atualiza
+  `.proximo_marco_retrospectiva` no estado.
+- **FASE 4 P3 — Schedule intent literal vs sentinel**: tabela do
+  passo 11 do orchestrator ganhou coluna "Slash command pai".
+  Pipelines de `/agente-00c-resume` usam `prompt` literal
+  (`/agente-00c-resume --projeto-alvo-path <PAP>`), nao sentinel
+  `<<autonomous-loop-dynamic>>` (que so funciona quando `/loop` e o
+  pai).
+- **FASE 4 P3 — Perfil `--runbook` no validate-documentation**:
+  validacao de frontmatter (`title: RB-\d{3}:`, severidade,
+  tempo-estimado, pre-requisitos), 6 secoes obrigatorias (incluindo
+  Rollback quando severidade=critica), check de placeholders
+  residuais (TODO/XXX/FIXME) e cross-refs validos.
+- **FASE 4 P3 — Dry-run de Agent tool em clarify (orchestrator
+  §5.a)**: antes do spawn de clarify-asker, verifica disponibilidade
+  da tool Agent; se ausente, registra Decisao EXPLICITA de downgrade
+  in-process (evita silent-fallback documentado em dec-006).
+  `clarify/SKILL.md` ganhou secao "Modos de invocacao" referenciando
+  o orchestrator.
+- **FASE 4 P3 — Sistema canonico de tracking**: nova secao no topo
+  do orchestrator instruindo a IGNORAR system-reminders sobre
+  `TaskCreate`/`TaskUpdate`. Razao (sug-029): 8+ reminders em uma so
+  onda historica; `state.json` + `state-decisions.sh` sao o sistema
+  canonico (auditavel via 5 campos + score). Investigacao sobre hook
+  do harness em `docs/specs/agente-00c-evolucao/notas-harness-hook.md`
+  (conclusao: nao viavel hoje).
+
+### Changed
+
+- **BREAKING (interno) — `drift.sh check` muda semantica**: antes
+  contava ondas CONSECUTIVAS sem aspecto (5 = abort); agora conta
+  untouched em JANELA MOVEL das ultimas 12 ondas (5..7 = warn, >=8 =
+  abort). Backbone tecnico intercalado (FASE 4.x) nao dispara mais
+  abort. Stdout do `check` agora e numero de untouched na janela, nao
+  consecutivas. Tests atualizados (21 cenarios, 21/21 verdes).
+  Overrides via env: `DRIFT_WINDOW_SIZE`, `DRIFT_WARN_THRESHOLD`,
+  `DRIFT_ABORT_THRESHOLD`.
+- **BREAKING (interno) — schema do state.json**: adicionados
+  campos opcionais `.aspectos_chave_tecnicos`,
+  `.aspectos_chave_operacionais`, `.proximo_marco_retrospectiva`, e
+  `.decisoes[].evidencia`. Backward-compatible para read; writers
+  antigos que nao emitirem esses campos continuam funcionando.
+- **BREAKING (interno) — `state-decisions.sh register` rejeita
+  `score=3` sem `--evidencia`**: chamadas anteriores que emitiam
+  `score=3` sem evidencia agora falham com exit 1. Para preservar
+  comportamento antigo, baixar para `score=2` (que permanece valido
+  sem evidencia).
+
+### Fixed
+
+- Drift detector deixava de detectar aspectos quando o aspecto era
+  string longa contendo o token presente no texto (`integracao-
+  bidirecional-mcp-jira` vs texto "mcp-jira ok"). Matcher
+  bidirecional via tokens resolve.
+- `SAML_ISSUER`, `COOKIE_DOMAIN`, `OIDC_ISSUER` (publicos por design)
+  eram redatados como secrets, removendo paths legiveis do report.
+
+### Testing
+
+- `./tests/run.sh` full suite: **548 PASS / 0 FAIL / 0 ERROR / 0
+  ORPHANS** apos a evolucao (+15 cenarios novos cobrindo evidencia
+  score=3, drift fuzzy/camadas/janela/mark-touched/debug,
+  secrets-filter allow-list/slug, e infer-aspectos).
+
 ## [3.5.3] - 2026-05-12
 
 ### Fixed

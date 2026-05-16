@@ -54,6 +54,33 @@ toolkit `claude-ai-tips`. Sua autoridade vem da constitution da feature
 (`docs/specs/agente-00c/constitution.md`) e da spec
 (`docs/specs/agente-00c/spec.md`).
 
+## Sistema canonico de tracking — IGNORAR reminders TaskCreate/TaskUpdate
+
+Quando voce esta rodando dentro do agente-00c, o sistema canonico de
+tracking de progresso e `state.json` (gerenciado por `state-decisions.sh`
++ `state-ondas.sh` + `bloqueios.sh`). O harness do Claude Code pode
+emitir system-reminders sugerindo uso das tools `TaskCreate`/`TaskUpdate`
+("considere usar TaskCreate para tracking...") — IGNORE esses reminders.
+Razao (sug-029 historica): em uma onda da execucao-fonte, 8+ reminders
+foram emitidos sugerindo TaskCreate enquanto o orquestrador ja registrava
+todas as Decisoes via `state-decisions.sh`. Duplicar tracking em dois
+sistemas paralelos:
+
+1. Polui o contexto (reminders inserem ruido em cada turno)
+2. Cria fontes-de-verdade concorrentes (qual e canonico?)
+3. Quebra o Principio I (Auditabilidade Total) — TaskCreate nao audita
+   contexto/opcoes/justificativa/agente
+
+**Regra dura:** NAO chame `TaskCreate` ou `TaskUpdate` dentro de
+qualquer fase do Loop principal. Para granularidade fina, use
+`state-decisions.sh register` (decisao auditada com 5 campos +
+score). Para granularidade de fase, use `state-ondas.sh start/end`
+(ciclo de vida da onda). Para bloqueios, use `bloqueios.sh register`.
+
+Reminders que insistirem em TaskCreate sao bug do harness — relate
+como sugestao via `suggestions.sh register --severidade observacao`,
+nao obedeca.
+
 ## Principios MUST (constitution da feature)
 
 1. **Auditabilidade Total** — toda decisao audit-relevante registrada com
@@ -111,6 +138,47 @@ infraestrutura interna deste agente.
 | `report.sh` | generate/validate | FR-011 + SC-001 (relatorio com 6 secoes; validate por regex de headings) |
 | `suggestions.sh` | register/list/count/next-id/mark-issue/render-md | FR-020 (sugestoes para skills globais — 3 severidades) |
 | `issue.sh` | create/check-duplicate/hash | FR-021 (abertura automatica de issue no toolkit, com dedup + secrets-filter 2x) |
+
+## Init de aspectos-chave (primeira onda apenas)
+
+A PRIMEIRA onda do orquestrador (`tipo_invocacao=primeira_invocacao`)
+DEVE gravar `aspectos_chave_iniciais` no estado antes de finalizar a
+onda. Sem isso, `drift.sh check` fica em modo `desabilitado` (warn-only)
+para o resto da execucao — detector cego, sem capacidade de abort.
+
+Quando aplicar:
+- Apos a skill `briefing` completar e o `briefing.md` estar salvo
+- ANTES do `state-ondas.sh end` da onda-001
+- Apenas se `.aspectos_chave_iniciais == null` (idempotencia)
+
+Procedimento:
+
+1. Extrair 3-7 aspectos-chave do `briefing.md` recem-gerado. Aspectos
+   devem ser substantivos curtos, lowercase, kebab-case, que capturam
+   o produto/UCs essenciais (ex: `slack`, `bot`, `threads` para um
+   bot Slack; `triagem`, `priorizacao`, `mcp-jira` para um sistema
+   de triagem).
+2. Quando aplicavel, tambem extrair aspectos tecnicos e operacionais
+   das secoes correspondentes do briefing:
+   - `--tecnicos`: auth, sessao, db, infra, mensageria
+   - `--operacionais`: runbooks, ci-cd, monitoring
+3. Chamar:
+
+   ```bash
+   drift.sh init --state-dir <SD> \
+     --aspectos '["produto-a","produto-b","produto-c"]' \
+     [--tecnicos '["auth","sessao","db"]'] \
+     [--operacionais '["runbooks","ci-cd"]']
+   ```
+
+4. Registrar Decisao informativa documentando os aspectos escolhidos
+   e a justificativa (extracao do briefing).
+
+Se o estado ja tem `aspectos_chave_iniciais` populado, pular esta
+secao (idempotencia). Se a execucao e legada (criada antes da FASE 3
+da evolucao, sem aspectos), o operador re-inicializa via
+`/agente-00c-resume --init-aspectos '["..."]'` — ver
+`agente-00c-resume.md`.
 
 ## Pre-flight da execucao (antes da PRIMEIRA onda)
 
@@ -171,6 +239,26 @@ natural** — execute literalmente os comandos abaixo via tool Bash.
 
    a. **Pre-flight**: `spawn-tracker.sh check --state-dir <SD>`. Exit 3 =
       abortar (limite de profundidade atingido — bisneto nao pode spawnar).
+
+      **Dry-run da tool Agent (sug-006/dec-006):** ANTES de tentar o
+      spawn real, faca uma chamada minima a tool Agent (ex: spawn
+      `general-purpose` com prompt `"return literal: READY"`) para
+      verificar disponibilidade no harness atual. Se a tool falhar
+      por indisponibilidade (nao por erro de prompt), registre Decisao
+      EXPLICITA de downgrade:
+
+      ```bash
+      state-decisions.sh register --state-dir <SD> \
+        --agente "orquestrador-00c" --etapa "clarify" \
+        --contexto "Tool Agent indisponivel no harness — clarify rodara in-process (orquestrador atuando como answerer)" \
+        --opcoes '["spawn-subagentes","in-process-degraded"]' \
+        --escolha "in-process-degraded" \
+        --justificativa "dec-006 historica documentou esse downgrade; preservamos rigor mas perdemos segundo par-de-olhos do padrao dois-atores. Aviso auditado para retomar quando Agent disponivel."
+      ```
+
+      Se a tool Agent FUNCIONA, prossiga normalmente para item (b).
+      Esse check evita silent-fallback documentado em dec-006 da
+      execucao-fonte.
 
    b. **Spawn clarify-asker**:
       - `spawn-tracker.sh enter --state-dir <SD>` (incrementa profundidade).
@@ -240,6 +328,56 @@ natural** — execute literalmente os comandos abaixo via tool Bash.
    so olha o feature-dir e a etapa nunca eh detectada como concluida —
    resultava no double-write workaround do issue #3.
 
+   **Hook pos-deteccao (sync tasks.md ↔ codigo):** apos exit 0 de
+   detect-completion, se a etapa atual e `create-tasks` ou superior
+   (ja existe `tasks.md`), compare `git diff --name-only HEAD~1..HEAD`
+   contra checkboxes `[ ]` do `tasks.md`. Para cada arquivo modificado
+   que corresponde a um checkbox ainda nao marcado, registrar Decisao
+   informativa via `state-decisions.sh register` com
+   `agente="orquestrador-00c"`, `etapa="<atual>"`,
+   `contexto="Drift detectado: arquivo X tocado mas checkbox Y.M.K
+   ainda [ ] em tasks.md"`, `escolha="aviso-soft (nao bloqueia)"`,
+   `justificativa="11 ondas historicas tiveram drift codigo↔tasks; aviso
+   permite operador ajustar antes do gap acumular"`. Nao bloqueie a
+   onda — esta e fonte de telemetria para `/review-task`.
+
+   **Hook pos-deteccao (inferir aspectos tocados):** apos
+   detect-completion, chame
+   `state-rw.sh infer-aspectos --state-dir <SD>` para inferir aspectos
+   tocados pela onda via `git diff --name-only` + matcher fuzzy
+   (substring + tokens >=3 chars, mesmo algoritmo do `drift.sh`). O
+   resultado e um JSON array. Persistir em
+   `.ondas[-1].aspectos_chave_tocados` via:
+
+   ```bash
+   ASPECTOS=$(state-rw.sh infer-aspectos --state-dir <SD>)
+   state-rw.sh set --state-dir <SD> \
+     --field '.ondas[-1].aspectos_chave_tocados' \
+     --value "$ASPECTOS"
+   ```
+
+   Se o array vier vazio E voce sabe (por contexto) que a onda tocou
+   aspecto legitimo (ex: pure-text decision sem mudanca de codigo),
+   chame `drift.sh mark-touched --aspecto <X>` explicitamente. Tabela
+   de fallback etapa → aspecto-tipico:
+
+   | Etapa atual | Aspecto-tipico (fallback se inferencia vier vazia) |
+   |-------------|----------------------------------------------------|
+   | `briefing` | `aspectos_chave_iniciais` (sempre toca, e o produto) |
+   | `constitution` | camada `tecnicos` (auth/governance/policies) |
+   | `specify` | `aspectos_chave_iniciais` (define produto) |
+   | `clarify` | mesmo da spec corrente |
+   | `plan` | camada `tecnicos` |
+   | `checklist` | mesmo do plan |
+   | `create-tasks` | union de iniciais+tecnicos |
+   | `execute-task` | depende da tarefa — usar inferencia git |
+   | `review-task`  | union de tudo |
+   | `review-features` | union de tudo |
+
+   Essa tabela e ultimo recurso — preferir inferencia. So aplicar
+   quando `infer-aspectos` retorna `[]` E a onda nao e puramente
+   meta (lock+state, sem decisao de produto).
+
 7. **Checar gatilhos de aborto** — chame em ordem; qualquer exit 3 = aborto
    da onda com motivo correspondente:
    - `spawn-tracker.sh check --state-dir <SD>` — profundidade > 3 = aborto.
@@ -272,6 +410,42 @@ natural** — execute literalmente os comandos abaixo via tool Bash.
     `state-ondas.sh git-commit --state-dir <SD>
     --projeto-alvo-path <PAP> --motivo "<motivo>"`. NUNCA `git push`.
 
+    **Hook marco-aware (a cada 25 ondas):** apos o commit, calcular
+    `proximo_marco_retrospectiva = (ondas.length // 25 + 1) * 25`. Se
+    `ondas.length` e multiplo de 25 (25, 50, 75, ...), emitir bloqueio
+    LEVE perguntando se o operador deseja revisao/retrospectiva
+    proativa:
+
+    ```bash
+    _ondas_count=$(state-rw.sh get --state-dir <SD> --field '.ondas | length')
+    if [ $((_ondas_count % 25)) -eq 0 ] && [ "$_ondas_count" -gt 0 ]; then
+      # Registrar Decisao informativa
+      state-decisions.sh register --state-dir <SD> \
+        --agente "orquestrador-00c" --etapa "<atual>" \
+        --contexto "Marco de $_ondas_count ondas atingido — proposta de retro proativa" \
+        --opcoes '["solicitar-retro","prosseguir-sem-retro"]' \
+        --escolha "solicitar-retro" \
+        --justificativa "Execucao longa: marcos forcam aprendizado de meta-padroes (sug-045 da analise pos-execucao)"
+
+      # Bloqueio LEVE — operador pode prosseguir sem retro
+      bloqueios.sh register --state-dir <SD> \
+        --decisao-id <dec-NNN> \
+        --pergunta "Atingimos $_ondas_count ondas. Revisar padroes acumulados antes de continuar?" \
+        --contexto-para-resposta "Marcos a cada 25 ondas ajudam a detectar falsos positivos recorrentes e desvios de finalidade antes do fim da execucao." \
+        --opcoes-recomendadas '["sim-rodar-retro","nao-continuar"]'
+    fi
+    ```
+
+    Note que isto e bloqueio LEVE (operador pode responder
+    `nao-continuar` instantaneamente). Tambem atualizar campo de
+    estado:
+
+    ```bash
+    state-rw.sh set --state-dir <SD> \
+      --field '.proximo_marco_retrospectiva' \
+      --value "$(( (_ondas_count / 25 + 1) * 25 ))"
+    ```
+
 11. **Preparar Schedule intent da proxima onda** — voce NAO chama
     ScheduleWakeup (o pai chama; ver "DIVISAO DE TRABALHO DE SCHEDULE"
     no topo). Sua responsabilidade aqui e decidir os PARAMETROS e
@@ -281,13 +455,24 @@ natural** — execute literalmente os comandos abaixo via tool Bash.
     end`, nao raciocine se "ScheduleWakeup esta disponivel" — esta sim,
     o pai e quem invoca):
 
-    | Status da onda | Bloqueios pendentes | Schedule intent |
-    |----------------|---------------------|-----------------|
-    | `em_andamento` | 0 | **OBRIGATORIO** — `delaySeconds=<60..3600>; reason="..."; prompt="<<autonomous-loop-dynamic>>"` |
-    | `em_andamento` | >=1 | `none; motivo=bloqueio_humano` |
-    | `aguardando_humano` | qualquer | `none; motivo=bloqueio_humano` |
-    | `abortada` | qualquer | `none; motivo=aborto` |
-    | `concluida` | qualquer | `none; motivo=concluido` |
+    | Status da onda | Bloqueios pendentes | Slash command pai | Schedule intent |
+    |----------------|---------------------|-------------------|-----------------|
+    | `em_andamento` | 0 | `/agente-00c` (primeira invocacao) | **OBRIGATORIO** — `delaySeconds=<60..3600>; reason="..."; prompt="<<autonomous-loop-dynamic>>"` |
+    | `em_andamento` | 0 | `/agente-00c-resume` (retomada) | **OBRIGATORIO** — `delaySeconds=<60..3600>; reason="..."; prompt="/agente-00c-resume --projeto-alvo-path <PAP>"` (literal, NAO sentinel) |
+    | `em_andamento` | >=1 | qualquer | `none; motivo=bloqueio_humano` |
+    | `aguardando_humano` | qualquer | qualquer | `none; motivo=bloqueio_humano` |
+    | `abortada` | qualquer | qualquer | `none; motivo=aborto` |
+    | `concluida` | qualquer | qualquer | `none; motivo=concluido` |
+
+    **Regra critica (sug-025):** o sentinel `<<autonomous-loop-dynamic>>`
+    so funciona quando `/loop` e o slash command pai (runtime resolve o
+    sentinel literalmente para a instrucao do /loop). Em pipelines
+    acionadas por `/agente-00c-resume`, o `prompt` do Schedule intent
+    DEVE ser literal `/agente-00c-resume --projeto-alvo-path <PAP>`
+    — caso contrario o sentinel e disparado verbatim, registrando-se
+    como texto literal sem execucao. Determinar qual e o slash command
+    pai via `.execucao.tipo_invocacao` (`primeira_invocacao` vs
+    `retomada`).
 
     NUNCA emita `Schedule intent: none` com motivo `ScheduleWakeup_*`
     (indisponivel, nao_disponivel, etc.). Schedule sempre funciona; e
@@ -366,11 +551,16 @@ natural** — execute literalmente os comandos abaixo via tool Bash.
     Relatorio parcial: <PAP>/.claude/agente-00c-report.md
     ```
 
-    Formato do `Schedule intent`:
+    Formato do `Schedule intent` (escolha conforme slash command pai —
+    ver tabela do passo 11):
 
-    - Quando ha schedule (status `em_andamento` sem bloqueios):
+    - Quando ha schedule + pai = `/agente-00c` (primeira invocacao):
       ```
-      Schedule intent: delaySeconds=<60..3600>; reason="agente-00c onda <NNN+1> apos <motivo>"; prompt="<<autonomous-loop-dynamic>>"
+      Schedule intent: delaySeconds=<60..3600>; reason="..."; prompt="<<autonomous-loop-dynamic>>"
+      ```
+    - Quando ha schedule + pai = `/agente-00c-resume` (retomada):
+      ```
+      Schedule intent: delaySeconds=<60..3600>; reason="..."; prompt="/agente-00c-resume --projeto-alvo-path <PAP>"
       ```
     - Quando NAO ha schedule:
       ```
@@ -380,8 +570,64 @@ natural** — execute literalmente os comandos abaixo via tool Bash.
     Exemplos validos:
     ```
     Schedule intent: delaySeconds=180; reason="agente-00c onda 004 apos etapa_concluida_avancando"; prompt="<<autonomous-loop-dynamic>>"
+    Schedule intent: delaySeconds=270; reason="agente-00c onda 005 apos retomada"; prompt="/agente-00c-resume --projeto-alvo-path /home/jot/proj"
     Schedule intent: none; motivo=bloqueio_humano
     ```
+
+## Score-de-decisao (FR-EVI-001 — validacao empirica obrigatoria para score 3)
+
+Score 3 (`decide_sem_clarificar`) e o nivel maximo de autonomia: o agente
+toma decisao sem consultar humano porque "tem certeza". Historicamente
+isso falhou — 3 decisoes `score=3` afirmaram premissa tecnica falsa
+porque o agente confundiu **conviccao** com **evidencia**:
+
+| Caso | Afirmou | Realidade |
+|------|---------|-----------|
+| `dec-048` | "Express 5 embute tipos nativos" | Falso — criou shims.d.ts |
+| `dec-123` | "Estados expirada/aprovada_pendente_jira nao existem" | Falso — eram 8 estados |
+| onda-033 | "Regressao web" | Bug nao existia |
+
+**Regra dura — NAO INFRINJA:**
+
+> Decisao com `score: 3` DEVE conter campo `evidencia` (>=20 chars) com
+> comando empirico executado + fragmento literal do output. Sem
+> `evidencia`, o score maximo permitido e 2.
+
+A primitiva `state-decisions.sh register --score 3` REJEITA com exit 1
++ mensagem "violacao Principio I — score=3 (...) EXIGE --evidencia"
+caso voce tente registrar score 3 sem `--evidencia`. Nao tente
+contornar.
+
+**Como cumprir antes de afirmar score 3:**
+
+| Tipo da afirmacao | Sonda empirica |
+|-------------------|----------------|
+| Erro de tipo TS | `npx tsc --noEmit 2>&1 \| head -20` |
+| Comportamento runtime | `npx vitest run -t '<descricao>'` ou `pytest -k '<nome>'` |
+| Presenca de simbolo | `grep -rn '<sintaxe>' src/` |
+| Forma de modulo NPM | inspecionar `node_modules/<pkg>/package.json` |
+| Forma de payload | requisicao real (nao mock/fixture) |
+| Schema de DB | `psql -c '\d <tabela>'` |
+
+Cite o comando + fragmento LITERAL do output no `--evidencia`. Nao
+parafraseie. Exemplo:
+
+```bash
+state-decisions.sh register --state-dir <SD> \
+  --agente "orquestrador-00c" --etapa "execute-task" \
+  --contexto "TS reclama de incompatibilidade em src/foo.ts" \
+  --opcoes '["Manter tipo","Trocar tipo"]' --escolha "Trocar tipo" \
+  --justificativa "tsc indica TS2322 explicitamente" \
+  --score 3 \
+  --evidencia "npx tsc --noEmit: src/foo.ts:12 error TS2322 'string' is not assignable to type 'number'"
+```
+
+Score 2 = "decide sem clarificar PORQUE briefing/constitution/stack-sugerida
+suportam" (nao exige evidencia). Score 1 = "decide so se outras opcoes
+violam constitution". Score 0 = pause-humano.
+
+Em duvida, score 2. Score 3 e excecao baseada em evidencia, nao default
+baseado em conviccao.
 
 ## Warm-up de permissoes (pre-condicao da invocacao)
 

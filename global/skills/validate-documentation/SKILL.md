@@ -182,6 +182,83 @@ Valide toda a documentação de casos de uso
 Valide e corrija os problemas encontrados em UC-CAD-001.md
 ```
 
+**Validar runbook (perfil --runbook):**
+```
+Valide o runbook RB-001-restore-drill.md com perfil --runbook
+```
+
+---
+
+## Perfil `--runbook` (RB-NNN)
+
+Runbooks operacionais (`docs/08-operacoes/RB-*.md`) tem padrao
+estrutural diferente de UCs e exigem perfil dedicado. Acionar via
+flag `--runbook` ou quando o filename casa `RB-\d{3}-*.md`.
+
+### Frontmatter YAML obrigatorio
+
+Todo runbook DEVE ter frontmatter YAML com pelo menos:
+
+```yaml
+---
+title: "RB-001: Restore Drill PostgreSQL"
+versao: 1.0
+severidade: critica  # critica | alta | media | baixa
+tempo-estimado: 45min
+pre-requisitos:
+  - acesso-ssh-droplet-prod
+  - backup-recente-em-s3
+---
+```
+
+Campos obrigatorios:
+- `title` casa regex `^RB-\d{3}: .+`
+- `versao` (semver ou inteiro)
+- `severidade` (enum acima)
+- `tempo-estimado` (string com unidade — `min`, `h`)
+- `pre-requisitos` (array de strings)
+
+### Secoes obrigatorias
+
+Cada runbook DEVE ter (na ordem):
+
+1. **Descricao** — 2-5 paragrafos explicando quando rodar
+2. **Pre-requisitos** — checklist de itens necessarios
+3. **Procedimento** — passos numerados com comandos literais
+4. **Verificacao / Validacao** — como saber se o RB rodou OK
+5. **Rollback** — passos reversos (OBRIGATORIO se `severidade=critica`)
+6. **Contatos** — quem chamar em caso de problema
+
+Ausencia de qualquer secao acima e Erro (nao Aviso). Para
+`severidade=critica` sem secao Rollback, erro adicional CRITICO.
+
+### Checks adicionais
+
+- **Sem placeholders residuais**: rejeitar se conteudo contem
+  `TODO`, `XXX`, `FIXME`, `<placeholder>`, `lorem ipsum`,
+  `TBD`, `[FILL ME]`. Runbook e operacional — placeholder e
+  dividida tecnica que vira incidente.
+- **Cross-refs validos**: paths relativos em links Markdown
+  (`[texto](../path)`) devem existir no disco. Reportar
+  link quebrado como Erro.
+- **Comandos sem variavel de ambiente nao-documentada**: se
+  procedimento usa `$VAR`, `VAR` deve estar listado em
+  Pre-requisitos OU em frontmatter `env-vars: [...]`. Caso
+  contrario, Aviso (operador pode esquecer de exportar).
+
+### Criterio de aceitacao
+
+Novo `RB-NNN` e REJEITADO por `validate-documentation --runbook` se
+faltar qualquer:
+- Campo obrigatorio do frontmatter
+- Secao obrigatoria
+- Rollback (quando severidade=critica)
+- Cross-ref valido em link interno
+
+Razao para rigor extra: runbooks rodam em incidente, com operador
+sob pressao. Placeholder = pessoa errada lendo o passo errado em
+2h da manha.
+
 ---
 
 ## Gotchas
